@@ -184,7 +184,7 @@ export function Admin() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-card border-border/50 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -219,20 +219,6 @@ export function Admin() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border/50 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Out of Stock
-            </CardTitle>
-            <Activity className="w-4 h-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoadingStats ? "..." : stats?.outOfStockTraits}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Traits needing restock</p>
-          </CardContent>
-        </Card>
 
         <Card className="bg-card border-border/50 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

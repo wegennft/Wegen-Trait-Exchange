@@ -4,10 +4,12 @@ import traitsRouter from "./traits";
 import lockerRouter from "./locker";
 import nftsRouter from "./nfts";
 import adminRouter from "./admin";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(storageRouter);
 router.use(traitsRouter);
 router.use(lockerRouter);
 router.use(nftsRouter);

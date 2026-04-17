@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   useGetAdminStats,
   useListTraits,
@@ -53,11 +53,14 @@ import {
   X,
   AlertCircle,
   CheckCircle2,
+  Upload,
+  ImageIcon,
 } from "lucide-react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Trait } from "@workspace/api-client-react";
+import { useUpload } from "@workspace/object-storage-web";
 
 const CATEGORIES = ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
 
@@ -74,7 +77,7 @@ const traitSchema = z.object({
   category: z.string().min(1, "Category is required"),
   theme: z.string().optional(),
   description: z.string().optional(),
-  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  imageUrl: z.string().optional(),
   priceEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 0.05"),
   totalSupply: z.coerce.number().min(1, "Supply must be at least 1"),
   rarity: z.enum(["common", "uncommon", "rare", "legendary"]),
@@ -427,6 +430,143 @@ function PayoutSplitsSummary({
   );
 }
 
+// ── Image uploader for trait JPEG images ─────────────────────────────────────
+function TraitImageUploader({
+  currentImageUrl,
+  onUploadComplete,
+  onClear,
+}: {
+  currentImageUrl?: string;
+  onUploadComplete: (url: string) => void;
+  onClear: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const { uploadFile, isUploading, progress } = useUpload({
+    onSuccess: (response) => {
+      const servingUrl = `/api/storage${response.objectPath}`;
+      onUploadComplete(servingUrl);
+    },
+    onError: (err) => {
+      toast({ title: `Upload failed: ${err.message}`, variant: "destructive" });
+    },
+  });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please select an image file (JPEG, PNG, etc.)", variant: "destructive" });
+      return;
+    }
+    await uploadFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <div className="space-y-3">
+      {currentImageUrl ? (
+        <div className="relative rounded-lg overflow-hidden border border-border/50 bg-secondary/30 group w-full aspect-square max-w-40">
+          <img
+            src={currentImageUrl}
+            alt="Trait preview"
+            className="w-full h-full object-contain p-2"
+          />
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute top-1.5 right-1.5 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+            aria-label="Remove image"
+          >
+            <X className="w-3 h-3 text-white" />
+          </button>
+          <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-center py-1 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+            Click × to remove
+          </div>
+        </div>
+      ) : (
+        <div
+          className="border-2 border-dashed border-border/50 rounded-lg p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
+          onClick={() => fileInputRef.current?.click()}
+          role="button"
+          aria-label="Upload image"
+          data-testid="image-drop-zone"
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Uploading… {progress}%</p>
+              <div className="w-full bg-secondary/50 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-primary h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+                <ImageIcon className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">Click to upload JPEG</p>
+                <p className="text-xs text-muted-foreground mt-0.5">JPEG, PNG, GIF, WebP</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" className="gap-2">
+                <Upload className="w-3.5 h-3.5" />
+                Choose File
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {!currentImageUrl && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={isUploading}
+          data-testid="input-image-file"
+        />
+      )}
+
+      {currentImageUrl && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Upload className="w-3.5 h-3.5" />
+          )}
+          {isUploading ? "Uploading…" : "Replace Image"}
+        </Button>
+      )}
+
+      {currentImageUrl && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={isUploading}
+          data-testid="input-image-file"
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Trait form (create + edit) ─────────────────────────────────────────────────
 function TraitForm({
   defaultValues,
@@ -597,19 +737,12 @@ function TraitForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="imageUrl">Image URL (optional)</Label>
-        <Input
-          id="imageUrl"
-          {...form.register("imageUrl")}
-          placeholder="https://..."
-          className="bg-secondary/50"
-          data-testid="input-imageUrl"
+        <Label>Trait Image (JPEG)</Label>
+        <TraitImageUploader
+          currentImageUrl={form.watch("imageUrl")}
+          onUploadComplete={(url) => form.setValue("imageUrl", url, { shouldDirty: true })}
+          onClear={() => form.setValue("imageUrl", "", { shouldDirty: true })}
         />
-        {form.formState.errors.imageUrl && (
-          <p className="text-xs text-destructive">
-            {form.formState.errors.imageUrl.message}
-          </p>
-        )}
       </div>
 
       <div className="space-y-2">

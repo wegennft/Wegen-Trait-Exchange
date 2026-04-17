@@ -16,6 +16,8 @@ export interface UpdateTraitBody {
   totalSupply?: number;
   isActive?: boolean;
   rarity?: UpdateTraitBodyRarity;
+  /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
+  theme?: string | null;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }

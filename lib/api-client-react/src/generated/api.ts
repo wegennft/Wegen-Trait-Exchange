@@ -32,6 +32,7 @@ import type {
   RemoveTraitBody,
   RemoveTraitResponse,
   StoreStats,
+  ThemesResponse,
   Trait,
   TraitListResponse,
   UpdateTraitBody,
@@ -367,6 +368,81 @@ export function useListTraitCategories<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListTraitCategoriesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all trait themes/collections
+ */
+export const getListStoreThemesUrl = () => {
+  return `/api/store/themes`;
+};
+
+export const listStoreThemes = async (
+  options?: RequestInit,
+): Promise<ThemesResponse> => {
+  return customFetch<ThemesResponse>(getListStoreThemesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListStoreThemesQueryKey = () => {
+  return [`/api/store/themes`] as const;
+};
+
+export const getListStoreThemesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listStoreThemes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listStoreThemes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListStoreThemesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listStoreThemes>>> = ({
+    signal,
+  }) => listStoreThemes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listStoreThemes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListStoreThemesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listStoreThemes>>
+>;
+export type ListStoreThemesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all trait themes/collections
+ */
+
+export function useListStoreThemes<
+  TData = Awaited<ReturnType<typeof listStoreThemes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listStoreThemes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListStoreThemesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

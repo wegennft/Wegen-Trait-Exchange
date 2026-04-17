@@ -12,6 +12,8 @@ export interface Trait {
   id: number;
   name: string;
   category: string;
+  /** Named collection/theme this trait belongs to (e.g. "Stoner Traits", "70s Vibes") */
+  theme?: string | null;
   description?: string;
   imageUrl?: string;
   /** Price in ETH (as string to avoid floating point issues) */

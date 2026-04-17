@@ -22,6 +22,10 @@ export const listTraitsQueryLimitDefault = 20;
 
 export const ListTraitsQueryParams = zod.object({
   category: zod.coerce.string().optional(),
+  theme: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter traits by theme\/collection name"),
   page: zod.coerce.number().default(listTraitsQueryPageDefault),
   limit: zod.coerce.number().default(listTraitsQueryLimitDefault),
 });
@@ -35,6 +39,12 @@ export const ListTraitsResponse = zod.object({
       id: zod.number(),
       name: zod.string(),
       category: zod.string(),
+      theme: zod
+        .string()
+        .nullish()
+        .describe(
+          'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+        ),
       description: zod.string().optional(),
       imageUrl: zod.string().optional(),
       priceEth: zod
@@ -83,6 +93,12 @@ export const GetTraitResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   category: zod.string(),
+  theme: zod
+    .string()
+    .nullish()
+    .describe(
+      'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+    ),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
   priceEth: zod
@@ -118,6 +134,13 @@ export const ListTraitCategoriesResponse = zod.object({
 });
 
 /**
+ * @summary List all trait themes/collections
+ */
+export const ListStoreThemesResponse = zod.object({
+  themes: zod.array(zod.string()),
+});
+
+/**
  * @summary Get a user's trait locker
  */
 export const GetLockerParams = zod.object({
@@ -138,6 +161,12 @@ export const GetLockerResponse = zod.object({
         id: zod.number(),
         name: zod.string(),
         category: zod.string(),
+        theme: zod
+          .string()
+          .nullish()
+          .describe(
+            'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+          ),
         description: zod.string().optional(),
         imageUrl: zod.string().optional(),
         priceEth: zod
@@ -219,6 +248,12 @@ export const GetUserNftsResponse = zod.object({
             id: zod.number(),
             name: zod.string(),
             category: zod.string(),
+            theme: zod
+              .string()
+              .nullish()
+              .describe(
+                'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+              ),
             description: zod.string().optional(),
             imageUrl: zod.string().optional(),
             priceEth: zod
@@ -293,6 +328,12 @@ export const ApplyTraitResponse = zod.object({
           id: zod.number(),
           name: zod.string(),
           category: zod.string(),
+          theme: zod
+            .string()
+            .nullish()
+            .describe(
+              'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+            ),
           description: zod.string().optional(),
           imageUrl: zod.string().optional(),
           priceEth: zod
@@ -338,6 +379,12 @@ export const ApplyTraitResponse = zod.object({
       id: zod.number(),
       name: zod.string(),
       category: zod.string(),
+      theme: zod
+        .string()
+        .nullish()
+        .describe(
+          'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+        ),
       description: zod.string().optional(),
       imageUrl: zod.string().optional(),
       priceEth: zod
@@ -410,6 +457,12 @@ export const RemoveTraitResponse = zod.object({
           id: zod.number(),
           name: zod.string(),
           category: zod.string(),
+          theme: zod
+            .string()
+            .nullish()
+            .describe(
+              'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+            ),
           description: zod.string().optional(),
           imageUrl: zod.string().optional(),
           priceEth: zod
@@ -455,6 +508,12 @@ export const RemoveTraitResponse = zod.object({
       id: zod.number(),
       name: zod.string(),
       category: zod.string(),
+      theme: zod
+        .string()
+        .nullish()
+        .describe(
+          'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+        ),
       description: zod.string().optional(),
       imageUrl: zod.string().optional(),
       priceEth: zod
@@ -521,6 +580,12 @@ export const createTraitBodyPayoutSplitsItemPercentageMax = 100;
 export const CreateTraitBody = zod.object({
   name: zod.string(),
   category: zod.string(),
+  theme: zod
+    .string()
+    .nullish()
+    .describe(
+      'Named collection\/theme (e.g. \"Stoner Traits\", \"70s Vibes\")',
+    ),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
   priceEth: zod.string(),
@@ -562,6 +627,12 @@ export const UpdateTraitBody = zod.object({
   totalSupply: zod.number().optional(),
   isActive: zod.boolean().optional(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]).optional(),
+  theme: zod
+    .string()
+    .nullish()
+    .describe(
+      'Named collection\/theme (e.g. \"Stoner Traits\", \"70s Vibes\")',
+    ),
   payoutSplits: zod
     .array(
       zod.object({
@@ -586,6 +657,12 @@ export const UpdateTraitResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   category: zod.string(),
+  theme: zod
+    .string()
+    .nullish()
+    .describe(
+      'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+    ),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
   priceEth: zod

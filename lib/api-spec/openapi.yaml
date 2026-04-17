@@ -42,6 +42,11 @@ paths:
           in: query
           schema:
             type: string
+        - name: theme
+          in: query
+          schema:
+            type: string
+          description: Filter traits by theme/collection name
         - name: page
           in: query
           schema:
@@ -93,6 +98,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CategoriesResponse"
+
+  /store/themes:
+    get:
+      operationId: listStoreThemes
+      tags: [traits]
+      summary: List all trait themes/collections
+      responses:
+        "200":
+          description: List of themes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThemesResponse"
 
   /locker/{walletAddress}:
     get:
@@ -332,6 +350,10 @@ components:
           type: string
         category:
           type: string
+        theme:
+          type: string
+          nullable: true
+          description: Named collection/theme this trait belongs to (e.g. "Stoner Traits", "70s Vibes")
         description:
           type: string
         imageUrl:
@@ -594,6 +616,16 @@ components:
         - traitsByCategory
         - recentPurchases
 
+    ThemesResponse:
+      type: object
+      properties:
+        themes:
+          type: array
+          items:
+            type: string
+      required:
+        - themes
+
     CreateTraitBody:
       type: object
       properties:
@@ -601,6 +633,10 @@ components:
           type: string
         category:
           type: string
+        theme:
+          type: string
+          nullable: true
+          description: Named collection/theme (e.g. "Stoner Traits", "70s Vibes")
         description:
           type: string
         imageUrl:
@@ -645,6 +681,10 @@ components:
         rarity:
           type: string
           enum: [common, uncommon, rare, legendary]
+        theme:
+          type: string
+          nullable: true
+          description: Named collection/theme (e.g. "Stoner Traits", "70s Vibes")
         payoutSplits:
           type: array
           items:

@@ -8,6 +8,10 @@
 
 export type ListTraitsParams = {
   category?: string;
+  /**
+   * Filter traits by theme/collection name
+   */
+  theme?: string;
   page?: number;
   limit?: number;
 };

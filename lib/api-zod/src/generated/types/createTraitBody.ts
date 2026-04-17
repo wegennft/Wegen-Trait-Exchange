@@ -11,6 +11,8 @@ import type { PayoutSplit } from "./payoutSplit";
 export interface CreateTraitBody {
   name: string;
   category: string;
+  /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
+  theme?: string | null;
   description?: string;
   imageUrl?: string;
   priceEth: string;

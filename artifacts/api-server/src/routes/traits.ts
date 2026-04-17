@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, isNotNull } from "drizzle-orm";
 import { db, traitsTable } from "@workspace/db";
 import {
   ListTraitsQueryParams,
@@ -8,6 +8,7 @@ import {
   GetTraitResponse,
   ListTraitCategoriesResponse,
   GetStoreStatsResponse,
+  ListStoreThemesResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -21,18 +22,31 @@ router.get("/traits/categories", async (_req, res): Promise<void> => {
   res.json(ListTraitCategoriesResponse.parse({ categories }));
 });
 
+router.get("/store/themes", async (_req, res): Promise<void> => {
+  const rows = await db
+    .selectDistinct({ theme: traitsTable.theme })
+    .from(traitsTable)
+    .where(isNotNull(traitsTable.theme))
+    .orderBy(traitsTable.theme);
+  const themes = rows.map((r) => r.theme).filter(Boolean) as string[];
+  res.json(ListStoreThemesResponse.parse({ themes }));
+});
+
 router.get("/traits", async (req, res): Promise<void> => {
   const params = ListTraitsQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const { category, page, limit } = params.data;
+  const { category, theme, page, limit } = params.data;
   const offset = (page - 1) * limit;
 
   const conditions = [];
   if (category) {
     conditions.push(eq(traitsTable.category, category));
+  }
+  if (theme) {
+    conditions.push(eq(traitsTable.theme, theme));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

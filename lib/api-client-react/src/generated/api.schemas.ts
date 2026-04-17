@@ -33,6 +33,8 @@ export interface Trait {
   id: number;
   name: string;
   category: string;
+  /** Named collection/theme this trait belongs to (e.g. "Stoner Traits", "70s Vibes") */
+  theme?: string | null;
   description?: string;
   imageUrl?: string;
   /** Price in ETH (as string to avoid floating point issues) */
@@ -138,6 +140,10 @@ export interface StoreStats {
   recentPurchases: number;
 }
 
+export interface ThemesResponse {
+  themes: string[];
+}
+
 export type CreateTraitBodyRarity =
   (typeof CreateTraitBodyRarity)[keyof typeof CreateTraitBodyRarity];
 
@@ -151,6 +157,8 @@ export const CreateTraitBodyRarity = {
 export interface CreateTraitBody {
   name: string;
   category: string;
+  /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
+  theme?: string | null;
   description?: string;
   imageUrl?: string;
   priceEth: string;
@@ -179,6 +187,8 @@ export interface UpdateTraitBody {
   totalSupply?: number;
   isActive?: boolean;
   rarity?: UpdateTraitBodyRarity;
+  /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
+  theme?: string | null;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }
@@ -214,6 +224,10 @@ export interface DeleteResponse {
 
 export type ListTraitsParams = {
   category?: string;
+  /**
+   * Filter traits by theme/collection name
+   */
+  theme?: string;
   page?: number;
   limit?: number;
 };

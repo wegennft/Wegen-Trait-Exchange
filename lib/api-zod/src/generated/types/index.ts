@@ -27,6 +27,7 @@ export * from "./removeTraitBody";
 export * from "./removeTraitResponse";
 export * from "./storeStats";
 export * from "./storeStatsTraitsByCategoryItem";
+export * from "./themesResponse";
 export * from "./trait";
 export * from "./traitListResponse";
 export * from "./traitRarity";

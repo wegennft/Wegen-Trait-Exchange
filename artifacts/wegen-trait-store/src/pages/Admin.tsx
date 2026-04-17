@@ -72,6 +72,7 @@ const payoutSplitSchema = z.object({
 const traitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
+  theme: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   priceEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 0.05"),
@@ -164,6 +165,7 @@ export function Admin() {
         totalSupply: data.totalSupply,
         isActive: data.isActive,
         rarity: data.rarity,
+        theme: data.theme || undefined,
         payoutSplits: data.payoutSplits,
       },
     });
@@ -440,6 +442,7 @@ function TraitForm({
     defaultValues: {
       name: defaultValues?.name ?? "",
       category: defaultValues?.category ?? "",
+      theme: defaultValues?.theme ?? "",
       description: defaultValues?.description ?? "",
       imageUrl: defaultValues?.imageUrl ?? "",
       priceEth: defaultValues?.priceEth ?? "0.01",
@@ -502,6 +505,23 @@ function TraitForm({
               {form.formState.errors.category.message}
             </p>
           )}
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="theme">
+            Collection / Theme
+            <span className="ml-1.5 text-xs text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          <Input
+            id="theme"
+            {...form.register("theme")}
+            placeholder="e.g. Stoner Traits, 70s Vibes, TV Shows..."
+            className="bg-secondary/50"
+            data-testid="input-theme"
+          />
+          <p className="text-xs text-muted-foreground">
+            Traits with the same collection name appear together as a tab in the Store.
+          </p>
         </div>
 
         <div className="space-y-2">

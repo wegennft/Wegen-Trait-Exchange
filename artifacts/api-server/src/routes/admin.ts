@@ -14,6 +14,25 @@ import { ethers } from "ethers";
 
 const router: IRouter = Router();
 
+function validatePayoutSplits(
+  splits: { walletAddress: string; percentage: number }[],
+): string | null {
+  if (splits.length === 0) return null;
+  const total = splits.reduce((sum, s) => sum + s.percentage, 0);
+  if (Math.abs(total - 100) > 0.01) {
+    return `Payout percentages must sum to 100% (currently ${total.toFixed(2)}%)`;
+  }
+  for (const s of splits) {
+    if (!s.walletAddress || s.walletAddress.trim() === "") {
+      return "All payout splits must have a wallet address";
+    }
+    if (s.percentage <= 0) {
+      return "All payout percentages must be greater than 0";
+    }
+  }
+  return null;
+}
+
 router.post("/admin/traits", async (req, res): Promise<void> => {
   const body = CreateTraitBody.safeParse(req.body);
   if (!body.success) {
@@ -21,8 +40,15 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, category, description, imageUrl, priceEth, totalSupply, rarity, isActive } =
+  const { name, category, description, imageUrl, priceEth, totalSupply, rarity, isActive, payoutSplits } =
     body.data;
+
+  const splits = payoutSplits ?? [];
+  const splitError = validatePayoutSplits(splits);
+  if (splitError) {
+    res.status(400).json({ error: splitError });
+    return;
+  }
 
   let priceWei: string;
   try {
@@ -44,10 +70,11 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
       remainingSupply: totalSupply,
       rarity: rarity as "common" | "uncommon" | "rare" | "legendary",
       isActive: isActive ?? true,
+      payoutSplits: splits,
     })
     .returning();
 
-  res.status(201).json(trait);
+  res.status(201).json({ ...trait, payoutSplits: splits });
 });
 
 router.put("/admin/traits/:traitId", async (req, res): Promise<void> => {
@@ -66,9 +93,25 @@ router.put("/admin/traits/:traitId", async (req, res): Promise<void> => {
     return;
   }
 
-  const updates: Record<string, unknown> = { ...body.data };
+  if (body.data.payoutSplits !== undefined) {
+    const splitError = validatePayoutSplits(body.data.payoutSplits);
+    if (splitError) {
+      res.status(400).json({ error: splitError });
+      return;
+    }
+  }
 
-  if (body.data.priceEth) {
+  const updates: Record<string, unknown> = {};
+
+  if (body.data.name !== undefined) updates.name = body.data.name;
+  if (body.data.description !== undefined) updates.description = body.data.description;
+  if (body.data.imageUrl !== undefined) updates.imageUrl = body.data.imageUrl;
+  if (body.data.isActive !== undefined) updates.isActive = body.data.isActive;
+  if (body.data.rarity !== undefined) updates.rarity = body.data.rarity;
+  if (body.data.payoutSplits !== undefined) updates.payoutSplits = body.data.payoutSplits;
+
+  if (body.data.priceEth !== undefined) {
+    updates.priceEth = body.data.priceEth;
     try {
       updates.priceWei = ethers.parseEther(body.data.priceEth).toString();
     } catch {
@@ -84,6 +127,7 @@ router.put("/admin/traits/:traitId", async (req, res): Promise<void> => {
 
     if (current) {
       const diff = body.data.totalSupply - current.totalSupply;
+      updates.totalSupply = body.data.totalSupply;
       updates.remainingSupply = Math.max(0, current.remainingSupply + diff);
     }
   }

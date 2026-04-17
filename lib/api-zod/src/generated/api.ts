@@ -26,6 +26,9 @@ export const ListTraitsQueryParams = zod.object({
   limit: zod.coerce.number().default(listTraitsQueryLimitDefault),
 });
 
+export const listTraitsResponseTraitsItemPayoutSplitsItemPercentageMin = 0;
+export const listTraitsResponseTraitsItemPayoutSplitsItemPercentageMax = 100;
+
 export const ListTraitsResponse = zod.object({
   traits: zod.array(
     zod.object({
@@ -42,6 +45,22 @@ export const ListTraitsResponse = zod.object({
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
       rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      payoutSplits: zod
+        .array(
+          zod.object({
+            walletAddress: zod
+              .string()
+              .describe("Ethereum wallet address receiving funds"),
+            percentage: zod
+              .number()
+              .min(listTraitsResponseTraitsItemPayoutSplitsItemPercentageMin)
+              .max(listTraitsResponseTraitsItemPayoutSplitsItemPercentageMax)
+              .describe("Percentage of sale proceeds (0-100)"),
+          }),
+        )
+        .describe(
+          "Wallet addresses and their percentage share of sale proceeds",
+        ),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -57,6 +76,9 @@ export const GetTraitParams = zod.object({
   traitId: zod.coerce.number(),
 });
 
+export const getTraitResponsePayoutSplitsItemPercentageMin = 0;
+export const getTraitResponsePayoutSplitsItemPercentageMax = 100;
+
 export const GetTraitResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -71,6 +93,20 @@ export const GetTraitResponse = zod.object({
   remainingSupply: zod.number(),
   isActive: zod.boolean(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+  payoutSplits: zod
+    .array(
+      zod.object({
+        walletAddress: zod
+          .string()
+          .describe("Ethereum wallet address receiving funds"),
+        percentage: zod
+          .number()
+          .min(getTraitResponsePayoutSplitsItemPercentageMin)
+          .max(getTraitResponsePayoutSplitsItemPercentageMax)
+          .describe("Percentage of sale proceeds (0-100)"),
+      }),
+    )
+    .describe("Wallet addresses and their percentage share of sale proceeds"),
   createdAt: zod.coerce.date(),
 });
 
@@ -87,6 +123,9 @@ export const ListTraitCategoriesResponse = zod.object({
 export const GetLockerParams = zod.object({
   walletAddress: zod.coerce.string(),
 });
+
+export const getLockerResponseItemsItemTraitPayoutSplitsItemPercentageMin = 0;
+export const getLockerResponseItemsItemTraitPayoutSplitsItemPercentageMax = 100;
 
 export const GetLockerResponse = zod.object({
   walletAddress: zod.string(),
@@ -109,6 +148,26 @@ export const GetLockerResponse = zod.object({
         remainingSupply: zod.number(),
         isActive: zod.boolean(),
         rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+        payoutSplits: zod
+          .array(
+            zod.object({
+              walletAddress: zod
+                .string()
+                .describe("Ethereum wallet address receiving funds"),
+              percentage: zod
+                .number()
+                .min(
+                  getLockerResponseItemsItemTraitPayoutSplitsItemPercentageMin,
+                )
+                .max(
+                  getLockerResponseItemsItemTraitPayoutSplitsItemPercentageMax,
+                )
+                .describe("Percentage of sale proceeds (0-100)"),
+            }),
+          )
+          .describe(
+            "Wallet addresses and their percentage share of sale proceeds",
+          ),
         createdAt: zod.coerce.date(),
       }),
       quantity: zod.number(),
@@ -142,6 +201,9 @@ export const GetUserNftsParams = zod.object({
   walletAddress: zod.coerce.string(),
 });
 
+export const getUserNftsResponseNftsItemEquippedTraitsItemTraitPayoutSplitsItemPercentageMin = 0;
+export const getUserNftsResponseNftsItemEquippedTraitsItemTraitPayoutSplitsItemPercentageMax = 100;
+
 export const GetUserNftsResponse = zod.object({
   nfts: zod.array(
     zod.object({
@@ -169,6 +231,26 @@ export const GetUserNftsResponse = zod.object({
             remainingSupply: zod.number(),
             isActive: zod.boolean(),
             rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+            payoutSplits: zod
+              .array(
+                zod.object({
+                  walletAddress: zod
+                    .string()
+                    .describe("Ethereum wallet address receiving funds"),
+                  percentage: zod
+                    .number()
+                    .min(
+                      getUserNftsResponseNftsItemEquippedTraitsItemTraitPayoutSplitsItemPercentageMin,
+                    )
+                    .max(
+                      getUserNftsResponseNftsItemEquippedTraitsItemTraitPayoutSplitsItemPercentageMax,
+                    )
+                    .describe("Percentage of sale proceeds (0-100)"),
+                }),
+              )
+              .describe(
+                "Wallet addresses and their percentage share of sale proceeds",
+              ),
             createdAt: zod.coerce.date(),
           }),
         }),
@@ -189,6 +271,12 @@ export const ApplyTraitBody = zod.object({
   lockerItemId: zod.number(),
   walletAddress: zod.string(),
 });
+
+export const applyTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMin = 0;
+export const applyTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMax = 100;
+
+export const applyTraitResponseLockerItemTraitPayoutSplitsItemPercentageMin = 0;
+export const applyTraitResponseLockerItemTraitPayoutSplitsItemPercentageMax = 100;
 
 export const ApplyTraitResponse = zod.object({
   success: zod.boolean(),
@@ -217,6 +305,26 @@ export const ApplyTraitResponse = zod.object({
           remainingSupply: zod.number(),
           isActive: zod.boolean(),
           rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          payoutSplits: zod
+            .array(
+              zod.object({
+                walletAddress: zod
+                  .string()
+                  .describe("Ethereum wallet address receiving funds"),
+                percentage: zod
+                  .number()
+                  .min(
+                    applyTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMin,
+                  )
+                  .max(
+                    applyTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMax,
+                  )
+                  .describe("Percentage of sale proceeds (0-100)"),
+              }),
+            )
+            .describe(
+              "Wallet addresses and their percentage share of sale proceeds",
+            ),
           createdAt: zod.coerce.date(),
         }),
       }),
@@ -240,6 +348,26 @@ export const ApplyTraitResponse = zod.object({
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
       rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      payoutSplits: zod
+        .array(
+          zod.object({
+            walletAddress: zod
+              .string()
+              .describe("Ethereum wallet address receiving funds"),
+            percentage: zod
+              .number()
+              .min(
+                applyTraitResponseLockerItemTraitPayoutSplitsItemPercentageMin,
+              )
+              .max(
+                applyTraitResponseLockerItemTraitPayoutSplitsItemPercentageMax,
+              )
+              .describe("Percentage of sale proceeds (0-100)"),
+          }),
+        )
+        .describe(
+          "Wallet addresses and their percentage share of sale proceeds",
+        ),
       createdAt: zod.coerce.date(),
     }),
     quantity: zod.number(),
@@ -260,6 +388,12 @@ export const RemoveTraitBody = zod.object({
   category: zod.string(),
   walletAddress: zod.string(),
 });
+
+export const removeTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMin = 0;
+export const removeTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMax = 100;
+
+export const removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMin = 0;
+export const removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMax = 100;
 
 export const RemoveTraitResponse = zod.object({
   success: zod.boolean(),
@@ -288,6 +422,26 @@ export const RemoveTraitResponse = zod.object({
           remainingSupply: zod.number(),
           isActive: zod.boolean(),
           rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          payoutSplits: zod
+            .array(
+              zod.object({
+                walletAddress: zod
+                  .string()
+                  .describe("Ethereum wallet address receiving funds"),
+                percentage: zod
+                  .number()
+                  .min(
+                    removeTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMin,
+                  )
+                  .max(
+                    removeTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercentageMax,
+                  )
+                  .describe("Percentage of sale proceeds (0-100)"),
+              }),
+            )
+            .describe(
+              "Wallet addresses and their percentage share of sale proceeds",
+            ),
           createdAt: zod.coerce.date(),
         }),
       }),
@@ -311,6 +465,26 @@ export const RemoveTraitResponse = zod.object({
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
       rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      payoutSplits: zod
+        .array(
+          zod.object({
+            walletAddress: zod
+              .string()
+              .describe("Ethereum wallet address receiving funds"),
+            percentage: zod
+              .number()
+              .min(
+                removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMin,
+              )
+              .max(
+                removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMax,
+              )
+              .describe("Percentage of sale proceeds (0-100)"),
+          }),
+        )
+        .describe(
+          "Wallet addresses and their percentage share of sale proceeds",
+        ),
       createdAt: zod.coerce.date(),
     }),
     quantity: zod.number(),
@@ -341,6 +515,8 @@ export const GetStoreStatsResponse = zod.object({
  * @summary Create a new trait (admin only)
  */
 export const createTraitBodyIsActiveDefault = true;
+export const createTraitBodyPayoutSplitsItemPercentageMin = 0;
+export const createTraitBodyPayoutSplitsItemPercentageMax = 100;
 
 export const CreateTraitBody = zod.object({
   name: zod.string(),
@@ -351,6 +527,21 @@ export const CreateTraitBody = zod.object({
   totalSupply: zod.number(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
   isActive: zod.boolean().default(createTraitBodyIsActiveDefault),
+  payoutSplits: zod
+    .array(
+      zod.object({
+        walletAddress: zod
+          .string()
+          .describe("Ethereum wallet address receiving funds"),
+        percentage: zod
+          .number()
+          .min(createTraitBodyPayoutSplitsItemPercentageMin)
+          .max(createTraitBodyPayoutSplitsItemPercentageMax)
+          .describe("Percentage of sale proceeds (0-100)"),
+      }),
+    )
+    .optional()
+    .describe("Wallet payout splits (must sum to 100%)"),
 });
 
 /**
@@ -360,6 +551,9 @@ export const UpdateTraitParams = zod.object({
   traitId: zod.coerce.number(),
 });
 
+export const updateTraitBodyPayoutSplitsItemPercentageMin = 0;
+export const updateTraitBodyPayoutSplitsItemPercentageMax = 100;
+
 export const UpdateTraitBody = zod.object({
   name: zod.string().optional(),
   description: zod.string().optional(),
@@ -368,7 +562,25 @@ export const UpdateTraitBody = zod.object({
   totalSupply: zod.number().optional(),
   isActive: zod.boolean().optional(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]).optional(),
+  payoutSplits: zod
+    .array(
+      zod.object({
+        walletAddress: zod
+          .string()
+          .describe("Ethereum wallet address receiving funds"),
+        percentage: zod
+          .number()
+          .min(updateTraitBodyPayoutSplitsItemPercentageMin)
+          .max(updateTraitBodyPayoutSplitsItemPercentageMax)
+          .describe("Percentage of sale proceeds (0-100)"),
+      }),
+    )
+    .optional()
+    .describe("Wallet payout splits (must sum to 100%)"),
 });
+
+export const updateTraitResponsePayoutSplitsItemPercentageMin = 0;
+export const updateTraitResponsePayoutSplitsItemPercentageMax = 100;
 
 export const UpdateTraitResponse = zod.object({
   id: zod.number(),
@@ -384,6 +596,20 @@ export const UpdateTraitResponse = zod.object({
   remainingSupply: zod.number(),
   isActive: zod.boolean(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+  payoutSplits: zod
+    .array(
+      zod.object({
+        walletAddress: zod
+          .string()
+          .describe("Ethereum wallet address receiving funds"),
+        percentage: zod
+          .number()
+          .min(updateTraitResponsePayoutSplitsItemPercentageMin)
+          .max(updateTraitResponsePayoutSplitsItemPercentageMax)
+          .describe("Percentage of sale proceeds (0-100)"),
+      }),
+    )
+    .describe("Wallet addresses and their percentage share of sale proceeds"),
   createdAt: zod.coerce.date(),
 });
 

@@ -5,6 +5,7 @@
  * Wegen NFT Trait Store API
  * OpenAPI spec version: 0.1.0
  */
+import type { PayoutSplit } from "./payoutSplit";
 import type { UpdateTraitBodyRarity } from "./updateTraitBodyRarity";
 
 export interface UpdateTraitBody {
@@ -15,4 +16,6 @@ export interface UpdateTraitBody {
   totalSupply?: number;
   isActive?: boolean;
   rarity?: UpdateTraitBodyRarity;
+  /** Wallet payout splits (must sum to 100%) */
+  payoutSplits?: PayoutSplit[];
 }

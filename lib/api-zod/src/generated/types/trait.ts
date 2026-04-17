@@ -5,6 +5,7 @@
  * Wegen NFT Trait Store API
  * OpenAPI spec version: 0.1.0
  */
+import type { PayoutSplit } from "./payoutSplit";
 import type { TraitRarity } from "./traitRarity";
 
 export interface Trait {
@@ -21,5 +22,7 @@ export interface Trait {
   remainingSupply: number;
   isActive: boolean;
   rarity: TraitRarity;
+  /** Wallet addresses and their percentage share of sale proceeds */
+  payoutSplits: PayoutSplit[];
   createdAt: Date;
 }

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CreateTraitBodyRarity } from "./createTraitBodyRarity";
+import type { PayoutSplit } from "./payoutSplit";
 
 export interface CreateTraitBody {
   name: string;
@@ -16,4 +17,6 @@ export interface CreateTraitBody {
   totalSupply: number;
   rarity: CreateTraitBodyRarity;
   isActive?: boolean;
+  /** Wallet payout splits (must sum to 100%) */
+  payoutSplits?: PayoutSplit[];
 }

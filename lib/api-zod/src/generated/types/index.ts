@@ -21,6 +21,7 @@ export * from "./lockerItem";
 export * from "./lockerResponse";
 export * from "./nftListResponse";
 export * from "./nftTrait";
+export * from "./payoutSplit";
 export * from "./purchaseTraitBody";
 export * from "./removeTraitBody";
 export * from "./removeTraitResponse";

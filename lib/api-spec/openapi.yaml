@@ -308,6 +308,21 @@ components:
       required:
         - status
 
+    PayoutSplit:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+          description: Ethereum wallet address receiving funds
+        percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Percentage of sale proceeds (0-100)
+      required:
+        - walletAddress
+        - percentage
+
     Trait:
       type: object
       properties:
@@ -336,6 +351,11 @@ components:
         rarity:
           type: string
           enum: [common, uncommon, rare, legendary]
+        payoutSplits:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayoutSplit"
+          description: Wallet addresses and their percentage share of sale proceeds
         createdAt:
           type: string
           format: date-time
@@ -349,6 +369,7 @@ components:
         - remainingSupply
         - isActive
         - rarity
+        - payoutSplits
         - createdAt
 
     TraitListResponse:
@@ -594,6 +615,11 @@ components:
         isActive:
           type: boolean
           default: true
+        payoutSplits:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayoutSplit"
+          description: Wallet payout splits (must sum to 100%)
       required:
         - name
         - category
@@ -619,6 +645,11 @@ components:
         rarity:
           type: string
           enum: [common, uncommon, rare, legendary]
+        payoutSplits:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayoutSplit"
+          description: Wallet payout splits (must sum to 100%)
 
     AdminStats:
       type: object

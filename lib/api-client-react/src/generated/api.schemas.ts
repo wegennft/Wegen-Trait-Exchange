@@ -9,6 +9,17 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface PayoutSplit {
+  /** Ethereum wallet address receiving funds */
+  walletAddress: string;
+  /**
+   * Percentage of sale proceeds (0-100)
+   * @minimum 0
+   * @maximum 100
+   */
+  percentage: number;
+}
+
 export type TraitRarity = (typeof TraitRarity)[keyof typeof TraitRarity];
 
 export const TraitRarity = {
@@ -32,6 +43,8 @@ export interface Trait {
   remainingSupply: number;
   isActive: boolean;
   rarity: TraitRarity;
+  /** Wallet addresses and their percentage share of sale proceeds */
+  payoutSplits: PayoutSplit[];
   createdAt: string;
 }
 
@@ -144,6 +157,8 @@ export interface CreateTraitBody {
   totalSupply: number;
   rarity: CreateTraitBodyRarity;
   isActive?: boolean;
+  /** Wallet payout splits (must sum to 100%) */
+  payoutSplits?: PayoutSplit[];
 }
 
 export type UpdateTraitBodyRarity =
@@ -164,6 +179,8 @@ export interface UpdateTraitBody {
   totalSupply?: number;
   isActive?: boolean;
   rarity?: UpdateTraitBodyRarity;
+  /** Wallet payout splits (must sum to 100%) */
+  payoutSplits?: PayoutSplit[];
 }
 
 export type AdminStatsTopSellingTraitsItem = {

@@ -5,6 +5,7 @@ import {
   timestamp,
   integer,
   boolean,
+  jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -29,6 +30,7 @@ export const traitsTable = pgTable("traits", {
   remainingSupply: integer("remaining_supply").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   rarity: rarityEnum("rarity").notNull().default("common"),
+  payoutSplits: jsonb("payout_splits").notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

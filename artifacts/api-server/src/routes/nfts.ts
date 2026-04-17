@@ -1,0 +1,219 @@
+import { Router, type IRouter } from "express";
+import { eq, and } from "drizzle-orm";
+import { db, wegenNftsTable, lockerItemsTable, traitsTable } from "@workspace/db";
+import {
+  GetUserNftsParams,
+  GetUserNftsResponse,
+  ApplyTraitParams,
+  ApplyTraitBody,
+  ApplyTraitResponse,
+  RemoveTraitParams,
+  RemoveTraitBody,
+  RemoveTraitResponse,
+} from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+async function getNftWithTraits(tokenId: number) {
+  const [nft] = await db
+    .select()
+    .from(wegenNftsTable)
+    .where(eq(wegenNftsTable.tokenId, tokenId));
+
+  if (!nft) return null;
+
+  const equipped = await db
+    .select({
+      lockerItemId: lockerItemsTable.id,
+      category: traitsTable.category,
+      trait: {
+        id: traitsTable.id,
+        name: traitsTable.name,
+        category: traitsTable.category,
+        description: traitsTable.description,
+        imageUrl: traitsTable.imageUrl,
+        priceEth: traitsTable.priceEth,
+        priceWei: traitsTable.priceWei,
+        totalSupply: traitsTable.totalSupply,
+        remainingSupply: traitsTable.remainingSupply,
+        isActive: traitsTable.isActive,
+        rarity: traitsTable.rarity,
+        createdAt: traitsTable.createdAt,
+      },
+    })
+    .from(lockerItemsTable)
+    .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
+    .where(eq(lockerItemsTable.equippedToTokenId, tokenId));
+
+  return { ...nft, equippedTraits: equipped };
+}
+
+router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.walletAddress)
+    ? req.params.walletAddress[0]
+    : req.params.walletAddress;
+  const params = GetUserNftsParams.safeParse({ walletAddress: raw });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const nfts = await db
+    .select()
+    .from(wegenNftsTable)
+    .where(eq(wegenNftsTable.walletAddress, params.data.walletAddress));
+
+  const nftsWithTraits = await Promise.all(
+    nfts.map((nft) => getNftWithTraits(nft.tokenId)),
+  );
+
+  const filtered = nftsWithTraits.filter(Boolean) as NonNullable<
+    Awaited<ReturnType<typeof getNftWithTraits>>
+  >[];
+
+  res.json(GetUserNftsResponse.parse({ nfts: filtered, total: filtered.length }));
+});
+
+router.post("/nfts/:tokenId/apply-trait", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.tokenId)
+    ? req.params.tokenId[0]
+    : req.params.tokenId;
+  const pathParams = ApplyTraitParams.safeParse({ tokenId: rawId });
+  if (!pathParams.success) {
+    res.status(400).json({ error: pathParams.error.message });
+    return;
+  }
+
+  const body = ApplyTraitBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const { lockerItemId, walletAddress } = body.data;
+  const tokenId = pathParams.data.tokenId;
+
+  const [lockerItem] = await db
+    .select()
+    .from(lockerItemsTable)
+    .where(
+      and(
+        eq(lockerItemsTable.id, lockerItemId),
+        eq(lockerItemsTable.walletAddress, walletAddress),
+      ),
+    );
+
+  if (!lockerItem) {
+    res.status(400).json({ error: "Locker item not found or not owned by this wallet" });
+    return;
+  }
+
+  if (lockerItem.equippedToTokenId !== null) {
+    res.status(400).json({ error: "Trait is already equipped to an NFT" });
+    return;
+  }
+
+  const [trait] = await db
+    .select()
+    .from(traitsTable)
+    .where(eq(traitsTable.id, lockerItem.traitId));
+
+  if (!trait) {
+    res.status(400).json({ error: "Trait not found" });
+    return;
+  }
+
+  const existingEquipped = await db
+    .select()
+    .from(lockerItemsTable)
+    .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
+    .where(
+      and(
+        eq(lockerItemsTable.equippedToTokenId, tokenId),
+        eq(traitsTable.category, trait.category),
+      ),
+    );
+
+  if (existingEquipped.length > 0) {
+    res.status(400).json({
+      error: `An NFT can only have one trait per category. Remove the existing ${trait.category} trait first.`,
+    });
+    return;
+  }
+
+  const [updatedItem] = await db
+    .update(lockerItemsTable)
+    .set({ equippedToTokenId: tokenId })
+    .where(eq(lockerItemsTable.id, lockerItemId))
+    .returning();
+
+  const nft = await getNftWithTraits(tokenId);
+  if (!nft) {
+    res.status(404).json({ error: "NFT not found" });
+    return;
+  }
+
+  const itemWithTrait = { ...updatedItem, trait };
+
+  res.json(ApplyTraitResponse.parse({ success: true, nft, lockerItem: itemWithTrait }));
+});
+
+router.post("/nfts/:tokenId/remove-trait", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.tokenId)
+    ? req.params.tokenId[0]
+    : req.params.tokenId;
+  const pathParams = RemoveTraitParams.safeParse({ tokenId: rawId });
+  if (!pathParams.success) {
+    res.status(400).json({ error: pathParams.error.message });
+    return;
+  }
+
+  const body = RemoveTraitBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const { category, walletAddress } = body.data;
+  const tokenId = pathParams.data.tokenId;
+
+  const equippedRows = await db
+    .select({
+      lockerItem: lockerItemsTable,
+      trait: traitsTable,
+    })
+    .from(lockerItemsTable)
+    .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
+    .where(
+      and(
+        eq(lockerItemsTable.equippedToTokenId, tokenId),
+        eq(lockerItemsTable.walletAddress, walletAddress),
+        eq(traitsTable.category, category),
+      ),
+    );
+
+  if (equippedRows.length === 0) {
+    res.status(400).json({ error: "No equipped trait found for that category" });
+    return;
+  }
+
+  const { lockerItem, trait } = equippedRows[0];
+
+  const [updatedItem] = await db
+    .update(lockerItemsTable)
+    .set({ equippedToTokenId: null })
+    .where(eq(lockerItemsTable.id, lockerItem.id))
+    .returning();
+
+  const nft = await getNftWithTraits(tokenId);
+  if (!nft) {
+    res.status(404).json({ error: "NFT not found" });
+    return;
+  }
+
+  const itemWithTrait = { ...updatedItem, trait };
+
+  res.json(RemoveTraitResponse.parse({ success: true, nft, lockerItem: itemWithTrait }));
+});
+
+export default router;

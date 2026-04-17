@@ -3,20 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Wegen NFT Trait Store API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: traits
+    description: NFT trait operations
+  - name: locker
+    description: User trait locker operations
+  - name: nfts
+    description: NFT operations
+  - name: admin
+    description: Admin operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,273 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /traits:
+    get:
+      operationId: listTraits
+      tags: [traits]
+      summary: List all available traits in the store
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of traits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraitListResponse"
+
+  /traits/{traitId}:
+    get:
+      operationId: getTrait
+      tags: [traits]
+      summary: Get a specific trait
+      parameters:
+        - name: traitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trait details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trait"
+        "404":
+          description: Trait not found
+
+  /traits/categories:
+    get:
+      operationId: listTraitCategories
+      tags: [traits]
+      summary: List all trait categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriesResponse"
+
+  /locker/{walletAddress}:
+    get:
+      operationId: getLocker
+      tags: [locker]
+      summary: Get a user's trait locker
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User's locker contents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockerResponse"
+
+  /locker/{walletAddress}/purchase:
+    post:
+      operationId: purchaseTrait
+      tags: [locker]
+      summary: Record a trait purchase into user locker
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseTraitBody"
+      responses:
+        "201":
+          description: Trait purchased and added to locker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockerItem"
+        "400":
+          description: Invalid request or out of stock
+
+  /nfts/{walletAddress}:
+    get:
+      operationId: getUserNfts
+      tags: [nfts]
+      summary: Get user's Wegen NFTs
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User's NFTs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NftListResponse"
+
+  /nfts/{tokenId}/apply-trait:
+    post:
+      operationId: applyTrait
+      tags: [nfts]
+      summary: Apply a trait from locker to an NFT
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyTraitBody"
+      responses:
+        "200":
+          description: Trait applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplyTraitResponse"
+        "400":
+          description: Trait not in locker or invalid
+
+  /nfts/{tokenId}/remove-trait:
+    post:
+      operationId: removeTrait
+      tags: [nfts]
+      summary: Remove a trait from an NFT (returns to locker)
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoveTraitBody"
+      responses:
+        "200":
+          description: Trait removed and returned to locker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoveTraitResponse"
+
+  /store/stats:
+    get:
+      operationId: getStoreStats
+      tags: [traits]
+      summary: Get store statistics (total traits, sales, categories)
+      responses:
+        "200":
+          description: Store stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreStats"
+
+  /admin/traits:
+    post:
+      operationId: createTrait
+      tags: [admin]
+      summary: Create a new trait (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTraitBody"
+      responses:
+        "201":
+          description: Trait created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trait"
+
+  /admin/traits/{traitId}:
+    put:
+      operationId: updateTrait
+      tags: [admin]
+      summary: Update trait price or quantity (admin only)
+      parameters:
+        - name: traitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTraitBody"
+      responses:
+        "200":
+          description: Trait updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trait"
+    delete:
+      operationId: deleteTrait
+      tags: [admin]
+      summary: Delete a trait (admin only)
+      parameters:
+        - name: traitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get admin dashboard stats
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +308,382 @@ components:
       required:
         - status
 
+    Trait:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        priceEth:
+          type: string
+          description: Price in ETH (as string to avoid floating point issues)
+        priceWei:
+          type: string
+          description: Price in wei
+        totalSupply:
+          type: integer
+        remainingSupply:
+          type: integer
+        isActive:
+          type: boolean
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, legendary]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - category
+        - priceEth
+        - priceWei
+        - totalSupply
+        - remainingSupply
+        - isActive
+        - rarity
+        - createdAt
+
+    TraitListResponse:
+      type: object
+      properties:
+        traits:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trait"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - traits
+        - total
+        - page
+        - limit
+
+    CategoriesResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: string
+      required:
+        - categories
+
+    LockerItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        traitId:
+          type: integer
+        walletAddress:
+          type: string
+        trait:
+          $ref: "#/components/schemas/Trait"
+        quantity:
+          type: integer
+        equippedToTokenId:
+          type: integer
+          nullable: true
+        purchasedAt:
+          type: string
+          format: date-time
+        txHash:
+          type: string
+          nullable: true
+      required:
+        - id
+        - traitId
+        - walletAddress
+        - trait
+        - quantity
+        - equippedToTokenId
+        - purchasedAt
+
+    LockerResponse:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LockerItem"
+        totalItems:
+          type: integer
+      required:
+        - walletAddress
+        - items
+        - totalItems
+
+    PurchaseTraitBody:
+      type: object
+      properties:
+        traitId:
+          type: integer
+        txHash:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+          default: 1
+      required:
+        - traitId
+
+    NftTrait:
+      type: object
+      properties:
+        category:
+          type: string
+        lockerItemId:
+          type: integer
+        trait:
+          $ref: "#/components/schemas/Trait"
+      required:
+        - category
+        - lockerItemId
+        - trait
+
+    WegenNft:
+      type: object
+      properties:
+        tokenId:
+          type: integer
+        walletAddress:
+          type: string
+        name:
+          type: string
+        imageUrl:
+          type: string
+        equippedTraits:
+          type: array
+          items:
+            $ref: "#/components/schemas/NftTrait"
+      required:
+        - tokenId
+        - walletAddress
+        - name
+        - equippedTraits
+
+    NftListResponse:
+      type: object
+      properties:
+        nfts:
+          type: array
+          items:
+            $ref: "#/components/schemas/WegenNft"
+        total:
+          type: integer
+      required:
+        - nfts
+        - total
+
+    ApplyTraitBody:
+      type: object
+      properties:
+        lockerItemId:
+          type: integer
+        walletAddress:
+          type: string
+      required:
+        - lockerItemId
+        - walletAddress
+
+    ApplyTraitResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        nft:
+          $ref: "#/components/schemas/WegenNft"
+        lockerItem:
+          $ref: "#/components/schemas/LockerItem"
+      required:
+        - success
+        - nft
+        - lockerItem
+
+    RemoveTraitBody:
+      type: object
+      properties:
+        category:
+          type: string
+        walletAddress:
+          type: string
+      required:
+        - category
+        - walletAddress
+
+    RemoveTraitResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        nft:
+          $ref: "#/components/schemas/WegenNft"
+        lockerItem:
+          $ref: "#/components/schemas/LockerItem"
+      required:
+        - success
+        - nft
+        - lockerItem
+
+    StoreStats:
+      type: object
+      properties:
+        totalTraits:
+          type: integer
+        totalCategories:
+          type: integer
+        totalPurchases:
+          type: integer
+        totalHolders:
+          type: integer
+        traitsByCategory:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              count:
+                type: integer
+            required:
+              - category
+              - count
+        recentPurchases:
+          type: integer
+          description: Purchases in last 24h
+      required:
+        - totalTraits
+        - totalCategories
+        - totalPurchases
+        - totalHolders
+        - traitsByCategory
+        - recentPurchases
+
+    CreateTraitBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        priceEth:
+          type: string
+        totalSupply:
+          type: integer
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, legendary]
+        isActive:
+          type: boolean
+          default: true
+      required:
+        - name
+        - category
+        - priceEth
+        - totalSupply
+        - rarity
+
+    UpdateTraitBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        priceEth:
+          type: string
+        totalSupply:
+          type: integer
+        isActive:
+          type: boolean
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, legendary]
+
+    AdminStats:
+      type: object
+      properties:
+        totalTraits:
+          type: integer
+        totalSales:
+          type: integer
+        totalRevenue:
+          type: string
+          description: Total revenue in ETH
+        activeTraits:
+          type: integer
+        outOfStockTraits:
+          type: integer
+        topSellingTraits:
+          type: array
+          items:
+            type: object
+            properties:
+              traitId:
+                type: integer
+              name:
+                type: string
+              salesCount:
+                type: integer
+            required:
+              - traitId
+              - name
+              - salesCount
+        recentActivity:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              walletAddress:
+                type: string
+              traitName:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+            required:
+              - type
+              - walletAddress
+              - traitName
+              - timestamp
+      required:
+        - totalTraits
+        - totalSales
+        - totalRevenue
+        - activeTraits
+        - outOfStockTraits
+        - topSellingTraits
+        - recentActivity
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message

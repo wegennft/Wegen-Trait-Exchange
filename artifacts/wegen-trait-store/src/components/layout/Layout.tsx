@@ -127,12 +127,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Banner ── */}
       {settings.bannerUrl && !isAdminPage && (
-        <div className="w-full overflow-hidden" style={{ maxHeight: 160 }}>
+        <div className="w-full overflow-hidden" style={{ aspectRatio: '3/1', maxHeight: 500 }}>
           <img
             src={settings.bannerUrl}
             alt="Site Banner"
-            className="w-full object-cover"
-            style={{ maxHeight: 160 }}
+            className="w-full h-full object-cover"
+            style={{ imageRendering: 'auto' }}
           />
         </div>
       )}

@@ -577,7 +577,7 @@ function AppearanceSettings() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-primary" />
               Site Banner
-              <span className="text-xs text-muted-foreground font-normal ml-auto">1500 × 500</span>
+              <span className="text-xs text-muted-foreground font-normal ml-auto">1500 × 500 · PNG / JPG / GIF</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -592,14 +592,14 @@ function AppearanceSettings() {
                 <div className="text-center p-4">
                   <ImageIcon className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-xs text-muted-foreground">Click to upload</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">1500×500 recommended</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">1500×500 · PNG, JPG, GIF supported</p>
                 </div>
               )}
             </div>
             <input
               ref={bannerRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/*"
               className="hidden"
               onChange={e => e.target.files?.[0] && handleBannerUpload(e.target.files[0])}
             />

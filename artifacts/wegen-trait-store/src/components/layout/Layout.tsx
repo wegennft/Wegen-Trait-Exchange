@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em' };
@@ -21,6 +21,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/", label: "Store", icon: ShoppingBag },
     { href: "/locker", label: "Locker", icon: Package },
     { href: "/nfts", label: "My Wegens", icon: Gem },
+    { href: "/swap", label: "Trait Swap", icon: Repeat2 },
   ];
 
   const isAdminPage = location === "/admin";

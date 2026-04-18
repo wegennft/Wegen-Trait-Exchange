@@ -123,8 +123,11 @@ router.post("/nfts/:tokenId/apply-trait", async (req, res): Promise<void> => {
     return;
   }
 
+  // Check for an existing trait in the same category on this NFT
   const existingEquipped = await db
-    .select()
+    .select({
+      lockerItemId: lockerItemsTable.id,
+    })
     .from(lockerItemsTable)
     .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
     .where(
@@ -134,11 +137,12 @@ router.post("/nfts/:tokenId/apply-trait", async (req, res): Promise<void> => {
       ),
     );
 
+  // If a trait of the same category is already equipped, auto-return it to the locker
   if (existingEquipped.length > 0) {
-    res.status(400).json({
-      error: `An NFT can only have one trait per category. Remove the existing ${trait.category} trait first.`,
-    });
-    return;
+    await db
+      .update(lockerItemsTable)
+      .set({ equippedToTokenId: null })
+      .where(eq(lockerItemsTable.id, existingEquipped[0].lockerItemId));
   }
 
   const [updatedItem] = await db

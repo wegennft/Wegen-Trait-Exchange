@@ -52,10 +52,18 @@ function NftsContent() {
 
   const applyTrait = useApplyTrait({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
+        const isReplacing = selectedNft?.equippedTraits.some(
+          et => {
+            const item = lockerData?.items?.find(i => i.id === variables.data.lockerItemId);
+            return item && et.category === item.trait.category;
+          }
+        );
         toast({
-          title: "Trait Applied",
-          description: "The trait has been equipped to your NFT.",
+          title: isReplacing ? "Trait Swapped" : "Trait Equipped",
+          description: isReplacing
+            ? "The previous trait was returned to your locker."
+            : "The trait has been equipped to your NFT.",
         });
         queryClient.invalidateQueries({ queryKey: getGetUserNftsQueryKey(walletAddress || "") });
         queryClient.invalidateQueries({ queryKey: getGetLockerQueryKey(walletAddress || "") });
@@ -238,7 +246,7 @@ function NftsContent() {
           <DialogHeader>
             <DialogTitle className="text-2xl">Equip Traits to {selectedNft?.name}</DialogTitle>
             <DialogDescription>
-              Select traits from your locker to apply to this Wegen. Applying a new trait to an occupied category will replace the existing one.
+              Select traits from your locker to equip. Replacing a category automatically returns the previous trait to your locker — nothing is ever lost.
             </DialogDescription>
           </DialogHeader>
           

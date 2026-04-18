@@ -13,6 +13,8 @@ export interface CreateTraitBody {
   category: string;
   /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
   theme?: string | null;
+  /** Drop name — the release/event this trait was part of (e.g. "Genesis Drop", "Season 2") */
+  dropName?: string | null;
   description?: string;
   imageUrl?: string;
   priceEth: string;

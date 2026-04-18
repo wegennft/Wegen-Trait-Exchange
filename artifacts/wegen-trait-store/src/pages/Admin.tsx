@@ -80,6 +80,7 @@ const traitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
   theme: z.string().optional(),
+  dropName: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().optional(),
   priceEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 0.05"),
@@ -173,6 +174,7 @@ export function Admin() {
         isActive: data.isActive,
         rarity: data.rarity,
         theme: data.theme || undefined,
+        dropName: data.dropName || undefined,
         payoutSplits: data.payoutSplits,
       },
     });
@@ -899,6 +901,7 @@ function TraitForm({
       name: defaultValues?.name ?? "",
       category: defaultValues?.category ?? "",
       theme: defaultValues?.theme ?? "",
+      dropName: defaultValues?.dropName ?? "",
       description: defaultValues?.description ?? "",
       imageUrl: defaultValues?.imageUrl ?? "",
       priceEth: defaultValues?.priceEth ?? "0.01",
@@ -963,7 +966,7 @@ function TraitForm({
           )}
         </div>
 
-        <div className="space-y-2 md:col-span-2">
+        <div className="space-y-2">
           <Label htmlFor="theme">
             Collection / Theme
             <span className="ml-1.5 text-xs text-muted-foreground font-normal">(optional)</span>
@@ -977,6 +980,23 @@ function TraitForm({
           />
           <p className="text-xs text-muted-foreground">
             Traits with the same collection name appear together as a tab in the Store.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="dropName">
+            Drop Name
+            <span className="ml-1.5 text-xs text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          <Input
+            id="dropName"
+            {...form.register("dropName")}
+            placeholder="e.g. Genesis Drop, Season 2, Summer '24..."
+            className="bg-secondary/50"
+            data-testid="input-dropName"
+          />
+          <p className="text-xs text-muted-foreground">
+            The release or event this trait was first dropped with.
           </p>
         </div>
 

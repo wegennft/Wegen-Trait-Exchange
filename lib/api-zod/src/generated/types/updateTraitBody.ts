@@ -18,6 +18,8 @@ export interface UpdateTraitBody {
   rarity?: UpdateTraitBodyRarity;
   /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
   theme?: string | null;
+  /** Drop name — the release/event this trait was part of (e.g. "Genesis Drop", "Season 2") */
+  dropName?: string | null;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }

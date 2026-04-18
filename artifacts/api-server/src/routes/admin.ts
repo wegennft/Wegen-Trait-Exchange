@@ -40,7 +40,7 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, category, theme, description, imageUrl, priceEth, totalSupply, rarity, isActive, payoutSplits } =
+  const { name, category, theme, dropName, description, imageUrl, priceEth, totalSupply, rarity, isActive, payoutSplits } =
     body.data;
 
   const splits = payoutSplits ?? [];
@@ -63,6 +63,7 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
       name,
       category,
       theme: theme ?? null,
+      dropName: dropName ?? null,
       description: description ?? null,
       imageUrl: imageUrl ?? null,
       priceEth,
@@ -111,6 +112,7 @@ router.put("/admin/traits/:traitId", async (req, res): Promise<void> => {
   if (body.data.rarity !== undefined) updates.rarity = body.data.rarity;
   if (body.data.payoutSplits !== undefined) updates.payoutSplits = body.data.payoutSplits;
   if ("theme" in body.data) updates.theme = body.data.theme ?? null;
+  if ("dropName" in body.data) updates.dropName = body.data.dropName ?? null;
 
   if (body.data.priceEth !== undefined) {
     updates.priceEth = body.data.priceEth;

@@ -29,6 +29,7 @@ export const traitsTable = pgTable("traits", {
   totalSupply: integer("total_supply").notNull(),
   remainingSupply: integer("remaining_supply").notNull(),
   theme: text("theme"),
+  dropName: text("drop_name"),
   isActive: boolean("is_active").notNull().default(true),
   rarity: rarityEnum("rarity").notNull().default("common"),
   payoutSplits: jsonb("payout_splits").notNull().default([]),

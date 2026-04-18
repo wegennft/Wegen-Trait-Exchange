@@ -80,12 +80,10 @@ const traitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
   theme: z.string().optional(),
-  dropName: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().optional(),
   priceEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 0.05"),
   totalSupply: z.coerce.number().min(1, "Supply must be at least 1"),
-  rarity: z.enum(["common", "uncommon", "rare", "legendary"]),
   isActive: z.boolean().default(true),
   payoutSplits: z.array(payoutSplitSchema).default([]),
 }).superRefine((data, ctx) => {
@@ -172,9 +170,7 @@ export function Admin() {
         priceEth: data.priceEth,
         totalSupply: data.totalSupply,
         isActive: data.isActive,
-        rarity: data.rarity,
         theme: data.theme || undefined,
-        dropName: data.dropName || undefined,
         payoutSplits: data.payoutSplits,
       },
     });
@@ -316,9 +312,6 @@ export function Admin() {
                         )}
                         <div>
                           {trait.name}
-                          <div className="text-[10px] text-muted-foreground uppercase">
-                            {trait.rarity}
-                          </div>
                         </div>
                       </div>
                     </TableCell>
@@ -901,12 +894,10 @@ function TraitForm({
       name: defaultValues?.name ?? "",
       category: defaultValues?.category ?? "",
       theme: defaultValues?.theme ?? "",
-      dropName: defaultValues?.dropName ?? "",
       description: defaultValues?.description ?? "",
       imageUrl: defaultValues?.imageUrl ?? "",
       priceEth: defaultValues?.priceEth ?? "0.01",
       totalSupply: defaultValues?.totalSupply ?? 100,
-      rarity: (defaultValues?.rarity as TraitFormValues["rarity"]) ?? "common",
       isActive: defaultValues?.isActive ?? true,
       payoutSplits: (defaultValues?.payoutSplits as TraitFormValues["payoutSplits"]) ?? [],
     },
@@ -984,23 +975,6 @@ function TraitForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="dropName">
-            Drop Name
-            <span className="ml-1.5 text-xs text-muted-foreground font-normal">(optional)</span>
-          </Label>
-          <Input
-            id="dropName"
-            {...form.register("dropName")}
-            placeholder="e.g. Genesis Drop, Season 2, Summer '24..."
-            className="bg-secondary/50"
-            data-testid="input-dropName"
-          />
-          <p className="text-xs text-muted-foreground">
-            The release or event this trait was first dropped with.
-          </p>
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="priceEth">Price (ETH)</Label>
           <Input
             id="priceEth"
@@ -1030,27 +1004,6 @@ function TraitForm({
               {form.formState.errors.totalSupply.message}
             </p>
           )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Rarity</Label>
-          <Controller
-            control={form.control}
-            name="rarity"
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger className="bg-secondary/50" data-testid="select-rarity">
-                  <SelectValue placeholder="Select rarity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="common">Common</SelectItem>
-                  <SelectItem value="uncommon">Uncommon</SelectItem>
-                  <SelectItem value="rare">Rare</SelectItem>
-                  <SelectItem value="legendary">Legendary</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
         </div>
 
         <div className="flex flex-col justify-center pt-5 space-y-2">

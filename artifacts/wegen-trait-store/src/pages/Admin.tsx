@@ -58,7 +58,12 @@ import {
   ImageIcon,
   Paintbrush,
   RotateCcw,
+  Percent,
+  ShoppingCart,
+  Tag,
+  Save,
 } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -192,6 +197,9 @@ export function Admin() {
           </TabsTrigger>
           <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <Paintbrush className="w-4 h-4" /> Appearance
+          </TabsTrigger>
+          <TabsTrigger value="fees" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <Percent className="w-4 h-4" /> Fees
           </TabsTrigger>
         </TabsList>
 
@@ -402,6 +410,10 @@ export function Admin() {
 
         <TabsContent value="appearance" className="mt-0">
           <AppearanceSettings />
+        </TabsContent>
+
+        <TabsContent value="fees" className="mt-0">
+          <FeesSettings />
         </TabsContent>
       </Tabs>
     </div>
@@ -712,6 +724,274 @@ function ColorPickerCard({
         <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
         <div className="font-mono text-xs text-muted-foreground/60 mt-1">{value.toUpperCase()}</div>
       </div>
+    </div>
+  );
+}
+
+// ── Fees Settings Tab ─────────────────────────────────────────────────────────
+
+interface FeeSettings {
+  id: number;
+  buyingFeePercent: string;
+  buyingFeeWallet: string | null;
+  sellingFeePercent: string;
+  sellingFeeWallet: string | null;
+}
+
+const feeSchema = z.object({
+  buyingFeePercent: z
+    .string()
+    .regex(/^\d+(\.\d+)?$/, "Must be a valid number (e.g. 2.5)")
+    .refine(v => parseFloat(v) <= 100, "Cannot exceed 100%"),
+  buyingFeeWallet: z.string().optional(),
+  sellingFeePercent: z
+    .string()
+    .regex(/^\d+(\.\d+)?$/, "Must be a valid number (e.g. 2.5)")
+    .refine(v => parseFloat(v) <= 100, "Cannot exceed 100%"),
+  sellingFeeWallet: z.string().optional(),
+});
+
+type FeeFormValues = z.infer<typeof feeSchema>;
+
+function FeesSettings() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: fees, isLoading } = useQuery<FeeSettings>({
+    queryKey: ["admin-fees"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/fees");
+      if (!res.ok) throw new Error("Failed to load fees");
+      return res.json();
+    },
+  });
+
+  const form = useForm<FeeFormValues>({
+    resolver: zodResolver(feeSchema),
+    defaultValues: {
+      buyingFeePercent: "0",
+      buyingFeeWallet: "",
+      sellingFeePercent: "0",
+      sellingFeeWallet: "",
+    },
+    values: fees
+      ? {
+          buyingFeePercent: fees.buyingFeePercent,
+          buyingFeeWallet: fees.buyingFeeWallet ?? "",
+          sellingFeePercent: fees.sellingFeePercent,
+          sellingFeeWallet: fees.sellingFeeWallet ?? "",
+        }
+      : undefined,
+  });
+
+  const saveFees = useMutation({
+    mutationFn: async (data: FeeFormValues) => {
+      const res = await fetch("/api/admin/fees", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buyingFeePercent: data.buyingFeePercent,
+          buyingFeeWallet: data.buyingFeeWallet || null,
+          sellingFeePercent: data.sellingFeePercent,
+          sellingFeeWallet: data.sellingFeeWallet || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to save fees");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-fees"] });
+      toast({ title: "Fee settings saved" });
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const buyingPct = parseFloat(form.watch("buyingFeePercent") || "0");
+  const sellingPct = parseFloat(form.watch("sellingFeePercent") || "0");
+
+  return (
+    <div className="space-y-8 max-w-3xl">
+      <div>
+        <h2 className="text-xl font-bold mb-1">Fee Settings</h2>
+        <p className="text-sm text-muted-foreground">
+          Configure platform fees for buying and selling traits. Fees are taken from each transaction and forwarded to the designated wallet.
+        </p>
+      </div>
+
+      <form onSubmit={form.handleSubmit(d => saveFees.mutate(d))} className="space-y-6">
+
+        {/* ── Buying Fee ── */}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+              Buyer Fee
+              <span className="ml-auto text-2xl font-black text-primary" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+                {isNaN(buyingPct) ? "0" : buyingPct.toFixed(1)}%
+              </span>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Charged to the buyer on top of the trait price. Goes to the wallet below.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="buyingFeePercent">
+                  Fee Percentage
+                  <span className="ml-1 text-xs text-muted-foreground">(0 – 100)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="buyingFeePercent"
+                    {...form.register("buyingFeePercent")}
+                    placeholder="2.5"
+                    className="bg-secondary/50 pr-8"
+                  />
+                  <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+                {form.formState.errors.buyingFeePercent && (
+                  <p className="text-xs text-destructive">{form.formState.errors.buyingFeePercent.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="buyingFeeWallet">
+                  Recipient Wallet
+                  <span className="ml-1 text-xs text-muted-foreground">(ETH address)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="buyingFeeWallet"
+                    {...form.register("buyingFeeWallet")}
+                    placeholder="0x..."
+                    className="bg-secondary/50 font-mono text-xs pl-8"
+                  />
+                  <Wallet className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Preview bar */}
+            {buyingPct > 0 && (
+              <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono">
+                On a <span className="text-foreground">0.1 ETH</span> trait → buyer pays{" "}
+                <span className="text-primary font-bold">{(0.1 + 0.1 * buyingPct / 100).toFixed(4)} ETH</span>
+                {" "}({buyingPct}% fee = {(0.1 * buyingPct / 100).toFixed(4)} ETH)
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── Selling Fee ── */}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Tag className="w-5 h-5 text-accent" />
+              Seller Fee
+              <span className="ml-auto text-2xl font-black text-accent" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+                {isNaN(sellingPct) ? "0" : sellingPct.toFixed(1)}%
+              </span>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Deducted from the seller's proceeds when a trait is sold. Goes to the wallet below.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="sellingFeePercent">
+                  Fee Percentage
+                  <span className="ml-1 text-xs text-muted-foreground">(0 – 100)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="sellingFeePercent"
+                    {...form.register("sellingFeePercent")}
+                    placeholder="2.5"
+                    className="bg-secondary/50 pr-8"
+                  />
+                  <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+                {form.formState.errors.sellingFeePercent && (
+                  <p className="text-xs text-destructive">{form.formState.errors.sellingFeePercent.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sellingFeeWallet">
+                  Recipient Wallet
+                  <span className="ml-1 text-xs text-muted-foreground">(ETH address)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="sellingFeeWallet"
+                    {...form.register("sellingFeeWallet")}
+                    placeholder="0x..."
+                    className="bg-secondary/50 font-mono text-xs pl-8"
+                  />
+                  <Wallet className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Preview bar */}
+            {sellingPct > 0 && (
+              <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono">
+                On a <span className="text-foreground">0.1 ETH</span> sale → seller receives{" "}
+                <span className="text-accent font-bold">{(0.1 - 0.1 * sellingPct / 100).toFixed(4)} ETH</span>
+                {" "}({sellingPct}% fee = {(0.1 * sellingPct / 100).toFixed(4)} ETH)
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── Summary ── */}
+        {(buyingPct > 0 || sellingPct > 0) && (
+          <div className="p-4 border border-primary/30 bg-primary/5 flex items-start gap-3">
+            <DollarSign className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="text-sm space-y-1">
+              <div className="font-semibold text-foreground">Combined fee impact on a 0.1 ETH trait</div>
+              <div className="text-muted-foreground font-mono text-xs space-y-0.5">
+                {buyingPct > 0 && (
+                  <div>Buyer pays: <span className="text-primary">{(0.1 + 0.1 * buyingPct / 100).toFixed(4)} ETH</span> (+{buyingPct}% buyer fee)</div>
+                )}
+                {sellingPct > 0 && (
+                  <div>Seller gets: <span className="text-accent">{(0.1 - 0.1 * sellingPct / 100).toFixed(4)} ETH</span> (−{sellingPct}% seller fee)</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            disabled={saveFees.isPending}
+            className="bg-primary hover:bg-primary/90 text-white gap-2 px-8"
+          >
+            {saveFees.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Save Fee Settings
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

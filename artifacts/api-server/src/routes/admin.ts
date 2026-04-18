@@ -1,6 +1,14 @@
 import { Router, type IRouter } from "express";
 import { eq, sql } from "drizzle-orm";
-import { db, traitsTable, lockerItemsTable } from "@workspace/db";
+import { db, traitsTable, lockerItemsTable, storeSettingsTable } from "@workspace/db";
+import { z } from "zod";
+
+const UpdateFeesBody = z.object({
+  buyingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number"),
+  buyingFeeWallet: z.string().nullable().optional(),
+  sellingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number"),
+  sellingFeeWallet: z.string().nullable().optional(),
+});
 import {
   CreateTraitBody,
   UpdateTraitParams,
@@ -171,6 +179,61 @@ router.delete("/admin/traits/:traitId", async (req, res): Promise<void> => {
   }
 
   res.json(DeleteTraitResponse.parse({ success: true, message: "Trait deleted" }));
+});
+
+router.get("/admin/fees", async (_req, res): Promise<void> => {
+  let [settings] = await db.select().from(storeSettingsTable).limit(1);
+
+  if (!settings) {
+    [settings] = await db
+      .insert(storeSettingsTable)
+      .values({
+        buyingFeePercent: "0",
+        buyingFeeWallet: null,
+        sellingFeePercent: "0",
+        sellingFeeWallet: null,
+      })
+      .returning();
+  }
+
+  res.json(settings);
+});
+
+router.put("/admin/fees", async (req, res): Promise<void> => {
+  const body = UpdateFeesBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  let [existing] = await db.select().from(storeSettingsTable).limit(1);
+
+  if (!existing) {
+    const [created] = await db
+      .insert(storeSettingsTable)
+      .values({
+        buyingFeePercent: body.data.buyingFeePercent,
+        buyingFeeWallet: body.data.buyingFeeWallet ?? null,
+        sellingFeePercent: body.data.sellingFeePercent,
+        sellingFeeWallet: body.data.sellingFeeWallet ?? null,
+      })
+      .returning();
+    res.json(created);
+    return;
+  }
+
+  const [updated] = await db
+    .update(storeSettingsTable)
+    .set({
+      buyingFeePercent: body.data.buyingFeePercent,
+      buyingFeeWallet: body.data.buyingFeeWallet ?? null,
+      sellingFeePercent: body.data.sellingFeePercent,
+      sellingFeeWallet: body.data.sellingFeeWallet ?? null,
+    })
+    .where(eq(storeSettingsTable.id, existing.id))
+    .returning();
+
+  res.json(updated);
 });
 
 router.get("/admin/stats", async (_req, res): Promise<void> => {

@@ -203,7 +203,7 @@ export function Admin() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="space-y-8 mt-0">
+        <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -408,11 +408,11 @@ export function Admin() {
       </Card>
         </TabsContent>
 
-        <TabsContent value="appearance" className="mt-0">
+        <TabsContent value="appearance" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <AppearanceSettings />
         </TabsContent>
 
-        <TabsContent value="fees" className="mt-0">
+        <TabsContent value="fees" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <FeesSettings />
         </TabsContent>
       </Tabs>

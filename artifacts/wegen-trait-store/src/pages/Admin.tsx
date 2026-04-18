@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -55,12 +56,15 @@ import {
   CheckCircle2,
   Upload,
   ImageIcon,
+  Paintbrush,
+  RotateCcw,
 } from "lucide-react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Trait } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
+import { useSiteSettings, DEFAULT_COLORS } from "@/contexts/SiteSettingsContext";
 
 const CATEGORIES = ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
 
@@ -175,13 +179,25 @@ export function Admin() {
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-12 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight mb-2">Admin Dashboard</h1>
-        <p className="text-muted-foreground">
-          Manage traits, configure payout splits, and monitor store activity.
+        <h1 className="text-3xl font-extrabold tracking-tight mb-1">Admin Dashboard</h1>
+        <p className="text-muted-foreground text-sm">
+          Manage traits, configure payout splits, and customize site appearance.
         </p>
       </div>
+
+      <Tabs defaultValue="dashboard" className="space-y-6">
+        <TabsList className="bg-secondary border border-border/50 p-1 h-auto">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <BarChart3 className="w-4 h-4" /> Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <Paintbrush className="w-4 h-4" /> Appearance
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-8 mt-0">
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -387,6 +403,320 @@ export function Admin() {
           </Table>
         </div>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="appearance" className="mt-0">
+          <AppearanceSettings />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ── Appearance Settings Tab ────────────────────────────────────────────────────
+function AppearanceSettings() {
+  const { settings, updateColors, updateImages, resetColors } = useSiteSettings();
+  const { toast } = useToast();
+
+  const logoUpload = useUpload();
+  const bgUpload = useUpload();
+  const bannerUpload = useUpload();
+
+  const logoRef = useRef<HTMLInputElement>(null);
+  const bgRef = useRef<HTMLInputElement>(null);
+  const bannerRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (file: File) => {
+    const result = await logoUpload.uploadFile(file);
+    if (result) {
+      updateImages({ logoUrl: `/api/storage${result.objectPath}` });
+      toast({ title: "Logo updated" });
+    } else {
+      toast({ title: "Logo upload failed", variant: "destructive" });
+    }
+  };
+
+  const handleBgUpload = async (file: File) => {
+    const result = await bgUpload.uploadFile(file);
+    if (result) {
+      updateImages({ backgroundUrl: `/api/storage${result.objectPath}` });
+      toast({ title: "Background updated" });
+    } else {
+      toast({ title: "Background upload failed", variant: "destructive" });
+    }
+  };
+
+  const handleBannerUpload = async (file: File) => {
+    const result = await bannerUpload.uploadFile(file);
+    if (result) {
+      updateImages({ bannerUrl: `/api/storage${result.objectPath}` });
+      toast({ title: "Banner updated" });
+    } else {
+      toast({ title: "Banner upload failed", variant: "destructive" });
+    }
+  };
+
+  const COLOR_OPTIONS: { key: keyof typeof settings.colors; label: string; description: string }[] = [
+    { key: "primary", label: "Primary Color", description: "Buttons, active states, borders, glows" },
+    { key: "secondary", label: "Secondary Color", description: "Secondary backgrounds, muted surfaces" },
+    { key: "text", label: "Text Color", description: "Main body text and card text" },
+    { key: "headerLine", label: "Header Lines", description: "Header border, nav underlines, input borders" },
+    { key: "cardPanel", label: "Card Panel", description: "Card and popover background color" },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-xl font-bold mb-1">Appearance Settings</h2>
+        <p className="text-sm text-muted-foreground">Customize the site logo, images, and color theme. Changes apply instantly.</p>
+      </div>
+
+      {/* ── Image Assets ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Logo */}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-primary" />
+              Site Logo
+              <span className="text-xs text-muted-foreground font-normal ml-auto">200 × 200</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div
+              className="w-full aspect-square max-w-[200px] mx-auto border-2 border-dashed border-border/60 flex items-center justify-center bg-secondary/20 overflow-hidden cursor-pointer hover:border-primary/60 transition-colors"
+              onClick={() => logoRef.current?.click()}
+            >
+              {settings.logoUrl ? (
+                <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <div className="text-center p-4">
+                  <ImageIcon className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Click to upload</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">200×200 recommended</p>
+                </div>
+              )}
+            </div>
+            <input
+              ref={logoRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0])}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => logoRef.current?.click()} disabled={logoUpload.isUploading}>
+                {logoUpload.isUploading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+                {settings.logoUrl ? "Replace" : "Upload"}
+              </Button>
+              {settings.logoUrl && (
+                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => updateImages({ logoUrl: null })}>
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Background */}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-primary" />
+              Background Image
+              <span className="text-xs text-muted-foreground font-normal ml-auto">Any size</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div
+              className="w-full aspect-video border-2 border-dashed border-border/60 flex items-center justify-center bg-secondary/20 overflow-hidden cursor-pointer hover:border-primary/60 transition-colors"
+              onClick={() => bgRef.current?.click()}
+            >
+              {settings.backgroundUrl ? (
+                <img src={settings.backgroundUrl} alt="Background" className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-center p-4">
+                  <ImageIcon className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Click to upload</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">Full-page background</p>
+                </div>
+              )}
+            </div>
+            <input
+              ref={bgRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => e.target.files?.[0] && handleBgUpload(e.target.files[0])}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => bgRef.current?.click()} disabled={bgUpload.isUploading}>
+                {bgUpload.isUploading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+                {settings.backgroundUrl ? "Replace" : "Upload"}
+              </Button>
+              {settings.backgroundUrl && (
+                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => updateImages({ backgroundUrl: null })}>
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Banner */}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-primary" />
+              Site Banner
+              <span className="text-xs text-muted-foreground font-normal ml-auto">1500 × 500</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div
+              className="w-full border-2 border-dashed border-border/60 flex items-center justify-center bg-secondary/20 overflow-hidden cursor-pointer hover:border-primary/60 transition-colors"
+              style={{ aspectRatio: '3/1' }}
+              onClick={() => bannerRef.current?.click()}
+            >
+              {settings.bannerUrl ? (
+                <img src={settings.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-center p-4">
+                  <ImageIcon className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Click to upload</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">1500×500 recommended</p>
+                </div>
+              )}
+            </div>
+            <input
+              ref={bannerRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => e.target.files?.[0] && handleBannerUpload(e.target.files[0])}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => bannerRef.current?.click()} disabled={bannerUpload.isUploading}>
+                {bannerUpload.isUploading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+                {settings.bannerUrl ? "Replace" : "Upload"}
+              </Button>
+              {settings.bannerUrl && (
+                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => updateImages({ bannerUrl: null })}>
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator className="border-border/40" />
+
+      {/* ── Color Theme ── */}
+      <div>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-base font-bold">Color Theme</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Click any swatch to open the color picker. Changes apply instantly across the site.</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { resetColors(); toast({ title: "Colors reset to default" }); }}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset to Default
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {COLOR_OPTIONS.map(({ key, label, description }) => (
+            <ColorPickerCard
+              key={key}
+              label={label}
+              description={description}
+              value={settings.colors[key]}
+              onChange={hex => updateColors({ [key]: hex })}
+            />
+          ))}
+        </div>
+
+        {/* Live preview strip */}
+        <div className="mt-6 p-4 border border-border/40 bg-card/50 space-y-3">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest font-mono">Live Preview</p>
+          <div className="flex flex-wrap gap-3 items-center">
+            <div
+              className="px-4 py-2 text-sm font-bold text-white"
+              style={{ background: settings.colors.primary }}
+            >
+              Primary Button
+            </div>
+            <div
+              className="px-4 py-2 text-sm font-bold border-2"
+              style={{ background: settings.colors.secondary, borderColor: settings.colors.headerLine, color: settings.colors.text }}
+            >
+              Secondary
+            </div>
+            <div
+              className="px-4 py-2 text-sm border"
+              style={{ background: settings.colors.cardPanel, borderColor: settings.colors.headerLine, color: settings.colors.text }}
+            >
+              Card Panel
+            </div>
+            <div
+              className="w-full h-0.5"
+              style={{ background: settings.colors.headerLine }}
+            />
+            <span className="text-sm" style={{ color: settings.colors.text }}>Text color sample — The quick brown fox</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ColorPickerCard({
+  label,
+  description,
+  value,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  value: string;
+  onChange: (hex: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div
+      className="flex items-center gap-4 p-4 border border-border/50 bg-card/50 hover:border-primary/40 transition-colors cursor-pointer group"
+      onClick={() => inputRef.current?.click()}
+    >
+      <div className="relative flex-shrink-0">
+        <div
+          className="w-12 h-12 border-2 border-border/60 group-hover:border-primary/60 transition-colors shadow-sm"
+          style={{ background: value }}
+        />
+        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-secondary border border-border/60 flex items-center justify-center">
+          <Paintbrush className="w-3 h-3 text-muted-foreground" />
+        </div>
+        <input
+          ref={inputRef}
+          type="color"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="sr-only"
+          onClick={e => e.stopPropagation()}
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold text-sm">{label}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+        <div className="font-mono text-xs text-muted-foreground/60 mt-1">{value.toUpperCase()}</div>
+      </div>
     </div>
   );
 }

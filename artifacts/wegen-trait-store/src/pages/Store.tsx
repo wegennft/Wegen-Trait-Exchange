@@ -122,11 +122,14 @@ export function Store() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent mb-2">
-            Trait Store
+          <h1
+            className="text-6xl text-primary mb-2"
+            style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em', textShadow: '4px 4px 0px rgba(0,0,0,0.8), 0 0 20px rgba(255,107,0,0.4)' }}
+          >
+            TRAIT <span style={{ color: 'hsl(82 100% 52%)', textShadow: '4px 4px 0px rgba(0,0,0,0.8), 0 0 20px rgba(130,255,0,0.4)' }}>STORE</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl">
-            Acquire exclusive artifacts for your Wegen NFTs. Filter by collection or category.
+          <p className="text-muted-foreground font-mono text-sm max-w-2xl uppercase tracking-widest">
+            // Acquire exclusive artifacts for your Wegen NFTs //
           </p>
         </div>
       </div>

@@ -487,7 +487,7 @@ function AppearanceSettings() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-primary" />
               Site Logo
-              <span className="text-xs text-muted-foreground font-normal ml-auto">200 × 200</span>
+              <span className="text-xs text-muted-foreground font-normal ml-auto">200 × 200 · PNG / JPG / GIF</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -501,14 +501,14 @@ function AppearanceSettings() {
                 <div className="text-center p-4">
                   <ImageIcon className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-xs text-muted-foreground">Click to upload</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">200×200 recommended</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">200×200 · PNG, JPG, GIF</p>
                 </div>
               )}
             </div>
             <input
               ref={logoRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/*"
               className="hidden"
               onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0])}
             />
@@ -532,7 +532,7 @@ function AppearanceSettings() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-primary" />
               Background Image
-              <span className="text-xs text-muted-foreground font-normal ml-auto">Any size</span>
+              <span className="text-xs text-muted-foreground font-normal ml-auto">Any size · PNG / JPG / GIF</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -546,14 +546,14 @@ function AppearanceSettings() {
                 <div className="text-center p-4">
                   <ImageIcon className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-xs text-muted-foreground">Click to upload</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">Full-page background</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">Full-page background · PNG, JPG, GIF</p>
                 </div>
               )}
             </div>
             <input
               ref={bgRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/*"
               className="hidden"
               onChange={e => e.target.files?.[0] && handleBgUpload(e.target.files[0])}
             />
@@ -1101,8 +1101,8 @@ function TraitImageUploader({
                 <ImageIcon className="w-6 h-6 text-muted-foreground" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium">Click to upload JPEG</p>
-                <p className="text-xs text-muted-foreground mt-0.5">JPEG, PNG, GIF, WebP</p>
+                <p className="text-sm font-medium">Click to upload image</p>
+                <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, GIF, WebP</p>
               </div>
               <Button type="button" variant="outline" size="sm" className="gap-2">
                 <Upload className="w-3.5 h-3.5" />
@@ -1117,7 +1117,7 @@ function TraitImageUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/gif,image/webp,image/*"
           className="hidden"
           onChange={handleFileChange}
           disabled={isUploading}
@@ -1147,7 +1147,7 @@ function TraitImageUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/gif,image/webp,image/*"
           className="hidden"
           onChange={handleFileChange}
           disabled={isUploading}

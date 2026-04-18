@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
+const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em' };
+
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { walletAddress, isConnected, connect, disconnect, isConnecting } = useWallet();
@@ -23,21 +25,24 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground dark">
-      <header className="sticky top-0 z-50 w-full border-b-2 border-primary/40 bg-background/90 backdrop-blur-xl">
-        {/* Graffiti top stripe */}
-        <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary opacity-80" />
+      <header className="sticky top-0 z-50 w-full border-b-2 border-primary/50 bg-background/92 backdrop-blur-xl">
+        {/* Gold + purple top stripe */}
+        <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary" />
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80 group">
               <div className="relative w-9 h-9 flex items-center justify-center">
-                <div className="absolute inset-0 bg-primary rounded-sm rotate-12 group-hover:rotate-6 transition-transform shadow-[0_0_18px_rgba(255,107,0,0.7)]" />
+                <div
+                  className="absolute inset-0 bg-primary group-hover:rotate-6 transition-transform"
+                  style={{ boxShadow: '0 0 20px rgba(157,0,255,0.7), 0 0 40px rgba(157,0,255,0.3)' }}
+                />
                 <Zap className="relative z-10 w-5 h-5 text-white" />
               </div>
               <span
-                className="font-bold text-2xl hidden sm:inline-block text-primary"
-                style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em', textShadow: '2px 2px 0px rgba(0,0,0,0.8), 0 0 12px rgba(255,107,0,0.5)' }}
+                className="text-2xl hidden sm:inline-block"
+                style={{ ...BANGERS, color: 'hsl(272 100% 70%)', textShadow: '2px 2px 0px rgba(0,0,0,0.9), 0 0 14px rgba(157,0,255,0.6)' }}
               >
-                TRAIT<span className="text-accent">STORE</span>
+                TRAIT<span style={{ color: 'hsl(43 100% 52%)', textShadow: '2px 2px 0px rgba(0,0,0,0.9), 0 0 14px rgba(255,200,0,0.6)' }}>STORE</span>
               </span>
             </Link>
 
@@ -50,17 +55,20 @@ export function Layout({ children }: { children: ReactNode }) {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase tracking-widest transition-all relative ${
+                      className={`flex items-center gap-2 px-4 py-2 text-sm uppercase tracking-widest transition-all relative ${
                         isActive
                           ? "text-primary"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
-                      style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.12em' }}
+                      style={BANGERS}
                     >
                       <Icon className="w-4 h-4" />
                       {item.label}
                       {isActive && (
-                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_6px_rgba(255,107,0,0.8)]" />
+                        <span
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                          style={{ boxShadow: '0 0 8px rgba(157,0,255,0.9)' }}
+                        />
                       )}
                     </Link>
                   );
@@ -79,14 +87,15 @@ export function Layout({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="border-primary/60 hover:bg-primary/10 hover:border-primary font-mono text-xs shadow-[0_0_10px_rgba(255,107,0,0.2)] hover:shadow-[0_0_16px_rgba(255,107,0,0.4)] transition-all"
+                    className="border-primary/60 hover:bg-primary/10 hover:border-primary font-mono text-xs transition-all"
+                    style={{ boxShadow: '0 0 10px rgba(157,0,255,0.2)' }}
                   >
                     <Wallet className="w-4 h-4 mr-2 text-primary" />
                     {truncateAddress(walletAddress)}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 bg-card border-border">
-                  <DropdownMenuLabel style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.06em' }}>CONNECTED WALLET</DropdownMenuLabel>
+                  <DropdownMenuLabel style={BANGERS}>CONNECTED WALLET</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="cursor-pointer text-muted-foreground font-mono text-xs">
                     {walletAddress}
@@ -102,8 +111,8 @@ export function Layout({ children }: { children: ReactNode }) {
               <Button
                 onClick={connect}
                 disabled={isConnecting}
-                className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-widest shadow-[0_0_18px_rgba(255,107,0,0.5)] hover:shadow-[0_0_28px_rgba(255,107,0,0.7)] transition-all"
-                style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.1em', fontSize: '1rem' }}
+                className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-widest transition-all neon-pulse"
+                style={{ ...BANGERS, fontSize: '1rem' }}
               >
                 {isConnecting ? "Connecting..." : "Connect Wallet"}
               </Button>
@@ -116,11 +125,11 @@ export function Layout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <footer className="border-t-2 border-primary/20 py-6 bg-card/20">
+      <footer className="border-t-2 border-primary/25 py-6 bg-card/20">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
           <span
-            className="text-primary text-lg"
-            style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em' }}
+            className="text-lg"
+            style={{ ...BANGERS, color: 'hsl(43 100% 52%)', textShadow: '2px 2px 0 rgba(0,0,0,0.8), 0 0 10px rgba(255,200,0,0.5)' }}
           >
             WEGEN NFT
           </span>

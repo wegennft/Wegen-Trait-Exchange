@@ -124,9 +124,9 @@ export function Store() {
         <div>
           <h1
             className="text-6xl text-primary mb-2"
-            style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em', textShadow: '4px 4px 0px rgba(0,0,0,0.8), 0 0 20px rgba(255,107,0,0.4)' }}
+            style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em', textShadow: '4px 4px 0px rgba(0,0,0,0.9), 0 0 20px rgba(157,0,255,0.5)' }}
           >
-            TRAIT <span style={{ color: 'hsl(82 100% 52%)', textShadow: '4px 4px 0px rgba(0,0,0,0.8), 0 0 20px rgba(130,255,0,0.4)' }}>STORE</span>
+            TRAIT <span style={{ color: 'hsl(43 100% 52%)', textShadow: '4px 4px 0px rgba(0,0,0,0.9), 0 0 20px rgba(255,200,0,0.5)' }}>STORE</span>
           </h1>
           <p className="text-muted-foreground font-mono text-sm max-w-2xl uppercase tracking-widest">
             // Acquire exclusive artifacts for your Wegen NFTs //

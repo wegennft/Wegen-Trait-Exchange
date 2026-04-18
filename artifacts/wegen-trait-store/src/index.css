@@ -55,69 +55,70 @@
 }
 
 :root {
-  --background: 220 15% 8%;
-  --foreground: 60 5% 95%;
-  --card: 220 15% 10%;
-  --card-foreground: 60 5% 95%;
-  --popover: 220 15% 10%;
-  --popover-foreground: 60 5% 95%;
+  --background: 270 20% 6%;
+  --foreground: 50 15% 95%;
+  --card: 270 18% 9%;
+  --card-foreground: 50 15% 95%;
+  --popover: 270 18% 9%;
+  --popover-foreground: 50 15% 95%;
 
-  /* Neon spray-paint orange */
-  --primary: 22 100% 55%;
+  /* Bright Purple primary */
+  --primary: 272 100% 58%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 12% 15%;
-  --secondary-foreground: 60 5% 95%;
+  --secondary: 270 15% 14%;
+  --secondary-foreground: 50 15% 95%;
 
-  --muted: 220 12% 18%;
-  --muted-foreground: 220 8% 60%;
+  --muted: 270 15% 17%;
+  --muted-foreground: 270 8% 60%;
 
-  /* Electric lime */
-  --accent: 80 100% 50%;
-  --accent-foreground: 220 15% 8%;
+  /* Gold accent */
+  --accent: 43 100% 50%;
+  --accent-foreground: 270 20% 6%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 220 12% 20%;
-  --input: 220 12% 18%;
-  --ring: 22 100% 55%;
+  --border: 270 15% 20%;
+  --input: 270 15% 17%;
+  --ring: 272 100% 58%;
 
-  --radius: 0.25rem;
+  /* Sharp edges */
+  --radius: 0px;
 
-  --app-font-sans: 'Share Tech Mono', 'Outfit', monospace;
+  --app-font-sans: 'Share Tech Mono', monospace;
   --app-font-serif: Georgia, serif;
   --app-font-mono: 'Share Tech Mono', Menlo, monospace;
 }
 
 .dark {
-  --background: 220 18% 6%;
-  --foreground: 55 10% 93%;
-  --card: 220 15% 9%;
-  --card-foreground: 55 10% 93%;
-  --popover: 220 15% 9%;
-  --popover-foreground: 55 10% 93%;
+  --background: 272 22% 5%;
+  --foreground: 48 20% 94%;
+  --card: 272 18% 8%;
+  --card-foreground: 48 20% 94%;
+  --popover: 272 18% 8%;
+  --popover-foreground: 48 20% 94%;
 
-  /* Neon Orange primary */
-  --primary: 22 100% 58%;
+  /* Bright Purple */
+  --primary: 272 100% 62%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 14% 13%;
-  --secondary-foreground: 55 10% 93%;
+  --secondary: 272 16% 13%;
+  --secondary-foreground: 48 20% 94%;
 
-  --muted: 220 14% 16%;
-  --muted-foreground: 220 8% 58%;
+  --muted: 272 16% 16%;
+  --muted-foreground: 272 8% 58%;
 
-  /* Electric Lime accent */
-  --accent: 82 100% 52%;
-  --accent-foreground: 220 18% 6%;
+  /* Gold */
+  --accent: 43 100% 52%;
+  --accent-foreground: 272 22% 5%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 220 14% 18%;
-  --input: 220 14% 15%;
-  --ring: 22 100% 58%;
+  --border: 272 16% 19%;
+  --input: 272 16% 15%;
+  --ring: 272 100% 62%;
 }
 
 @layer base {
@@ -132,15 +133,15 @@
         0deg,
         transparent,
         transparent 28px,
-        hsl(220 14% 12% / 0.6) 28px,
-        hsl(220 14% 12% / 0.6) 29px
+        hsl(272 16% 10% / 0.7) 28px,
+        hsl(272 16% 10% / 0.7) 29px
       ),
       repeating-linear-gradient(
         90deg,
         transparent,
         transparent 28px,
-        hsl(220 14% 12% / 0.4) 28px,
-        hsl(220 14% 12% / 0.4) 29px
+        hsl(272 16% 10% / 0.5) 28px,
+        hsl(272 16% 10% / 0.5) 29px
       );
   }
 
@@ -155,36 +156,36 @@
   font-family: 'Bangers', 'Impact', sans-serif;
   letter-spacing: 0.08em;
   text-shadow:
-    4px 4px 0px hsl(220 18% 6%),
-    -1px -1px 0px hsl(220 18% 6%),
-    3px 0px 12px hsl(22 100% 58% / 0.6),
-    0px 0px 30px hsl(22 100% 58% / 0.3);
+    4px 4px 0px hsl(272 22% 5%),
+    -1px -1px 0px hsl(272 22% 5%),
+    3px 0px 12px hsl(272 100% 62% / 0.7),
+    0px 0px 30px hsl(272 100% 62% / 0.4);
 }
 
-.graffiti-title-lime {
+.graffiti-title-gold {
   font-family: 'Bangers', 'Impact', sans-serif;
   letter-spacing: 0.08em;
   text-shadow:
-    4px 4px 0px hsl(220 18% 6%),
-    -1px -1px 0px hsl(220 18% 6%),
-    3px 0px 12px hsl(82 100% 52% / 0.6),
-    0px 0px 30px hsl(82 100% 52% / 0.3);
+    4px 4px 0px hsl(272 22% 5%),
+    -1px -1px 0px hsl(272 22% 5%),
+    3px 0px 12px hsl(43 100% 52% / 0.8),
+    0px 0px 30px hsl(43 100% 52% / 0.4);
 }
 
 .spray-border {
-  border: 2px solid hsl(22 100% 58% / 0.7);
+  border: 2px solid hsl(272 100% 62% / 0.7);
   box-shadow:
-    0 0 0 1px hsl(22 100% 58% / 0.2),
-    inset 0 0 0 1px hsl(22 100% 58% / 0.1),
-    0 0 20px hsl(22 100% 58% / 0.15);
+    0 0 0 1px hsl(272 100% 62% / 0.2),
+    inset 0 0 0 1px hsl(272 100% 62% / 0.1),
+    0 0 20px hsl(272 100% 62% / 0.2);
 }
 
-.spray-border-lime {
-  border: 2px solid hsl(82 100% 52% / 0.7);
+.spray-border-gold {
+  border: 2px solid hsl(43 100% 52% / 0.7);
   box-shadow:
-    0 0 0 1px hsl(82 100% 52% / 0.2),
-    inset 0 0 0 1px hsl(82 100% 52% / 0.1),
-    0 0 20px hsl(82 100% 52% / 0.15);
+    0 0 0 1px hsl(43 100% 52% / 0.2),
+    inset 0 0 0 1px hsl(43 100% 52% / 0.1),
+    0 0 20px hsl(43 100% 52% / 0.2);
 }
 
 /* ---- Locker 3D Animation ---- */
@@ -226,42 +227,43 @@
   animation: drip 2s ease-in-out infinite alternate;
 }
 
-/* ---- Brick texture overlay ---- */
+/* ---- Brick/grid texture overlay ---- */
 .brick-bg {
   background-image:
     repeating-linear-gradient(
       0deg,
-      hsl(220 14% 12% / 0.5) 0px,
-      hsl(220 14% 12% / 0.5) 1px,
+      hsl(272 16% 12% / 0.6) 0px,
+      hsl(272 16% 12% / 0.6) 1px,
       transparent 1px,
       transparent 20px
     ),
     repeating-linear-gradient(
       90deg,
-      hsl(220 14% 12% / 0.3) 0px,
-      hsl(220 14% 12% / 0.3) 1px,
+      hsl(272 16% 12% / 0.4) 0px,
+      hsl(272 16% 12% / 0.4) 1px,
       transparent 1px,
       transparent 40px
     );
 }
 
-/* ---- Neon glow pulse ---- */
+/* ---- Neon glow pulse (purple) ---- */
 @keyframes neon-pulse {
-  0%, 100% { box-shadow: 0 0 8px hsl(22 100% 58% / 0.4), 0 0 20px hsl(22 100% 58% / 0.2); }
-  50% { box-shadow: 0 0 16px hsl(22 100% 58% / 0.7), 0 0 40px hsl(22 100% 58% / 0.35); }
+  0%, 100% { box-shadow: 0 0 8px hsl(272 100% 62% / 0.5), 0 0 20px hsl(272 100% 62% / 0.25); }
+  50% { box-shadow: 0 0 18px hsl(272 100% 62% / 0.8), 0 0 45px hsl(272 100% 62% / 0.4); }
 }
 
 .neon-pulse {
   animation: neon-pulse 2.5s ease-in-out infinite;
 }
 
-@keyframes neon-pulse-lime {
-  0%, 100% { box-shadow: 0 0 8px hsl(82 100% 52% / 0.4), 0 0 20px hsl(82 100% 52% / 0.2); }
-  50% { box-shadow: 0 0 16px hsl(82 100% 52% / 0.7), 0 0 40px hsl(82 100% 52% / 0.35); }
+/* ---- Neon glow pulse (gold) ---- */
+@keyframes neon-pulse-gold {
+  0%, 100% { box-shadow: 0 0 8px hsl(43 100% 52% / 0.5), 0 0 20px hsl(43 100% 52% / 0.25); }
+  50% { box-shadow: 0 0 18px hsl(43 100% 52% / 0.8), 0 0 45px hsl(43 100% 52% / 0.4); }
 }
 
-.neon-pulse-lime {
-  animation: neon-pulse-lime 2.5s ease-in-out infinite;
+.neon-pulse-gold {
+  animation: neon-pulse-gold 2.5s ease-in-out infinite;
 }
 
 @keyframes float-bounce {

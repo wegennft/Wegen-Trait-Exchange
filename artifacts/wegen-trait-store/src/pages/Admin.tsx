@@ -62,6 +62,12 @@ import {
   ShoppingCart,
   Tag,
   Save,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Repeat2,
+  ExternalLink,
+  Clock,
+  Filter,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -200,6 +206,9 @@ export function Admin() {
           </TabsTrigger>
           <TabsTrigger value="fees" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <Percent className="w-4 h-4" /> Fees
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <Activity className="w-4 h-4" /> Transactions
           </TabsTrigger>
         </TabsList>
 
@@ -414,6 +423,10 @@ export function Admin() {
 
         <TabsContent value="fees" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <FeesSettings />
+        </TabsContent>
+
+        <TabsContent value="transactions" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <TransactionsLog />
         </TabsContent>
       </Tabs>
     </div>
@@ -992,6 +1005,267 @@ function FeesSettings() {
           </Button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// ── Transactions Log Tab ───────────────────────────────────────────────────────
+
+interface TxRow {
+  id: number;
+  type: "buy" | "sell" | "trade";
+  traitId: number;
+  traitName: string;
+  traitCategory: string;
+  traitImageUrl: string | null;
+  walletAddress: string;
+  ethAmount: string;
+  txHash: string | null;
+  tokenId: number | null;
+  createdAt: string;
+}
+
+interface TxResponse {
+  transactions: TxRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function truncateWallet(addr: string) {
+  if (addr.length < 12) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+const TX_TYPE_META = {
+  buy: {
+    label: "Buy",
+    icon: ArrowDownToLine,
+    color: "text-green-400",
+    bg: "bg-green-400/10 border-green-400/30",
+  },
+  sell: {
+    label: "Sell",
+    icon: ArrowUpFromLine,
+    color: "text-red-400",
+    bg: "bg-red-400/10 border-red-400/30",
+  },
+  trade: {
+    label: "Equip",
+    icon: Repeat2,
+    color: "text-primary",
+    bg: "bg-primary/10 border-primary/30",
+  },
+};
+
+function TransactionsLog() {
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  const { data, isLoading, refetch } = useQuery<TxResponse>({
+    queryKey: ["admin-transactions", typeFilter],
+    queryFn: async () => {
+      const qs = typeFilter !== "all" ? `?type=${typeFilter}` : "";
+      const res = await fetch(`/api/admin/transactions${qs}`);
+      if (!res.ok) throw new Error("Failed to load transactions");
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const txs = data?.transactions ?? [];
+
+  const totalBuys = txs.filter(t => t.type === "buy").length;
+  const totalTrades = txs.filter(t => t.type === "trade").length;
+  const totalEth = txs
+    .filter(t => t.type === "buy")
+    .reduce((sum, t) => sum + parseFloat(t.ethAmount || "0"), 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold mb-1">Transaction Log</h2>
+          <p className="text-sm text-muted-foreground">
+            Live activity feed of all trait purchases and equips across the store.
+          </p>
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+        >
+          <Clock className="w-3.5 h-3.5" /> Auto-refreshes every 30s
+        </button>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="border border-green-400/20 bg-green-400/5 rounded-lg p-4 text-center">
+          <div className="text-2xl font-black text-green-400" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+            {data?.total ?? 0}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">Total Events</div>
+        </div>
+        <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 text-center">
+          <div className="text-2xl font-black text-primary" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+            {totalTrades}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">Equips</div>
+        </div>
+        <div className="border border-yellow-400/20 bg-yellow-400/5 rounded-lg p-4 text-center">
+          <div className="text-2xl font-black text-yellow-400" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+            {totalEth.toFixed(3)} Ξ
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">Volume (buys)</div>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-2">
+        <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground mr-1">Filter:</span>
+        {["all", "buy", "sell", "trade"].map(f => (
+          <button
+            key={f}
+            onClick={() => setTypeFilter(f)}
+            className={`px-3 py-1 rounded text-xs font-medium uppercase tracking-wide transition-colors border ${
+              typeFilter === f
+                ? "bg-primary text-white border-primary"
+                : "border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/50"
+            }`}
+          >
+            {f === "trade" ? "Equip" : f}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : txs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 gap-3">
+          <Activity className="w-12 h-12" />
+          <p className="text-sm">No transactions yet.</p>
+          <p className="text-xs">Activity will appear here as users buy and equip traits.</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border/50 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-secondary/30 hover:bg-secondary/30">
+                <TableHead className="text-xs uppercase tracking-widest text-muted-foreground w-24">Type</TableHead>
+                <TableHead className="text-xs uppercase tracking-widest text-muted-foreground">Trait</TableHead>
+                <TableHead className="text-xs uppercase tracking-widest text-muted-foreground">Wallet</TableHead>
+                <TableHead className="text-xs uppercase tracking-widest text-muted-foreground text-right">Amount</TableHead>
+                <TableHead className="text-xs uppercase tracking-widest text-muted-foreground">Tx Hash</TableHead>
+                <TableHead className="text-xs uppercase tracking-widest text-muted-foreground text-right">When</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {txs.map((tx) => {
+                const meta = TX_TYPE_META[tx.type] ?? TX_TYPE_META.buy;
+                const Icon = meta.icon;
+                return (
+                  <TableRow key={tx.id} className="border-border/30 hover:bg-secondary/20 transition-colors">
+                    {/* Type badge */}
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-medium ${meta.bg} ${meta.color}`}>
+                        <Icon className="w-3 h-3" />
+                        {meta.label}
+                      </span>
+                    </TableCell>
+
+                    {/* Trait */}
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        {tx.traitImageUrl ? (
+                          <img
+                            src={tx.traitImageUrl}
+                            alt={tx.traitName}
+                            className="w-8 h-8 rounded object-cover flex-shrink-0 border border-border/40"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Package className="w-4 h-4 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-foreground">{tx.traitName}</div>
+                          <div className="text-[11px] text-muted-foreground">{tx.traitCategory}
+                            {tx.tokenId != null && (
+                              <span className="ml-1.5 text-primary/70">→ NFT #{tx.tokenId}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Wallet */}
+                    <TableCell>
+                      <span className="font-mono text-xs text-muted-foreground" title={tx.walletAddress}>
+                        {truncateWallet(tx.walletAddress)}
+                      </span>
+                    </TableCell>
+
+                    {/* Amount */}
+                    <TableCell className="text-right">
+                      <span className="font-mono text-sm text-foreground">
+                        {parseFloat(tx.ethAmount).toFixed(4)} Ξ
+                      </span>
+                    </TableCell>
+
+                    {/* Tx Hash */}
+                    <TableCell>
+                      {tx.txHash ? (
+                        <a
+                          href={`https://etherscan.io/tx/${tx.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-mono text-[11px] text-primary/80 hover:text-primary transition-colors"
+                          title={tx.txHash}
+                        >
+                          {truncateWallet(tx.txHash)}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground/40 italic">on-chain pending</span>
+                      )}
+                    </TableCell>
+
+                    {/* When */}
+                    <TableCell className="text-right">
+                      <span className="text-xs text-muted-foreground" title={new Date(tx.createdAt).toLocaleString()}>
+                        {timeAgo(tx.createdAt)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Footer count */}
+      {txs.length > 0 && (
+        <div className="text-xs text-muted-foreground text-right">
+          Showing {txs.length} of {data?.total ?? 0} events
+        </div>
+      )}
     </div>
   );
 }

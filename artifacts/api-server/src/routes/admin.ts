@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql } from "drizzle-orm";
-import { db, traitsTable, lockerItemsTable, storeSettingsTable } from "@workspace/db";
+import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable } from "@workspace/db";
 import { z } from "zod";
 
 const UpdateFeesBody = z.object({
@@ -316,4 +316,38 @@ router.get("/admin/stats", async (_req, res): Promise<void> => {
   );
 });
 
+router.get("/admin/transactions", async (req, res): Promise<void> => {
+  const limit = Math.min(Number(req.query["limit"] ?? 100), 500);
+  const offset = Number(req.query["offset"] ?? 0);
+  const type = req.query["type"] as string | undefined;
+
+  const rows = await db.execute(sql`
+    SELECT
+      t.id,
+      t.type,
+      t.trait_id      AS "traitId",
+      t.trait_name    AS "traitName",
+      t.trait_category AS "traitCategory",
+      t.trait_image_url AS "traitImageUrl",
+      t.wallet_address AS "walletAddress",
+      t.eth_amount    AS "ethAmount",
+      t.tx_hash       AS "txHash",
+      t.token_id      AS "tokenId",
+      t.created_at    AS "createdAt"
+    FROM transactions t
+    ${type ? sql`WHERE t.type = ${type}` : sql``}
+    ORDER BY t.created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `);
+
+  const countResult = await db.execute(sql`
+    SELECT count(*)::int as total FROM transactions
+    ${type ? sql`WHERE type = ${type}` : sql``}
+  `);
+  const total = (countResult.rows[0] as { total: number })?.total ?? 0;
+
+  res.json({ transactions: rows.rows, total, limit, offset });
+});
+
 export default router;
+

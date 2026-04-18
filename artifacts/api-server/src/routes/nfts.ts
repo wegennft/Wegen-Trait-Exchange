@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, wegenNftsTable, lockerItemsTable, traitsTable } from "@workspace/db";
+import { db, wegenNftsTable, lockerItemsTable, traitsTable, transactionsTable } from "@workspace/db";
 import {
   GetUserNftsParams,
   GetUserNftsResponse,
@@ -150,6 +150,18 @@ router.post("/nfts/:tokenId/apply-trait", async (req, res): Promise<void> => {
     .set({ equippedToTokenId: tokenId })
     .where(eq(lockerItemsTable.id, lockerItemId))
     .returning();
+
+  await db.insert(transactionsTable).values({
+    type: "trade",
+    traitId: trait.id,
+    traitName: trait.name,
+    traitCategory: trait.category,
+    traitImageUrl: trait.imageUrl ?? null,
+    walletAddress,
+    ethAmount: trait.priceEth,
+    txHash: null,
+    tokenId,
+  });
 
   const nft = await getNftWithTraits(tokenId);
   if (!nft) {

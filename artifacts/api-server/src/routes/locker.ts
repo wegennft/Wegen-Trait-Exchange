@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
-import { db, lockerItemsTable, traitsTable } from "@workspace/db";
+import { db, lockerItemsTable, traitsTable, transactionsTable } from "@workspace/db";
 import {
   GetLockerParams,
   GetLockerResponse,
@@ -118,6 +118,18 @@ router.post(
         equippedToTokenId: null,
       })
       .returning();
+
+    await db.insert(transactionsTable).values({
+      type: "buy",
+      traitId: trait.id,
+      traitName: trait.name,
+      traitCategory: trait.category,
+      traitImageUrl: trait.imageUrl ?? null,
+      walletAddress,
+      ethAmount: trait.priceEth,
+      txHash: txHash ?? null,
+      tokenId: null,
+    });
 
     const itemWithTrait = {
       ...lockerItem,

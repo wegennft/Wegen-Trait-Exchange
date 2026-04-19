@@ -76,16 +76,16 @@ export function Layout({ children }: { children: ReactNode }) {
               )}
 
               <span
-                className="text-3xl hidden sm:inline-block"
+                className="text-5xl hidden sm:inline-block leading-none"
                 style={{
                   ...BANGERS,
                   color: 'hsl(var(--primary))',
-                  textShadow: '3px 3px 0px rgba(0,0,0,0.95), -1px -1px 0 rgba(0,0,0,0.9), 0 0 20px hsl(272 100% 62% / 0.5)',
-                  WebkitTextStroke: '1px rgba(0,0,0,0.6)',
+                  textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 28px hsl(272 100% 62% / 0.6)',
+                  WebkitTextStroke: '2px rgba(0,0,0,0.85)',
                   paintOrder: 'stroke fill',
                 }}
               >
-                TRAIT<span style={{ color: 'hsl(var(--accent))', textShadow: '3px 3px 0px rgba(0,0,0,0.95), -1px -1px 0 rgba(0,0,0,0.9), 0 0 20px hsl(43 100% 52% / 0.6)' }}>STORE</span>
+                TRAIT<span style={{ color: 'hsl(var(--accent))', textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 28px hsl(43 100% 52% / 0.7)' }}>STORE</span>
               </span>
             </Link>
 
@@ -99,12 +99,12 @@ export function Layout({ children }: { children: ReactNode }) {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`relative flex items-center gap-2 px-4 py-2 text-sm transition-all group ${
+                      className={`relative flex items-center gap-2 px-4 py-2 transition-all group ${
                         isActive
                           ? "text-primary"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
-                      style={BANGERS}
+                      style={{ ...BANGERS, fontSize: '1.15rem', letterSpacing: '0.12em' }}
                     >
                       <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
                       {item.label}

@@ -434,24 +434,27 @@ export function Store() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1
-            className="text-6xl text-primary mb-2"
+            className="text-primary leading-none mb-3"
             style={{
               fontFamily: "'Bangers', Impact, sans-serif",
-              letterSpacing: "0.08em",
-              textShadow: "4px 4px 0px rgba(0,0,0,0.9), 0 0 20px rgba(157,0,255,0.5)",
+              fontSize: 'clamp(4rem, 10vw, 7rem)',
+              letterSpacing: "0.1em",
+              WebkitTextStroke: '3px rgba(0,0,0,0.9)',
+              paintOrder: 'stroke fill',
+              textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 40px rgba(157,0,255,0.6)",
             }}
           >
             TRAIT{" "}
             <span
               style={{
                 color: "hsl(43 100% 52%)",
-                textShadow: "4px 4px 0px rgba(0,0,0,0.9), 0 0 20px rgba(255,200,0,0.5)",
+                textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 40px rgba(255,200,0,0.6)",
               }}
             >
               STORE
             </span>
           </h1>
-          <p className="text-muted-foreground font-mono text-sm max-w-2xl uppercase tracking-widest">
+          <p className="text-muted-foreground font-mono text-base max-w-2xl uppercase tracking-widest">
             // Acquire exclusive artifacts for your Wegen NFTs //
           </p>
         </div>

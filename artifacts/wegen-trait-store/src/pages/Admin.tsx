@@ -120,6 +120,7 @@ export function Admin() {
   const queryClient = useQueryClient();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [editingTrait, setEditingTrait] = useState<Trait | null>(null);
 
   const createTrait = useCreateTrait({
@@ -271,23 +272,42 @@ export function Admin() {
 
       <div className="flex items-center justify-between mt-12 mb-4">
         <h2 className="text-2xl font-bold tracking-tight">Trait Management</h2>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-white hover:bg-primary/90">
-              <Plus className="w-4 h-4 mr-2" />
-              New Trait
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Trait</DialogTitle>
-            </DialogHeader>
-            <TraitForm
-              onSubmit={handleCreate}
-              isSubmitting={createTrait.isPending}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          {/* Batch upload */}
+          <Dialog open={isBatchOpen} onOpenChange={setIsBatchOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-primary/50 hover:bg-primary/10 gap-2">
+                <Upload className="w-4 h-4" />
+                Batch Upload
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Batch Upload Traits</DialogTitle>
+              </DialogHeader>
+              <BatchTraitUploadDialog onClose={() => setIsBatchOpen(false)} />
+            </DialogContent>
+          </Dialog>
+
+          {/* Single trait */}
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-white hover:bg-primary/90">
+                <Plus className="w-4 h-4 mr-2" />
+                New Trait
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Trait</DialogTitle>
+              </DialogHeader>
+              <TraitForm
+                onSubmit={handleCreate}
+                isSubmitting={createTrait.isPending}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card className="bg-card border-border/50">
@@ -1291,6 +1311,424 @@ function PayoutSplitsSummary({
           </Badge>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Batch Trait Upload ────────────────────────────────────────────────────────
+interface BatchQueueItem {
+  id: string;
+  file: File;
+  localUrl: string;
+  name: string;
+  status: "ready" | "uploading" | "creating" | "done" | "error";
+  error?: string;
+}
+
+function nameFromFilename(filename: string): string {
+  return filename
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[-_\.]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
+  const [queue, setQueue] = useState<BatchQueueItem[]>([]);
+  const [category, setCategory] = useState("");
+  const [priceEth, setPriceEth] = useState("0.01");
+  const [totalSupply, setTotalSupply] = useState(100);
+  const [theme, setTheme] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadResolveRef = useRef<((url: string) => void) | null>(null);
+  const uploadRejectRef = useRef<((err: Error) => void) | null>(null);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { uploadFile: uploadFileHook } = useUpload({
+    onSuccess: (response) => {
+      uploadResolveRef.current?.(`/api/storage${response.objectPath}`);
+      uploadResolveRef.current = null;
+      uploadRejectRef.current = null;
+    },
+    onError: (err) => {
+      uploadRejectRef.current?.(new Error(err.message ?? "Upload failed"));
+      uploadResolveRef.current = null;
+      uploadRejectRef.current = null;
+    },
+  });
+
+  const batchCreateTrait = useCreateTrait({ mutation: {} });
+
+  function addFiles(files: FileList | File[]) {
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (!imageFiles.length) {
+      toast({ title: "Only image files accepted", variant: "destructive" });
+      return;
+    }
+    const newItems: BatchQueueItem[] = imageFiles.map((f) => ({
+      id: Math.random().toString(36).slice(2),
+      file: f,
+      localUrl: URL.createObjectURL(f),
+      name: nameFromFilename(f.name),
+      status: "ready",
+    }));
+    setQueue((prev) => [...prev, ...newItems]);
+  }
+
+  function removeItem(id: string) {
+    setQueue((prev) => {
+      const item = prev.find((i) => i.id === id);
+      if (item) URL.revokeObjectURL(item.localUrl);
+      return prev.filter((i) => i.id !== id);
+    });
+  }
+
+  function updateName(id: string, name: string) {
+    setQueue((prev) => prev.map((i) => (i.id === id ? { ...i, name } : i)));
+  }
+
+  function setItemStatus(id: string, status: BatchQueueItem["status"], error?: string) {
+    setQueue((prev) => prev.map((i) => (i.id === id ? { ...i, status, error } : i)));
+  }
+
+  async function uploadFileAsync(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      uploadResolveRef.current = resolve;
+      uploadRejectRef.current = reject;
+      uploadFileHook(file);
+    });
+  }
+
+  async function createTraitAsync(data: TraitFormValues): Promise<void> {
+    return new Promise((resolve, reject) => {
+      batchCreateTrait.mutate(
+        { data },
+        {
+          onSuccess: () => resolve(),
+          onError: (err) => reject(err),
+        },
+      );
+    });
+  }
+
+  async function processAll() {
+    if (!category) {
+      toast({ title: "Please select a category first", variant: "destructive" });
+      return;
+    }
+    const readyItems = queue.filter((i) => i.status === "ready");
+    if (!readyItems.length) return;
+
+    setIsProcessing(true);
+
+    for (const item of readyItems) {
+      setItemStatus(item.id, "uploading");
+      let imageUrl: string;
+      try {
+        imageUrl = await uploadFileAsync(item.file);
+      } catch {
+        setItemStatus(item.id, "error", "Image upload failed");
+        continue;
+      }
+
+      setItemStatus(item.id, "creating");
+      try {
+        await createTraitAsync({
+          name: item.name,
+          category,
+          priceEth,
+          totalSupply,
+          theme: theme || undefined,
+          imageUrl,
+          isActive,
+          payoutSplits: [],
+        });
+        setItemStatus(item.id, "done");
+      } catch {
+        setItemStatus(item.id, "error", "Trait creation failed");
+      }
+    }
+
+    setIsProcessing(false);
+    queryClient.invalidateQueries({ queryKey: getListTraitsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+  }
+
+  const doneCount = queue.filter((i) => i.status === "done").length;
+  const errorCount = queue.filter((i) => i.status === "error").length;
+  const readyCount = queue.filter((i) => i.status === "ready").length;
+  const allDone = queue.length > 0 && readyCount === 0 && !isProcessing;
+
+  return (
+    <div className="space-y-5 pt-2">
+      {/* Shared settings */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-secondary/30 border border-border/40 rounded-lg">
+        <div className="space-y-1.5 col-span-2 sm:col-span-1">
+          <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Category *
+          </Label>
+          <Select value={category} onValueChange={setCategory} disabled={isProcessing}>
+            <SelectTrigger className="bg-card border-border/60 text-sm h-9">
+              <SelectValue placeholder="Pick one" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Price ETH
+          </Label>
+          <Input
+            value={priceEth}
+            onChange={(e) => setPriceEth(e.target.value)}
+            disabled={isProcessing}
+            className="bg-card border-border/60 text-sm h-9"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Supply
+          </Label>
+          <Input
+            type="number"
+            value={totalSupply}
+            onChange={(e) => setTotalSupply(Number(e.target.value))}
+            disabled={isProcessing}
+            className="bg-card border-border/60 text-sm h-9"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Theme
+          </Label>
+          <Input
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            placeholder="optional"
+            disabled={isProcessing}
+            className="bg-card border-border/60 text-sm h-9"
+          />
+        </div>
+
+        <div className="col-span-2 sm:col-span-4 flex items-center gap-2 pt-1">
+          <Switch
+            id="batch-active"
+            checked={isActive}
+            onCheckedChange={setIsActive}
+            disabled={isProcessing}
+          />
+          <Label htmlFor="batch-active" className="text-sm cursor-pointer">
+            List as active immediately
+          </Label>
+        </div>
+      </div>
+
+      {/* Drop zone */}
+      <div
+        className={`relative border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer ${
+          isDragging
+            ? "border-primary bg-primary/10"
+            : "border-border/50 hover:border-primary/50 hover:bg-primary/5"
+        } ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}
+        onClick={() => fileInputRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          addFiles(e.dataTransfer.files);
+        }}
+        role="button"
+        aria-label="Drop images here"
+      >
+        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+          <Upload className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold">Drop images here or click to browse</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            PNG, JPG, GIF, WebP — select multiple files at once
+          </p>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/gif,image/webp,image/*"
+          className="hidden"
+          onChange={(e) => e.target.files && addFiles(e.target.files)}
+          disabled={isProcessing}
+        />
+      </div>
+
+      {/* Queue */}
+      {queue.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+              {queue.length} file{queue.length !== 1 ? "s" : ""} queued
+            </span>
+            {!isProcessing && readyCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  queue.forEach((i) => URL.revokeObjectURL(i.localUrl));
+                  setQueue([]);
+                }}
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {queue.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                  item.status === "done"
+                    ? "bg-green-500/5 border-green-500/20"
+                    : item.status === "error"
+                      ? "bg-destructive/5 border-destructive/20"
+                      : item.status === "uploading" || item.status === "creating"
+                        ? "bg-primary/5 border-primary/20"
+                        : "bg-secondary/30 border-border/30"
+                }`}
+              >
+                {/* Thumbnail */}
+                <div className="w-10 h-10 rounded flex-shrink-0 overflow-hidden bg-secondary/50 border border-border/30">
+                  <img src={item.localUrl} alt={item.name} className="w-full h-full object-cover" />
+                </div>
+
+                {/* Name input */}
+                <Input
+                  value={item.name}
+                  onChange={(e) => updateName(item.id, e.target.value)}
+                  disabled={isProcessing || item.status === "done"}
+                  className="flex-1 h-8 text-sm bg-card border-border/50"
+                  placeholder="Trait name"
+                />
+
+                {/* Status badge */}
+                <div className="flex-shrink-0 w-24 text-right">
+                  {item.status === "ready" && (
+                    <Badge variant="outline" className="text-[10px] border-border/50 text-muted-foreground">
+                      Ready
+                    </Badge>
+                  )}
+                  {item.status === "uploading" && (
+                    <div className="flex items-center gap-1 justify-end">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      <span className="text-[10px] text-primary">Uploading</span>
+                    </div>
+                  )}
+                  {item.status === "creating" && (
+                    <div className="flex items-center gap-1 justify-end">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      <span className="text-[10px] text-primary">Creating</span>
+                    </div>
+                  )}
+                  {item.status === "done" && (
+                    <div className="flex items-center gap-1 justify-end">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      <span className="text-[10px] text-green-500">Done</span>
+                    </div>
+                  )}
+                  {item.status === "error" && (
+                    <div
+                      className="flex items-center gap-1 justify-end"
+                      title={item.error}
+                    >
+                      <AlertCircle className="w-3 h-3 text-destructive" />
+                      <span className="text-[10px] text-destructive">Failed</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Remove */}
+                {!isProcessing && item.status !== "done" && (
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    className="flex-shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Progress summary */}
+          {(doneCount > 0 || errorCount > 0) && (
+            <div className="flex items-center gap-4 text-xs pt-1">
+              {doneCount > 0 && (
+                <span className="flex items-center gap-1 text-green-500">
+                  <CheckCircle2 className="w-3 h-3" /> {doneCount} created
+                </span>
+              )}
+              {errorCount > 0 && (
+                <span className="flex items-center gap-1 text-destructive">
+                  <AlertCircle className="w-3 h-3" /> {errorCount} failed
+                </span>
+              )}
+              {readyCount > 0 && (
+                <span className="text-muted-foreground/60">{readyCount} remaining</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex gap-3 pt-2 border-t border-border/30">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={onClose}
+          disabled={isProcessing}
+        >
+          {allDone ? "Done" : "Cancel"}
+        </Button>
+        <Button
+          type="button"
+          className="flex-1 bg-primary text-white hover:bg-primary/90 gap-2"
+          disabled={!category || readyCount === 0 || isProcessing}
+          onClick={processAll}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Creating…
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" />
+              Create {readyCount > 0 ? `${readyCount} ` : ""}Trait{readyCount !== 1 ? "s" : ""}
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

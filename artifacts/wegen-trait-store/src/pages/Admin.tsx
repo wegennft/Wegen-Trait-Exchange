@@ -1333,6 +1333,22 @@ function nameFromFilename(filename: string): string {
     .trim();
 }
 
+function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read image dimensions"));
+    };
+    img.src = url;
+  });
+}
+
 function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   const [queue, setQueue] = useState<BatchQueueItem[]>([]);
   const [category, setCategory] = useState("");
@@ -1365,20 +1381,42 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
 
   const batchCreateTrait = useCreateTrait({ mutation: {} });
 
-  function addFiles(files: FileList | File[]) {
+  async function addFiles(files: FileList | File[]) {
     const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (!imageFiles.length) {
       toast({ title: "Only image files accepted", variant: "destructive" });
       return;
     }
-    const newItems: BatchQueueItem[] = imageFiles.map((f) => ({
-      id: Math.random().toString(36).slice(2),
-      file: f,
-      localUrl: URL.createObjectURL(f),
-      name: nameFromFilename(f.name),
-      status: "ready",
-    }));
-    setQueue((prev) => [...prev, ...newItems]);
+    const rejected: string[] = [];
+    const accepted: BatchQueueItem[] = [];
+    for (const f of imageFiles) {
+      let dims: { width: number; height: number };
+      try {
+        dims = await getImageDimensions(f);
+      } catch {
+        rejected.push(f.name);
+        continue;
+      }
+      if (dims.width !== 2000 || dims.height !== 2000) {
+        rejected.push(`${f.name} (${dims.width}×${dims.height})`);
+        continue;
+      }
+      accepted.push({
+        id: Math.random().toString(36).slice(2),
+        file: f,
+        localUrl: URL.createObjectURL(f),
+        name: nameFromFilename(f.name),
+        status: "ready",
+      });
+    }
+    if (rejected.length) {
+      toast({
+        title: `${rejected.length} file${rejected.length > 1 ? "s" : ""} rejected — must be 2000×2000px`,
+        description: rejected.join(", "),
+        variant: "destructive",
+      });
+    }
+    if (accepted.length) setQueue((prev) => [...prev, ...accepted]);
   }
 
   function removeItem(id: string) {
@@ -1565,7 +1603,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
         <div className="text-center">
           <p className="text-sm font-semibold">Drop images here or click to browse</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            PNG, JPG, GIF, WebP — select multiple files at once
+            PNG, JPG, WebP · must be <span className="text-primary font-semibold">2000×2000px</span> · multiple files OK
           </p>
         </div>
         <input
@@ -1761,6 +1799,23 @@ function TraitImageUploader({
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast({ title: "Please select an image file (JPEG, PNG, etc.)", variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    try {
+      const dims = await getImageDimensions(file);
+      if (dims.width !== 2000 || dims.height !== 2000) {
+        toast({
+          title: `Image must be 2000×2000px`,
+          description: `Selected image is ${dims.width}×${dims.height}px. Please resize it before uploading.`,
+          variant: "destructive",
+        });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    } catch {
+      toast({ title: "Could not read image dimensions", variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     await uploadFile(file);
@@ -1814,7 +1869,9 @@ function TraitImageUploader({
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium">Click to upload image</p>
-                <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, GIF, WebP</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  PNG, JPG, WebP · <span className="text-primary font-semibold">2000×2000px required</span>
+                </p>
               </div>
               <Button type="button" variant="outline" size="sm" className="gap-2">
                 <Upload className="w-3.5 h-3.5" />

@@ -78,6 +78,8 @@ import { useUpload } from "@workspace/object-storage-web";
 import { useSiteSettings, DEFAULT_COLORS } from "@/contexts/SiteSettingsContext";
 
 const CATEGORIES = ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
+const RARITIES = ["common", "uncommon", "rare", "legendary"] as const;
+type Rarity = (typeof RARITIES)[number];
 
 const payoutSplitSchema = z.object({
   walletAddress: z.string().min(1, "Wallet address required"),
@@ -95,6 +97,7 @@ const traitSchema = z.object({
   imageUrl: z.string().optional(),
   priceEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 0.05"),
   totalSupply: z.coerce.number().min(1, "Supply must be at least 1"),
+  rarity: z.enum(RARITIES).default("common"),
   isActive: z.boolean().default(true),
   payoutSplits: z.array(payoutSplitSchema).default([]),
 }).superRefine((data, ctx) => {
@@ -181,6 +184,7 @@ export function Admin() {
         imageUrl: data.imageUrl,
         priceEth: data.priceEth,
         totalSupply: data.totalSupply,
+        rarity: data.rarity,
         isActive: data.isActive,
         theme: data.theme || undefined,
         payoutSplits: data.payoutSplits,
@@ -1355,6 +1359,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   const [priceEth, setPriceEth] = useState("0.01");
   const [totalSupply, setTotalSupply] = useState(100);
   const [theme, setTheme] = useState("");
+  const [rarity, setRarity] = useState<Rarity>("common");
   const [isActive, setIsActive] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -1482,6 +1487,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
           category,
           priceEth,
           totalSupply,
+          rarity,
           theme: theme || undefined,
           imageUrl,
           isActive,
@@ -1548,6 +1554,24 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
             disabled={isProcessing}
             className="bg-card border-border/60 text-sm h-9"
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Rarity
+          </Label>
+          <Select value={rarity} onValueChange={(v) => setRarity(v as Rarity)} disabled={isProcessing}>
+            <SelectTrigger className="bg-card border-border/60 text-sm h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RARITIES.map((r) => (
+                <SelectItem key={r} value={r} className="capitalize">
+                  {r.charAt(0).toUpperCase() + r.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">
@@ -1947,6 +1971,7 @@ function TraitForm({
       imageUrl: defaultValues?.imageUrl ?? "",
       priceEth: defaultValues?.priceEth ?? "0.01",
       totalSupply: defaultValues?.totalSupply ?? 100,
+      rarity: (defaultValues?.rarity as Rarity) ?? "common",
       isActive: defaultValues?.isActive ?? true,
       payoutSplits: (defaultValues?.payoutSplits as TraitFormValues["payoutSplits"]) ?? [],
     },
@@ -2004,6 +2029,28 @@ function TraitForm({
               {form.formState.errors.category.message}
             </p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Rarity</Label>
+          <Controller
+            control={form.control}
+            name="rarity"
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger className="bg-secondary/50" data-testid="select-rarity">
+                  <SelectValue placeholder="Select rarity" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RARITIES.map((r) => (
+                    <SelectItem key={r} value={r} className="capitalize">
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
 
         <div className="space-y-2">

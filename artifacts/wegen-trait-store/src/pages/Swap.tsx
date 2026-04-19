@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,10 +115,12 @@ function TraitSelectCard({
       )}
       <div className="aspect-square w-full bg-secondary/30 overflow-hidden">
         {item.trait.imageUrl ? (
-          <img
-            src={item.trait.imageUrl}
+          <TraitMedia
+            url={item.trait.imageUrl}
+            mediaType={(item.trait as Record<string,unknown>).mediaType as string}
             alt={item.trait.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full"
+            showBadge
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

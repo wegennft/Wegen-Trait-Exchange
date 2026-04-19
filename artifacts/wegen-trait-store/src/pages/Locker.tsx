@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectGuard } from "@/components/shared/WalletConnectGuard";
 import {
@@ -316,14 +317,14 @@ function LockerContent() {
                           <div className="absolute bottom-1 right-1 flex flex-col gap-0.5">
                             {nft.equippedTraits.slice(0, 4).map(et => (
                               et.trait.imageUrl ? (
-                                <img
+                                <div
                                   key={et.category}
-                                  src={et.trait.imageUrl}
-                                  alt={et.trait.name}
-                                  className="w-7 h-7 object-contain bg-black/60"
+                                  className="w-7 h-7 bg-black/60"
                                   style={{ border: '1px solid rgba(255,255,255,0.1)' }}
                                   title={`${et.category}: ${et.trait.name}`}
-                                />
+                                >
+                                  <TraitMedia url={et.trait.imageUrl} mediaType={(et.trait as Record<string,unknown>).mediaType as string} alt={et.trait.name} className="w-full h-full" />
+                                </div>
                               ) : (
                                 <div
                                   key={et.category}
@@ -384,7 +385,7 @@ function LockerContent() {
                           style={{ border: '1px solid rgba(157,0,255,0.15)' }}
                         >
                           {et.trait.imageUrl ? (
-                            <img src={et.trait.imageUrl} alt={et.trait.name} className="w-8 h-8 object-contain bg-black/40" />
+                            <div className="w-8 h-8 bg-black/40 flex-shrink-0"><TraitMedia url={et.trait.imageUrl} mediaType={(et.trait as Record<string,unknown>).mediaType as string} alt={et.trait.name} className="w-full h-full" /></div>
                           ) : (
                             <div
                               className="w-8 h-8 flex items-center justify-center text-xs font-bold text-primary uppercase"
@@ -481,12 +482,14 @@ function LockerContent() {
                       />
 
                       {item.trait.imageUrl ? (
-                        <img
-                          src={item.trait.imageUrl}
+                        <TraitMedia
+                          url={item.trait.imageUrl}
+                          mediaType={(item.trait as Record<string,unknown>).mediaType as string}
                           alt={item.trait.name}
-                          className={`w-full h-full object-contain drop-shadow-2xl transition-all ${
+                          className={`w-full h-full drop-shadow-2xl transition-all ${
                             item.equippedToTokenId ? 'opacity-50 grayscale' : 'group-hover:scale-105'
                           }`}
+                          showBadge
                         />
                       ) : (
                         <div className="text-5xl font-black text-muted-foreground/20 uppercase" style={BANGERS}>

@@ -24,6 +24,7 @@ export const traitsTable = pgTable("traits", {
   category: text("category").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
+  mediaType: text("media_type").default("image"),
   priceEth: text("price_eth").notNull(),
   priceWei: text("price_wei").notNull(),
   totalSupply: integer("total_supply").notNull(),

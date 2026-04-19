@@ -39,6 +39,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { TraitMedia } from "@/components/TraitMedia";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -68,6 +69,7 @@ import {
   ExternalLink,
   Clock,
   Filter,
+  Music,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -89,12 +91,16 @@ const payoutSplitSchema = z.object({
     .max(100, "Max 100"),
 });
 
+const MEDIA_TYPES = ["image", "gif", "video", "audio"] as const;
+type MediaType = typeof MEDIA_TYPES[number];
+
 const traitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
   theme: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().optional(),
+  mediaType: z.enum(MEDIA_TYPES).default("image"),
   priceEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 0.05"),
   totalSupply: z.coerce.number().min(1, "Supply must be at least 1"),
   rarity: z.enum(RARITIES).default("common"),
@@ -182,6 +188,7 @@ export function Admin() {
         name: data.name,
         description: data.description,
         imageUrl: data.imageUrl,
+        mediaType: data.mediaType,
         priceEth: data.priceEth,
         totalSupply: data.totalSupply,
         rarity: data.rarity,
@@ -341,11 +348,9 @@ export function Admin() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         {trait.imageUrl ? (
-                          <img
-                            src={trait.imageUrl}
-                            alt={trait.name}
-                            className="w-8 h-8 rounded bg-secondary/50 object-cover"
-                          />
+                          <div className="w-8 h-8 rounded bg-secondary/50 overflow-hidden flex-shrink-0">
+                            <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full" showBadge />
+                          </div>
                         ) : (
                           <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center text-xs font-bold">
                             {trait.name[0]}
@@ -1325,8 +1330,16 @@ interface BatchQueueItem {
   file: File;
   localUrl: string;
   name: string;
+  mediaType: "image" | "gif" | "video" | "audio";
   status: "ready" | "uploading" | "creating" | "done" | "error";
   error?: string;
+}
+
+function detectMediaType(file: File): "image" | "gif" | "video" | "audio" {
+  if (file.type === "image/gif") return "gif";
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type.startsWith("audio/")) return "audio";
+  return "image";
 }
 
 function nameFromFilename(filename: string): string {
@@ -1387,36 +1400,43 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   const batchCreateTrait = useCreateTrait({ mutation: {} });
 
   async function addFiles(files: FileList | File[]) {
-    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (!imageFiles.length) {
-      toast({ title: "Only image files accepted", variant: "destructive" });
+    const ACCEPTED_TYPES = ["image/", "video/", "audio/"];
+    const allFiles = Array.from(files).filter((f) =>
+      ACCEPTED_TYPES.some((t) => f.type.startsWith(t))
+    );
+    if (!allFiles.length) {
+      toast({ title: "Unsupported file type — use PNG/JPG/WebP/GIF for images, MP4/WebM for video, or MP3/WAV for audio", variant: "destructive" });
       return;
     }
     const rejected: string[] = [];
     const accepted: BatchQueueItem[] = [];
-    for (const f of imageFiles) {
-      let dims: { width: number; height: number };
-      try {
-        dims = await getImageDimensions(f);
-      } catch {
-        rejected.push(f.name);
-        continue;
-      }
-      if (dims.width !== 2000 || dims.height !== 2000) {
-        rejected.push(`${f.name} (${dims.width}×${dims.height})`);
-        continue;
+    for (const f of allFiles) {
+      const mt = detectMediaType(f);
+      if (mt === "image") {
+        let dims: { width: number; height: number };
+        try {
+          dims = await getImageDimensions(f);
+        } catch {
+          rejected.push(f.name);
+          continue;
+        }
+        if (dims.width !== 2000 || dims.height !== 2000) {
+          rejected.push(`${f.name} (${dims.width}×${dims.height})`);
+          continue;
+        }
       }
       accepted.push({
         id: Math.random().toString(36).slice(2),
         file: f,
         localUrl: URL.createObjectURL(f),
         name: nameFromFilename(f.name),
+        mediaType: mt,
         status: "ready",
       });
     }
     if (rejected.length) {
       toast({
-        title: `${rejected.length} file${rejected.length > 1 ? "s" : ""} rejected — must be 2000×2000px`,
+        title: `${rejected.length} static image${rejected.length > 1 ? "s" : ""} rejected — must be 2000×2000px`,
         description: rejected.join(", "),
         variant: "destructive",
       });
@@ -1476,7 +1496,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
       try {
         imageUrl = await uploadFileAsync(item.file);
       } catch {
-        setItemStatus(item.id, "error", "Image upload failed");
+        setItemStatus(item.id, "error", "File upload failed");
         continue;
       }
 
@@ -1490,6 +1510,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
           rarity,
           theme: theme || undefined,
           imageUrl,
+          mediaType: item.mediaType,
           isActive,
           payoutSplits: [],
         });
@@ -1625,16 +1646,17 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
           <Upload className="w-6 h-6 text-muted-foreground" />
         </div>
         <div className="text-center">
-          <p className="text-sm font-semibold">Drop images here or click to browse</p>
+          <p className="text-sm font-semibold">Drop media here or click to browse</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            PNG, JPG, WebP · must be <span className="text-primary font-semibold">2000×2000px</span> · multiple files OK
+            <span className="text-primary font-semibold">PNG/JPG/WebP → 2000×2000px required</span>
+            {" · "}GIF · MP4/WebM · MP3/WAV · multiple OK
           </p>
         </div>
         <input
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/png,image/jpeg,image/gif,image/webp,image/*"
+          accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg,audio/mp4"
           className="hidden"
           onChange={(e) => e.target.files && addFiles(e.target.files)}
           disabled={isProcessing}
@@ -1677,8 +1699,19 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
                 }`}
               >
                 {/* Thumbnail */}
-                <div className="w-10 h-10 rounded flex-shrink-0 overflow-hidden bg-secondary/50 border border-border/30">
-                  <img src={item.localUrl} alt={item.name} className="w-full h-full object-cover" />
+                <div className="w-10 h-10 rounded flex-shrink-0 overflow-hidden bg-secondary/50 border border-border/30 flex items-center justify-center relative">
+                  {item.mediaType === "video" ? (
+                    <video src={item.localUrl} className="w-full h-full object-cover" muted />
+                  ) : item.mediaType === "audio" ? (
+                    <Music className="w-4 h-4 text-primary" />
+                  ) : (
+                    <img src={item.localUrl} alt={item.name} className="w-full h-full object-cover" />
+                  )}
+                  {item.mediaType !== "image" && (
+                    <span className="absolute bottom-0 inset-x-0 text-[8px] text-center font-bold uppercase text-white bg-black/60">
+                      {item.mediaType}
+                    </span>
+                  )}
                 </div>
 
                 {/* Name input */}
@@ -1800,10 +1833,12 @@ function TraitImageUploader({
   currentImageUrl,
   onUploadComplete,
   onClear,
+  onMediaTypeChange,
 }: {
   currentImageUrl?: string;
   onUploadComplete: (url: string) => void;
   onClear: () => void;
+  onMediaTypeChange?: (type: "image" | "gif" | "video" | "audio") => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -1821,27 +1856,26 @@ function TraitImageUploader({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Please select an image file (JPEG, PNG, etc.)", variant: "destructive" });
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-    try {
-      const dims = await getImageDimensions(file);
-      if (dims.width !== 2000 || dims.height !== 2000) {
-        toast({
-          title: `Image must be 2000×2000px`,
-          description: `Selected image is ${dims.width}×${dims.height}px. Please resize it before uploading.`,
-          variant: "destructive",
-        });
+    const mt = detectMediaType(file);
+    if (mt === "image") {
+      try {
+        const dims = await getImageDimensions(file);
+        if (dims.width !== 2000 || dims.height !== 2000) {
+          toast({
+            title: `Static image must be 2000×2000px`,
+            description: `Selected image is ${dims.width}×${dims.height}px. GIF, MP4, and audio have no size requirement.`,
+            variant: "destructive",
+          });
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
+        }
+      } catch {
+        toast({ title: "Could not read image dimensions", variant: "destructive" });
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-    } catch {
-      toast({ title: "Could not read image dimensions", variant: "destructive" });
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
     }
+    onMediaTypeChange?.(mt);
     await uploadFile(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -1850,16 +1884,18 @@ function TraitImageUploader({
     <div className="space-y-3">
       {currentImageUrl ? (
         <div className="relative rounded-lg overflow-hidden border border-border/50 bg-secondary/30 group w-full aspect-square max-w-40">
-          <img
-            src={currentImageUrl}
+          <TraitMedia
+            url={currentImageUrl}
             alt="Trait preview"
-            className="w-full h-full object-contain p-2"
+            className="w-full h-full"
+            showBadge
+            autoPlay
           />
           <button
             type="button"
             onClick={onClear}
             className="absolute top-1.5 right-1.5 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
-            aria-label="Remove image"
+            aria-label="Remove media"
           >
             <X className="w-3 h-3 text-white" />
           </button>
@@ -1872,7 +1908,7 @@ function TraitImageUploader({
           className="border-2 border-dashed border-border/50 rounded-lg p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
           onClick={() => fileInputRef.current?.click()}
           role="button"
-          aria-label="Upload image"
+          aria-label="Upload media"
           data-testid="image-drop-zone"
         >
           {isUploading ? (
@@ -1892,9 +1928,10 @@ function TraitImageUploader({
                 <ImageIcon className="w-6 h-6 text-muted-foreground" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium">Click to upload image</p>
+                <p className="text-sm font-medium">Click to upload trait media</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  PNG, JPG, WebP · <span className="text-primary font-semibold">2000×2000px required</span>
+                  <span className="text-primary font-semibold">PNG/JPG/WebP → 2000×2000px</span>
+                  {" · "}GIF · MP4/WebM · MP3/WAV
                 </p>
               </div>
               <Button type="button" variant="outline" size="sm" className="gap-2">
@@ -1906,17 +1943,15 @@ function TraitImageUploader({
         </div>
       )}
 
-      {!currentImageUrl && (
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp,image/*"
-          className="hidden"
-          onChange={handleFileChange}
-          disabled={isUploading}
-          data-testid="input-image-file"
-        />
-      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg,audio/mp4"
+        className="hidden"
+        onChange={handleFileChange}
+        disabled={isUploading}
+        data-testid="input-image-file"
+      />
 
       {currentImageUrl && (
         <Button
@@ -1932,7 +1967,7 @@ function TraitImageUploader({
           ) : (
             <Upload className="w-3.5 h-3.5" />
           )}
-          {isUploading ? "Uploading…" : "Replace Image"}
+          {isUploading ? "Uploading…" : "Replace Media"}
         </Button>
       )}
 
@@ -1969,6 +2004,7 @@ function TraitForm({
       theme: defaultValues?.theme ?? "",
       description: defaultValues?.description ?? "",
       imageUrl: defaultValues?.imageUrl ?? "",
+      mediaType: ((defaultValues as Record<string, unknown>)?.mediaType as MediaType) ?? "image",
       priceEth: defaultValues?.priceEth ?? "0.01",
       totalSupply: defaultValues?.totalSupply ?? 100,
       rarity: (defaultValues?.rarity as Rarity) ?? "common",
@@ -2122,11 +2158,12 @@ function TraitForm({
       </div>
 
       <div className="space-y-2">
-        <Label>Trait Image (JPEG)</Label>
+        <Label>Trait Media</Label>
         <TraitImageUploader
           currentImageUrl={form.watch("imageUrl")}
           onUploadComplete={(url) => form.setValue("imageUrl", url, { shouldDirty: true })}
-          onClear={() => form.setValue("imageUrl", "", { shouldDirty: true })}
+          onClear={() => { form.setValue("imageUrl", "", { shouldDirty: true }); form.setValue("mediaType", "image", { shouldDirty: true }); }}
+          onMediaTypeChange={(mt) => form.setValue("mediaType", mt, { shouldDirty: true })}
         />
       </div>
 

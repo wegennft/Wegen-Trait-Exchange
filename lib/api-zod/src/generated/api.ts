@@ -76,6 +76,7 @@ export const ListTraitsResponse = zod.object({
         ),
       description: zod.string().optional(),
       imageUrl: zod.string().optional(),
+      mediaType: zod.enum(["image","gif","video","audio"]).optional(),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -130,6 +131,7 @@ export const GetTraitResponse = zod.object({
     ),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
   priceEth: zod
     .string()
     .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -198,6 +200,7 @@ export const GetLockerResponse = zod.object({
           ),
         description: zod.string().optional(),
         imageUrl: zod.string().optional(),
+        mediaType: zod.enum(["image","gif","video","audio"]).optional(),
         priceEth: zod
           .string()
           .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -285,6 +288,7 @@ export const GetUserNftsResponse = zod.object({
               ),
             description: zod.string().optional(),
             imageUrl: zod.string().optional(),
+            mediaType: zod.enum(["image","gif","video","audio"]).optional(),
             priceEth: zod
               .string()
               .describe(
@@ -365,6 +369,7 @@ export const ApplyTraitResponse = zod.object({
             ),
           description: zod.string().optional(),
           imageUrl: zod.string().optional(),
+          mediaType: zod.enum(["image","gif","video","audio"]).optional(),
           priceEth: zod
             .string()
             .describe(
@@ -416,6 +421,7 @@ export const ApplyTraitResponse = zod.object({
         ),
       description: zod.string().optional(),
       imageUrl: zod.string().optional(),
+      mediaType: zod.enum(["image","gif","video","audio"]).optional(),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -494,6 +500,7 @@ export const RemoveTraitResponse = zod.object({
             ),
           description: zod.string().optional(),
           imageUrl: zod.string().optional(),
+          mediaType: zod.enum(["image","gif","video","audio"]).optional(),
           priceEth: zod
             .string()
             .describe(
@@ -545,6 +552,7 @@ export const RemoveTraitResponse = zod.object({
         ),
       description: zod.string().optional(),
       imageUrl: zod.string().optional(),
+      mediaType: zod.enum(["image","gif","video","audio"]).optional(),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -617,6 +625,7 @@ export const CreateTraitBody = zod.object({
     ),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
   priceEth: zod.string(),
   totalSupply: zod.number(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
@@ -652,6 +661,7 @@ export const UpdateTraitBody = zod.object({
   name: zod.string().optional(),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
   priceEth: zod.string().optional(),
   totalSupply: zod.number().optional(),
   isActive: zod.boolean().optional(),
@@ -694,6 +704,7 @@ export const UpdateTraitResponse = zod.object({
     ),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
   priceEth: zod
     .string()
     .describe("Price in ETH (as string to avoid floating point issues)"),

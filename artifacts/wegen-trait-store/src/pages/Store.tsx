@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   useListTraits,
@@ -639,10 +640,12 @@ export function Store() {
             >
               <div className="relative aspect-square overflow-hidden bg-secondary flex items-center justify-center p-6">
                 {trait.imageUrl ? (
-                  <img
-                    src={trait.imageUrl}
+                  <TraitMedia
+                    url={trait.imageUrl}
+                    mediaType={(trait as Record<string, unknown>).mediaType as string}
                     alt={trait.name}
-                    className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl"
+                    className="w-full h-full group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl"
+                    showBadge
                   />
                 ) : (
                   <div className="text-6xl font-black text-muted-foreground/20 uppercase tracking-tighter mix-blend-overlay">
@@ -724,7 +727,7 @@ export function Store() {
               <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 border border-border/50 mb-4">
                 <div className="w-16 h-16 rounded-md bg-secondary flex items-center justify-center p-2">
                   {traitToBuy.imageUrl ? (
-                    <img src={traitToBuy.imageUrl} alt={traitToBuy.name} className="w-full h-full object-contain" />
+                    <TraitMedia url={traitToBuy.imageUrl} mediaType={(traitToBuy as Record<string, unknown>).mediaType as string} alt={traitToBuy.name} className="w-full h-full" showBadge />
                   ) : (
                     <div className="text-xl font-black text-muted-foreground/50">{traitToBuy.category[0]}</div>
                   )}

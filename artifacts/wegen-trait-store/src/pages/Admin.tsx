@@ -395,23 +395,21 @@ export function Admin() {
                       <PayoutSplitsSummary splits={trait.payoutSplits ?? []} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col items-start gap-1.5">
-                        {trait.isActive ? (
-                          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs font-semibold">In Store</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground border-border text-xs font-semibold">Vaulted</Badge>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={updateTrait.isPending}
-                          onClick={() => updateTrait.mutate({ traitId: trait.id, data: { isActive: !trait.isActive } })}
-                          className={`h-6 px-2 text-xs ${trait.isActive ? "text-muted-foreground hover:text-foreground" : "text-primary hover:text-primary/80"}`}
-                          data-testid={`switch-active-${trait.id}`}
-                        >
-                          {trait.isActive ? "Move to Vault" : "Publish to Store"}
-                        </Button>
-                      </div>
+                      <button
+                        disabled={updateTrait.isPending}
+                        onClick={() => updateTrait.mutate({ traitId: trait.id, data: { isActive: !trait.isActive } })}
+                        data-testid={`switch-active-${trait.id}`}
+                        title={trait.isActive ? "Click to move to Vault" : "Click to publish to Store"}
+                        className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-full border font-bold text-xs uppercase tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          trait.isActive
+                            ? "bg-emerald-500/15 border-emerald-400/60 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.35)] hover:shadow-[0_0_16px_rgba(52,211,153,0.55)] hover:bg-emerald-500/25 hover:border-emerald-400"
+                            : "bg-secondary/60 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${trait.isActive ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse" : "bg-muted-foreground/40"}`} />
+                        {trait.isActive ? "Live" : "Vaulted"}
+                        {updateTrait.isPending && <Loader2 className="w-3 h-3 animate-spin ml-0.5" />}
+                      </button>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

@@ -38,10 +38,10 @@ router.get("/traits", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const { category, theme, page, limit } = params.data;
+  const { category, theme, page, limit, includeAll } = params.data;
   const offset = (page - 1) * limit;
 
-  const conditions = [];
+  const conditions = includeAll ? [] : [eq(traitsTable.isActive, true)];
   if (category) {
     conditions.push(eq(traitsTable.category, category));
   }

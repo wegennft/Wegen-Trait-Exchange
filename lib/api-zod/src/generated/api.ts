@@ -57,6 +57,7 @@ export const ListTraitsQueryParams = zod.object({
     .describe("Filter traits by theme\/collection name"),
   page: zod.coerce.number().default(listTraitsQueryPageDefault),
   limit: zod.coerce.number().default(listTraitsQueryLimitDefault),
+  includeAll: zod.coerce.boolean().optional().describe("Admin: include inactive/vaulted traits"),
 });
 
 export const listTraitsResponseTraitsItemPayoutSplitsItemPercentageMin = 0;
@@ -74,9 +75,9 @@ export const ListTraitsResponse = zod.object({
         .describe(
           'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
         ),
-      description: zod.string().optional(),
-      imageUrl: zod.string().optional(),
-      mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string().nullish(),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -129,9 +130,9 @@ export const GetTraitResponse = zod.object({
     .describe(
       'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
     ),
-  description: zod.string().optional(),
-  imageUrl: zod.string().optional(),
-  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().nullish(),
   priceEth: zod
     .string()
     .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -198,9 +199,9 @@ export const GetLockerResponse = zod.object({
           .describe(
             'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
           ),
-        description: zod.string().optional(),
-        imageUrl: zod.string().optional(),
-        mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+        description: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        mediaType: zod.string().nullish(),
         priceEth: zod
           .string()
           .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -271,7 +272,7 @@ export const GetUserNftsResponse = zod.object({
       tokenId: zod.number(),
       walletAddress: zod.string(),
       name: zod.string(),
-      imageUrl: zod.string().optional(),
+      imageUrl: zod.string().nullish(),
       equippedTraits: zod.array(
         zod.object({
           category: zod.string(),
@@ -286,9 +287,9 @@ export const GetUserNftsResponse = zod.object({
               .describe(
                 'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
               ),
-            description: zod.string().optional(),
-            imageUrl: zod.string().optional(),
-            mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+            description: zod.string().nullish(),
+            imageUrl: zod.string().nullish(),
+            mediaType: zod.string().nullish(),
             priceEth: zod
               .string()
               .describe(
@@ -352,7 +353,7 @@ export const ApplyTraitResponse = zod.object({
     tokenId: zod.number(),
     walletAddress: zod.string(),
     name: zod.string(),
-    imageUrl: zod.string().optional(),
+    imageUrl: zod.string().nullish(),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),
@@ -367,9 +368,9 @@ export const ApplyTraitResponse = zod.object({
             .describe(
               'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
             ),
-          description: zod.string().optional(),
-          imageUrl: zod.string().optional(),
-          mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+          description: zod.string().nullish(),
+          imageUrl: zod.string().nullish(),
+          mediaType: zod.string().nullish(),
           priceEth: zod
             .string()
             .describe(
@@ -419,9 +420,9 @@ export const ApplyTraitResponse = zod.object({
         .describe(
           'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
         ),
-      description: zod.string().optional(),
-      imageUrl: zod.string().optional(),
-      mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string().nullish(),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -483,7 +484,7 @@ export const RemoveTraitResponse = zod.object({
     tokenId: zod.number(),
     walletAddress: zod.string(),
     name: zod.string(),
-    imageUrl: zod.string().optional(),
+    imageUrl: zod.string().nullish(),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),
@@ -498,9 +499,9 @@ export const RemoveTraitResponse = zod.object({
             .describe(
               'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
             ),
-          description: zod.string().optional(),
-          imageUrl: zod.string().optional(),
-          mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+          description: zod.string().nullish(),
+          imageUrl: zod.string().nullish(),
+          mediaType: zod.string().nullish(),
           priceEth: zod
             .string()
             .describe(
@@ -550,9 +551,9 @@ export const RemoveTraitResponse = zod.object({
         .describe(
           'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
         ),
-      description: zod.string().optional(),
-      imageUrl: zod.string().optional(),
-      mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string().nullish(),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -623,9 +624,9 @@ export const CreateTraitBody = zod.object({
     .describe(
       'Named collection\/theme (e.g. \"Stoner Traits\", \"70s Vibes\")',
     ),
-  description: zod.string().optional(),
-  imageUrl: zod.string().optional(),
-  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().nullish(),
   priceEth: zod.string(),
   totalSupply: zod.number(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
@@ -659,9 +660,9 @@ export const updateTraitBodyPayoutSplitsItemPercentageMax = 100;
 
 export const UpdateTraitBody = zod.object({
   name: zod.string().optional(),
-  description: zod.string().optional(),
-  imageUrl: zod.string().optional(),
-  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().nullish(),
   priceEth: zod.string().optional(),
   totalSupply: zod.number().optional(),
   isActive: zod.boolean().optional(),
@@ -702,9 +703,9 @@ export const UpdateTraitResponse = zod.object({
     .describe(
       'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
     ),
-  description: zod.string().optional(),
-  imageUrl: zod.string().optional(),
-  mediaType: zod.enum(["image","gif","video","audio"]).optional(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().nullish(),
   priceEth: zod
     .string()
     .describe("Price in ETH (as string to avoid floating point issues)"),

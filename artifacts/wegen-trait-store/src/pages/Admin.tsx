@@ -123,7 +123,7 @@ type TraitFormValues = z.infer<typeof traitSchema>;
 
 export function Admin() {
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
-  const { data: traitsData, isLoading: isLoadingTraits } = useListTraits();
+  const { data: traitsData, isLoading: isLoadingTraits } = useListTraits({ includeAll: true });
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -131,13 +131,14 @@ export function Admin() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [editingTrait, setEditingTrait] = useState<Trait | null>(null);
+  const [traitView, setTraitView] = useState<"all" | "in-store" | "vault">("all");
 
   const createTrait = useCreateTrait({
     mutation: {
       onSuccess: () => {
         toast({ title: "Trait created successfully" });
         setIsCreateOpen(false);
-        queryClient.invalidateQueries({ queryKey: getListTraitsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
         queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
       },
       onError: (err: unknown) => {
@@ -154,7 +155,7 @@ export function Admin() {
       onSuccess: () => {
         toast({ title: "Trait updated successfully" });
         setEditingTrait(null);
-        queryClient.invalidateQueries({ queryKey: getListTraitsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
       },
       onError: (err: unknown) => {
         const msg =
@@ -169,7 +170,7 @@ export function Admin() {
     mutation: {
       onSuccess: () => {
         toast({ title: "Trait deleted" });
-        queryClient.invalidateQueries({ queryKey: getListTraitsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
         queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
       },
       onError: () => toast({ title: "Failed to delete trait", variant: "destructive" }),
@@ -282,7 +283,20 @@ export function Admin() {
       </div>
 
       <div className="flex items-center justify-between mt-12 mb-4">
-        <h2 className="text-2xl font-bold tracking-tight">Trait Management</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold tracking-tight">Trait Management</h2>
+          <div className="flex bg-secondary border border-border/50 rounded-md p-1 gap-1">
+            {(["all", "in-store", "vault"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setTraitView(v)}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${traitView === v ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {v === "all" ? `All (${traitsData?.traits?.length ?? 0})` : v === "in-store" ? `In Store (${traitsData?.traits?.filter(t => t.isActive).length ?? 0})` : `Vault (${traitsData?.traits?.filter(t => !t.isActive).length ?? 0})`}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {/* Batch upload */}
           <Dialog open={isBatchOpen} onOpenChange={setIsBatchOpen}>
@@ -343,7 +357,9 @@ export function Admin() {
                   </TableCell>
                 </TableRow>
               ) : (
-                traitsData?.traits?.map((trait) => (
+                (traitsData?.traits ?? []).filter(trait =>
+                  traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive
+                ).map((trait) => (
                   <TableRow key={trait.id} className="border-border/50">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
@@ -379,17 +395,23 @@ export function Admin() {
                       <PayoutSplitsSummary splits={trait.payoutSplits ?? []} />
                     </TableCell>
                     <TableCell>
-                      <Switch
-                        checked={trait.isActive}
-                        onCheckedChange={(checked) =>
-                          updateTrait.mutate({
-                            traitId: trait.id,
-                            data: { isActive: checked },
-                          })
-                        }
-                        disabled={updateTrait.isPending}
-                        data-testid={`switch-active-${trait.id}`}
-                      />
+                      <div className="flex flex-col items-start gap-1.5">
+                        {trait.isActive ? (
+                          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs font-semibold">In Store</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground border-border text-xs font-semibold">Vaulted</Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={updateTrait.isPending}
+                          onClick={() => updateTrait.mutate({ traitId: trait.id, data: { isActive: !trait.isActive } })}
+                          className={`h-6 px-2 text-xs ${trait.isActive ? "text-muted-foreground hover:text-foreground" : "text-primary hover:text-primary/80"}`}
+                          data-testid={`switch-active-${trait.id}`}
+                        >
+                          {trait.isActive ? "Move to Vault" : "Publish to Store"}
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -1521,7 +1543,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
     }
 
     setIsProcessing(false);
-    queryClient.invalidateQueries({ queryKey: getListTraitsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
     queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
   }
 

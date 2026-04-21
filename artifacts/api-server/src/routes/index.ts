@@ -6,6 +6,7 @@ import nftsRouter from "./nfts";
 import adminRouter from "./admin";
 import storageRouter from "./storage";
 import swapRouter from "./swap";
+import marketRouter from "./market";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(lockerRouter);
 router.use(nftsRouter);
 router.use(adminRouter);
 router.use(swapRouter);
+router.use(marketRouter);
 
 export default router;

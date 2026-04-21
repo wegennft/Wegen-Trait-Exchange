@@ -40,3 +40,26 @@ export const swapListingItemsTable = pgTable("swap_listing_items", {
 
 export type SwapListing = typeof swapListingsTable.$inferSelect;
 export type SwapListingItem = typeof swapListingItemsTable.$inferSelect;
+
+export const marketListingsTable = pgTable("market_listings", {
+  id: serial("id").primaryKey(),
+  sellerWallet: text("seller_wallet").notNull(),
+  lockerItemId: integer("locker_item_id")
+    .notNull()
+    .references(() => lockerItemsTable.id),
+  traitId: integer("trait_id")
+    .notNull()
+    .references(() => traitsTable.id),
+  traitName: text("trait_name").notNull(),
+  traitCategory: text("trait_category").notNull(),
+  traitImageUrl: text("trait_image_url"),
+  priceEth: text("price_eth").notNull(),
+  status: text("status").notNull().default("active"), // "active" | "sold" | "cancelled"
+  buyerWallet: text("buyer_wallet"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+});
+
+export type MarketListing = typeof marketListingsTable.$inferSelect;

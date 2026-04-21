@@ -27,7 +27,15 @@ import {
   Clock,
   Wallet,
   Sparkles,
+  Tag,
+  ShoppingBag,
+  Store,
+  DollarSign,
+  TrendingUp,
+  BadgeCheck,
+  AlertCircle,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: "0.08em" };
 
@@ -65,6 +73,20 @@ interface SwapListing {
   acceptedByWallet: string | null;
   createdAt: string;
   offeredItems: SwapListingItem[];
+}
+
+interface MarketListing {
+  id: number;
+  sellerWallet: string;
+  lockerItemId: number;
+  traitId: number;
+  traitName: string;
+  traitCategory: string;
+  traitImageUrl: string | null;
+  priceEth: string;
+  status: "active" | "sold" | "cancelled";
+  buyerWallet: string | null;
+  createdAt: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -531,9 +553,560 @@ function AcceptTradeModal({
   );
 }
 
+// ── Market listing card ────────────────────────────────────────────────────────
+
+function MarketListingCard({
+  listing,
+  myWallet,
+  onBuy,
+  onCancel,
+  isBuying,
+  isCancelling,
+}: {
+  listing: MarketListing;
+  myWallet: string | null;
+  onBuy: (id: number) => void;
+  onCancel: (id: number) => void;
+  isBuying: boolean;
+  isCancelling: boolean;
+}) {
+  const isOwn = myWallet?.toLowerCase() === listing.sellerWallet.toLowerCase();
+
+  return (
+    <Card className={`bg-card border-border/50 hover:border-primary/40 transition-all flex flex-col ${listing.status === "sold" ? "opacity-60" : ""}`}>
+      <div className="aspect-square w-full bg-secondary/30 overflow-hidden rounded-t-lg relative">
+        {listing.traitImageUrl ? (
+          <TraitMedia
+            url={listing.traitImageUrl}
+            alt={listing.traitName}
+            className="w-full h-full"
+            showBadge
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Package className="w-10 h-10 text-muted-foreground/30" />
+          </div>
+        )}
+        {listing.status === "sold" && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <BadgeCheck className="w-10 h-10 text-emerald-400" />
+          </div>
+        )}
+        <div className="absolute top-2 right-2">
+          <Badge className={`text-[10px] px-1.5 py-0 ${
+            listing.status === "active"
+              ? "bg-emerald-500/20 text-emerald-400 border-emerald-400/30"
+              : listing.status === "sold"
+                ? "bg-blue-500/20 text-blue-400 border-blue-400/30"
+                : "bg-secondary text-muted-foreground border-border"
+          }`}>
+            {listing.status === "active" ? "For Sale" : listing.status}
+          </Badge>
+        </div>
+      </div>
+
+      <CardContent className="pt-3 pb-4 flex-1 flex flex-col gap-3">
+        <div>
+          <div className="font-bold text-sm text-foreground truncate">{listing.traitName}</div>
+          <div className="text-[11px] text-muted-foreground capitalize">{listing.traitCategory}</div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Price</div>
+            <div className="text-lg font-bold text-accent" style={{ fontFamily: "'Bangers', sans-serif", letterSpacing: "0.08em" }}>
+              {parseFloat(listing.priceEth).toFixed(4)} <span className="text-primary">Ξ</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Seller</div>
+            <div className="text-[11px] font-mono text-muted-foreground">
+              {isOwn ? <span className="text-primary font-semibold">You</span> : `${listing.sellerWallet.slice(0, 6)}…${listing.sellerWallet.slice(-4)}`}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+          <Clock className="w-2.5 h-2.5" />
+          {timeAgo(listing.createdAt)}
+        </div>
+
+        {listing.status === "active" && (
+          isOwn ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive text-xs"
+              onClick={() => onCancel(listing.id)}
+              disabled={isCancelling}
+            >
+              {isCancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <X className="w-3.5 h-3.5 mr-1" />}
+              Cancel Listing
+            </Button>
+          ) : myWallet ? (
+            <Button
+              size="sm"
+              className="w-full bg-primary hover:bg-primary/90 text-white gap-1.5 text-xs"
+              onClick={() => onBuy(listing.id)}
+              disabled={isBuying}
+            >
+              {isBuying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+              Buy for {parseFloat(listing.priceEth).toFixed(4)} Ξ
+            </Button>
+          ) : null
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── List For Sale Modal ────────────────────────────────────────────────────────
+
+function ListForSaleModal({
+  open,
+  onClose,
+  myLockerItems,
+  walletAddress,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  myLockerItems: LockerItemMini[];
+  walletAddress: string;
+  onSuccess: () => void;
+}) {
+  const [selectedItem, setSelectedItem] = useState<LockerItemMini | null>(null);
+  const [priceEth, setPriceEth] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const { toast } = useToast();
+
+  const availableItems = myLockerItems.filter(i => i.equippedToTokenId === null);
+
+  async function handleSubmit() {
+    if (!selectedItem) { setError("Select a trait to list"); return; }
+    const p = parseFloat(priceEth);
+    if (isNaN(p) || p <= 0) { setError("Enter a valid price greater than 0"); return; }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/market/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sellerWallet: walletAddress, lockerItemId: selectedItem.id, priceEth }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to create listing");
+      }
+      toast({ title: "Trait listed for sale!" });
+      onSuccess();
+      onClose();
+      setSelectedItem(null);
+      setPriceEth("");
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle style={{ fontFamily: "'Bangers', sans-serif", letterSpacing: "0.08em", fontSize: "1.5rem" }}>
+            List Trait for Sale
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">
+            Pick a trait from your locker and set a price. Buyers pay ETH directly.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+              Choose a Trait ({availableItems.length} available)
+            </div>
+            {availableItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/50 gap-2">
+                <Package className="w-10 h-10" />
+                <p className="text-sm">No unequipped traits in your locker.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                {availableItems.map(item => (
+                  <TraitSelectCard
+                    key={item.id}
+                    item={item}
+                    selected={selectedItem?.id === item.id}
+                    onToggle={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block mb-1.5">
+              Sale Price (ETH)
+            </label>
+            <div className="relative">
+              <Input
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="e.g. 0.05"
+                value={priceEth}
+                onChange={e => setPriceEth(e.target.value)}
+                className="pr-10 font-mono"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">Ξ</span>
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-md px-3 py-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 bg-primary text-white hover:bg-primary/90 gap-2"
+              onClick={handleSubmit}
+              disabled={submitting || !selectedItem || !priceEth}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
+              List for Sale
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Trait Market section ───────────────────────────────────────────────────────
+
+function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
+  walletAddress: string | null;
+  isConnected: boolean;
+  connect: () => void;
+  myLockerItems: LockerItemMini[];
+}) {
+  const [marketTab, setMarketTab] = useState<"browse" | "mine">("browse");
+  const [listOpen, setListOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: allMarketData, isLoading: loadingMarket } = useQuery<{ listings: MarketListing[]; total: number }>({
+    queryKey: ["market-listings"],
+    queryFn: async () => {
+      const res = await fetch("/api/market/listings?status=active");
+      if (!res.ok) throw new Error("Failed to load market");
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: myMarketData, isLoading: loadingMine } = useQuery<{ listings: MarketListing[]; total: number }>({
+    queryKey: ["market-my-listings", walletAddress],
+    enabled: !!walletAddress,
+    queryFn: async () => {
+      const res = await fetch(`/api/market/listings?seller=${walletAddress}&status=all`);
+      if (!res.ok) throw new Error("Failed to load your listings");
+      return res.json();
+    },
+  });
+
+  const buyListing = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/market/listings/${id}/buy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ buyerWallet: walletAddress }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Purchase failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data: { priceEth: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["market-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["market-my-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["locker", walletAddress] });
+      toast({ title: `Trait purchased for ${parseFloat(data.priceEth).toFixed(4)} Ξ!` });
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  const cancelMarketListing = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/market/listings/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Cancel failed");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["market-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["market-my-listings"] });
+      toast({ title: "Listing cancelled" });
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  const allActive = (allMarketData?.listings ?? []).filter(
+    l => !walletAddress || l.sellerWallet.toLowerCase() !== walletAddress.toLowerCase()
+  );
+  const categories = ["all", ...Array.from(new Set(allActive.map(l => l.traitCategory)))].sort();
+  const browsed = categoryFilter === "all" ? allActive : allActive.filter(l => l.traitCategory === categoryFilter);
+  const myActive = (myMarketData?.listings ?? []).filter(l => l.status === "active");
+  const myPast = (myMarketData?.listings ?? []).filter(l => l.status !== "active");
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h2
+            className="text-3xl sm:text-4xl"
+            style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: "0.08em", color: "hsl(var(--accent))", textShadow: "2px 2px 0 rgba(0,0,0,0.8)" }}
+          >
+            Trait <span style={{ color: "hsl(var(--primary))" }}>Market</span>
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Buy and sell traits from other collectors at fixed prices.
+          </p>
+        </div>
+        {isConnected ? (
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white gap-2 flex-shrink-0"
+            onClick={() => setListOpen(true)}
+          >
+            <Tag className="w-4 h-4" />
+            List for Sale
+          </Button>
+        ) : (
+          <Button onClick={connect} className="bg-primary text-white gap-2 flex-shrink-0">
+            <Wallet className="w-4 h-4" />
+            Connect Wallet
+          </Button>
+        )}
+      </div>
+
+      {/* Market stats bar */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Listed", value: allMarketData?.total ?? 0, icon: Store },
+          { label: "My Listings", value: myActive.length, icon: Tag },
+          { label: "For You", value: browsed.length, icon: ShoppingBag },
+        ].map(({ label, value, icon: Icon }) => (
+          <div key={label} className="bg-secondary/40 border border-border/50 rounded-lg px-3 py-2 flex items-center gap-2">
+            <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+            <div>
+              <div className="text-lg font-bold leading-none">{value}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 bg-secondary/50 border border-border/50 rounded-lg p-1 w-fit">
+        {[
+          { key: "browse", label: "Browse Market", icon: Store, count: browsed.length },
+          { key: "mine", label: "My Listings", icon: Tag, count: myActive.length },
+        ].map(({ key, label, icon: Icon, count }) => (
+          <button
+            key={key}
+            onClick={() => setMarketTab(key as typeof marketTab)}
+            className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-all ${
+              marketTab === key ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+            {count > 0 && (
+              <span className={`text-[10px] rounded-full px-1.5 min-w-[18px] text-center ${
+                marketTab === key ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
+              }`}>{count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Browse tab */}
+      {marketTab === "browse" && (
+        <div className="space-y-4">
+          {/* Category filter */}
+          {categories.length > 1 && (
+            <div className="flex gap-2 flex-wrap">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all capitalize ${
+                    categoryFilter === cat
+                      ? "bg-primary text-white border-primary"
+                      : "border-border/50 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {loadingMarket ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : !isConnected ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4 text-muted-foreground/50">
+              <Wallet className="w-12 h-12" />
+              <p className="text-sm">Connect your wallet to browse and buy traits.</p>
+              <Button onClick={connect} className="bg-primary text-white">Connect Wallet</Button>
+            </div>
+          ) : browsed.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground/50">
+              <Store className="w-16 h-16" />
+              <div className="text-center">
+                <p className="text-base font-semibold text-foreground/60">No traits listed yet</p>
+                <p className="text-sm mt-1">Be the first to list a trait for sale!</p>
+              </div>
+              <Button
+                variant="outline"
+                className="border-primary/50 text-primary hover:bg-primary/10 gap-2"
+                onClick={() => setListOpen(true)}
+              >
+                <Tag className="w-4 h-4" />
+                List for Sale
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {browsed.map(listing => (
+                <MarketListingCard
+                  key={listing.id}
+                  listing={listing}
+                  myWallet={walletAddress}
+                  onBuy={id => buyListing.mutate(id)}
+                  onCancel={id => cancelMarketListing.mutate(id)}
+                  isBuying={buyListing.isPending}
+                  isCancelling={cancelMarketListing.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* My listings tab */}
+      {marketTab === "mine" && (
+        <div className="space-y-6">
+          {!isConnected ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground/50">
+              <Wallet className="w-12 h-12" />
+              <p className="text-sm">Connect your wallet to see your listings.</p>
+              <Button onClick={connect} className="bg-primary text-white">Connect Wallet</Button>
+            </div>
+          ) : loadingMine ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              {myActive.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Active Listings</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {myActive.map(listing => (
+                      <MarketListingCard
+                        key={listing.id}
+                        listing={listing}
+                        myWallet={walletAddress}
+                        onBuy={() => {}}
+                        onCancel={id => cancelMarketListing.mutate(id)}
+                        isBuying={false}
+                        isCancelling={cancelMarketListing.isPending}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {myPast.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">History</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 opacity-60">
+                    {myPast.map(listing => (
+                      <MarketListingCard
+                        key={listing.id}
+                        listing={listing}
+                        myWallet={walletAddress}
+                        onBuy={() => {}}
+                        onCancel={() => {}}
+                        isBuying={false}
+                        isCancelling={false}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {myActive.length === 0 && myPast.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground/50">
+                  <Tag className="w-14 h-14" />
+                  <div className="text-center">
+                    <p className="text-base font-semibold text-foreground/60">No listings yet</p>
+                    <p className="text-sm mt-1">List a trait for sale to get started.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-primary/50 text-primary hover:bg-primary/10 gap-2"
+                    onClick={() => setListOpen(true)}
+                  >
+                    <Tag className="w-4 h-4" />
+                    List for Sale
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {isConnected && walletAddress && (
+        <ListForSaleModal
+          open={listOpen}
+          onClose={() => setListOpen(false)}
+          myLockerItems={myLockerItems}
+          walletAddress={walletAddress}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["market-listings"] });
+            queryClient.invalidateQueries({ queryKey: ["market-my-listings"] });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Main Swap Page ────────────────────────────────────────────────────────────
 
 export function Swap() {
+  const [mainTab, setMainTab] = useState<"swap" | "market">("swap");
   const [tab, setTab] = useState<"browse" | "mine">("browse");
   const [createOpen, setCreateOpen] = useState(false);
   const [acceptTarget, setAcceptTarget] = useState<SwapListing | null>(null);
@@ -601,16 +1174,50 @@ export function Swap() {
 
   return (
     <div className="space-y-8">
-      {/* ── Hero ── */}
+      {/* ── Top-level mode tabs ── */}
+      <div>
+        <h1
+          className="text-4xl sm:text-5xl mb-4"
+          style={{ ...BANGERS, color: "hsl(var(--primary))", textShadow: "3px 3px 0 rgba(0,0,0,0.8)" }}
+        >
+          Trait<span style={{ color: "hsl(var(--accent))" }}>Swap</span>
+        </h1>
+        <div className="flex gap-1 bg-secondary/60 border border-border/50 rounded-xl p-1.5 w-fit">
+          {[
+            { key: "swap", label: "Peer Swap", icon: Repeat2, desc: "Trade trait-for-trait" },
+            { key: "market", label: "Trait Market", icon: Store, desc: "Buy & sell for ETH" },
+          ].map(({ key, label, icon: Icon, desc }) => (
+            <button
+              key={key}
+              onClick={() => setMainTab(key as typeof mainTab)}
+              className={`flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                mainTab === key
+                  ? "bg-primary text-white shadow-[0_0_12px_rgba(124,58,237,0.4)]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span>{label}</span>
+              <span className={`text-[10px] font-normal hidden sm:inline ${mainTab === key ? "text-white/70" : "text-muted-foreground/60"}`}>{desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {mainTab === "market" && (
+        <TraitMarket
+          walletAddress={walletAddress}
+          isConnected={isConnected}
+          connect={connect}
+          myLockerItems={myLockerItems}
+        />
+      )}
+
+      {mainTab === "swap" && <div className="space-y-8">
+      {/* ── Hero row for swap ── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1
-            className="text-4xl sm:text-5xl"
-            style={{ ...BANGERS, color: "hsl(var(--primary))", textShadow: "3px 3px 0 rgba(0,0,0,0.8)" }}
-          >
-            Trait<span style={{ color: "hsl(var(--accent))" }}>Swap</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground">
             Trade traits directly with other collectors — post what you're offering and describe what you want.
           </p>
         </div>
@@ -631,7 +1238,7 @@ export function Swap() {
         )}
       </div>
 
-      {/* ── Tab bar ── */}
+      {/* ── Swap inner tab bar ── */}
       <div className="flex gap-1 bg-secondary/50 border border-border/50 rounded-lg p-1 w-fit">
         {[
           { key: "browse", label: "Browse Swaps", icon: Repeat2, count: openListings.length },
@@ -787,6 +1394,7 @@ export function Swap() {
           />
         </>
       )}
+      </div>}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   useGetAdminStats,
   useListTraits,
@@ -70,6 +70,11 @@ import {
   Clock,
   Filter,
   Music,
+  Layers,
+  GripVertical,
+  RotateCw,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -120,6 +125,232 @@ const traitSchema = z.object({
 });
 
 type TraitFormValues = z.infer<typeof traitSchema>;
+
+// ── Layer Order Settings ──────────────────────────────────────────────────────
+
+const DEFAULT_LAYERS = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
+
+const LAYER_ICONS: Record<string, string> = {
+  Background: "🖼️",
+  Body: "🧍",
+  Clothes: "👕",
+  Mouth: "👄",
+  Eyes: "👁️",
+  Headgear: "🎩",
+};
+
+function LayerOrderSettings() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [layers, setLayers] = useState<string[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const { isLoading, data: layersData } = useQuery({
+    queryKey: ["admin-layers"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/layers");
+      if (!res.ok) throw new Error("Failed to load layers");
+      return res.json() as Promise<{ layerOrder: string[] }>;
+    },
+  });
+
+  useEffect(() => {
+    if (layersData?.layerOrder) {
+      setLayers(layersData.layerOrder);
+      setDirty(false);
+    }
+  }, [layersData]);
+
+  const saveLayers = useMutation({
+    mutationFn: async (newOrder: string[]) => {
+      const res = await fetch("/api/admin/layers", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ layerOrder: newOrder }),
+      });
+      if (!res.ok) throw new Error("Failed to save layers");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-layers"] });
+      setDirty(false);
+      toast({ title: "Layer order saved!" });
+    },
+    onError: () => toast({ title: "Failed to save layer order", variant: "destructive" }),
+  });
+
+  function handleDragStart(index: number) {
+    setDragIndex(index);
+  }
+
+  function handleDragEnter(index: number) {
+    if (dragIndex === null || dragIndex === index) return;
+    setHoverIndex(index);
+    const next = [...layers];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(index, 0, moved);
+    setLayers(next);
+    setDragIndex(index);
+    setDirty(true);
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null);
+    setHoverIndex(null);
+  }
+
+  function moveLayer(index: number, direction: "up" | "down") {
+    const next = [...layers];
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setLayers(next);
+    setDirty(true);
+  }
+
+  function resetToDefault() {
+    setLayers([...DEFAULT_LAYERS]);
+    setDirty(true);
+  }
+
+  const totalLayers = layers.length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold mb-1">NFT Layer Order</h2>
+          <p className="text-sm text-muted-foreground max-w-md">
+            Define the stacking order of trait layers when building NFT previews.
+            Drag to reorder — <span className="text-primary font-semibold">top items render in front</span>.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-border/50"
+            onClick={resetToDefault}
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            Reset
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5 bg-primary text-white hover:bg-primary/90"
+            disabled={!dirty || saveLayers.isPending}
+            onClick={() => saveLayers.mutate(layers)}
+          >
+            {saveLayers.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Save Order
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="space-y-2 max-w-lg">
+          {/* Top label */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold px-3 pb-1">
+            <span className="flex-1">← Renders in Front</span>
+            <span className="text-[10px]">Layer</span>
+          </div>
+
+          {layers.map((layer, index) => {
+            const isFront = index === 0;
+            const isBack = index === totalLayers - 1;
+            const zPercent = 1 - index / Math.max(totalLayers - 1, 1);
+            // Gradient: gold at front, dark at back
+            const r = Math.round(250 * zPercent + 60 * (1 - zPercent));
+            const g = Math.round(180 * zPercent + 60 * (1 - zPercent));
+            const b = Math.round(20 * zPercent + 80 * (1 - zPercent));
+            const accentColor = `rgb(${r},${g},${b})`;
+
+            return (
+              <div
+                key={layer}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragEnter={() => handleDragEnter(index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={e => e.preventDefault()}
+                className={`group flex items-center gap-3 px-4 py-3 rounded-xl border cursor-grab active:cursor-grabbing transition-all select-none ${
+                  dragIndex === index
+                    ? "opacity-50 scale-95 border-primary/60 bg-primary/10"
+                    : "border-border/50 bg-card hover:border-border hover:bg-secondary/40"
+                }`}
+              >
+                {/* Grip */}
+                <GripVertical className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground flex-shrink-0" />
+
+                {/* Color bar */}
+                <div
+                  className="w-1 h-8 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: accentColor, boxShadow: `0 0 6px ${accentColor}60` }}
+                />
+
+                {/* Emoji + name */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-xl leading-none">{LAYER_ICONS[layer] ?? "📦"}</span>
+                  <div>
+                    <div className="font-semibold text-sm text-foreground">{layer}</div>
+                    <div className="text-[10px] text-muted-foreground/60">
+                      {isFront ? "Renders in front" : isBack ? "Renders behind all" : `Layer ${totalLayers - index} of ${totalLayers}`}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Z position badge */}
+                <div
+                  className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                  style={{ backgroundColor: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}
+                >
+                  {isFront ? "Front" : isBack ? "Back" : `Z-${totalLayers - index}`}
+                </div>
+
+                {/* Arrow buttons */}
+                <div className="flex flex-col gap-0.5 flex-shrink-0">
+                  <button
+                    onClick={() => moveLayer(index, "up")}
+                    disabled={index === 0}
+                    className="p-0.5 rounded text-muted-foreground/40 hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                    title="Move forward"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => moveLayer(index, "down")}
+                    disabled={index === totalLayers - 1}
+                    className="p-0.5 rounded text-muted-foreground/40 hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                    title="Move backward"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Bottom label */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/60 uppercase tracking-widest font-semibold px-3 pt-1">
+            <span className="flex-1">← Renders Behind All</span>
+          </div>
+        </div>
+      )}
+
+      {dirty && (
+        <div className="flex items-center gap-2 text-xs text-amber-400/80 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2 max-w-lg">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          Unsaved changes — click Save Order to apply.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Admin() {
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
@@ -222,6 +453,9 @@ export function Admin() {
           </TabsTrigger>
           <TabsTrigger value="transactions" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <Activity className="w-4 h-4" /> Transactions
+          </TabsTrigger>
+          <TabsTrigger value="layers" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <Layers className="w-4 h-4" /> Layers
           </TabsTrigger>
         </TabsList>
 
@@ -476,6 +710,10 @@ export function Admin() {
 
         <TabsContent value="transactions" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <TransactionsLog />
+        </TabsContent>
+
+        <TabsContent value="layers" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <LayerOrderSettings />
         </TabsContent>
       </Tabs>
     </div>

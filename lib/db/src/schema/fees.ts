@@ -11,6 +11,7 @@ export const storeSettingsTable = pgTable("store_settings", {
   buyingFeeWallet: text("buying_fee_wallet"),
   sellingFeePercent: text("selling_fee_percent").notNull().default("0"),
   sellingFeeWallet: text("selling_fee_wallet"),
+  layerOrder: text("layer_order").default('["Background","Body","Clothes","Mouth","Eyes","Headgear"]'),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

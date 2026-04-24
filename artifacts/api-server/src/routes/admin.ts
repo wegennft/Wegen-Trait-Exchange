@@ -351,5 +351,55 @@ router.get("/admin/transactions", async (req, res): Promise<void> => {
   res.json({ transactions: rows.rows, total, limit, offset });
 });
 
+// ── GET /admin/layers ─────────────────────────────────────────────────────────
+
+const DEFAULT_LAYER_ORDER = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
+
+router.get("/admin/layers", async (_req, res): Promise<void> => {
+  let [settings] = await db.select().from(storeSettingsTable).limit(1);
+  if (!settings) {
+    [settings] = await db.insert(storeSettingsTable).values({
+      buyingFeePercent: "0",
+      buyingFeeWallet: null,
+      sellingFeePercent: "0",
+      sellingFeeWallet: null,
+    }).returning();
+  }
+  const layerOrder = settings.layerOrder
+    ? (JSON.parse(settings.layerOrder) as string[])
+    : DEFAULT_LAYER_ORDER;
+  res.json({ layerOrder });
+});
+
+// ── PUT /admin/layers ─────────────────────────────────────────────────────────
+
+router.put("/admin/layers", async (req, res): Promise<void> => {
+  const { layerOrder } = req.body as { layerOrder: string[] };
+  if (!Array.isArray(layerOrder) || layerOrder.length === 0) {
+    res.status(400).json({ error: "layerOrder must be a non-empty array" });
+    return;
+  }
+
+  let [existing] = await db.select().from(storeSettingsTable).limit(1);
+  if (!existing) {
+    [existing] = await db.insert(storeSettingsTable).values({
+      buyingFeePercent: "0",
+      buyingFeeWallet: null,
+      sellingFeePercent: "0",
+      sellingFeeWallet: null,
+      layerOrder: JSON.stringify(layerOrder),
+    }).returning();
+    res.json({ layerOrder: JSON.parse(existing.layerOrder ?? "[]") });
+    return;
+  }
+
+  const [updated] = await db
+    .update(storeSettingsTable)
+    .set({ layerOrder: JSON.stringify(layerOrder) })
+    .where(eq(storeSettingsTable.id, existing.id))
+    .returning();
+  res.json({ layerOrder: JSON.parse(updated.layerOrder ?? "[]") });
+});
+
 export default router;
 

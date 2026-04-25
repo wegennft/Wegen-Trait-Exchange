@@ -645,11 +645,11 @@ export function Admin() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         {trait.imageUrl ? (
-                          <div className="w-8 h-8 rounded bg-secondary/50 overflow-hidden flex-shrink-0">
-                            <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full" showBadge />
+                          <div className="w-14 h-14 rounded-lg bg-secondary/50 overflow-hidden flex-shrink-0">
+                            <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" showBadge />
                           </div>
                         ) : (
-                          <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center text-xs font-bold">
+                          <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-base font-bold">
                             {trait.name[0]}
                           </div>
                         )}

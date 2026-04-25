@@ -526,7 +526,7 @@ export function Admin() {
             <Percent className="w-4 h-4" /> Fees
           </TabsTrigger>
           <TabsTrigger value="transactions" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
-            <Activity className="w-4 h-4" /> Transactions
+            <Activity className="w-4 h-4" /> Transactions & Analytics
           </TabsTrigger>
           <TabsTrigger value="layers" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <Layers className="w-4 h-4" /> Layers
@@ -547,62 +547,7 @@ export function Admin() {
 
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card border-border/50 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Revenue
-            </CardTitle>
-            <DollarSign className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoadingStats ? "..." : `${stats?.totalRevenue ?? "0"} ETH`}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              From {stats?.totalSales} sales
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border/50 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Traits
-            </CardTitle>
-            <Package className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoadingStats ? "..." : stats?.activeTraits}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Out of {stats?.totalTraits} total
-            </p>
-          </CardContent>
-        </Card>
-
-
-        <Card className="bg-card border-border/50 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Top Seller
-            </CardTitle>
-            <BarChart3 className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold truncate">
-              {isLoadingStats ? "..." : stats?.topSellingTraits[0]?.name || "N/A"}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats?.topSellingTraits[0]?.salesCount || 0} sales
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-12 mb-4 space-y-3">
+      <div className="mt-0 mb-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold tracking-tight">Trait Management</h2>
@@ -1043,7 +988,61 @@ export function Admin() {
           <FeesSettings />
         </TabsContent>
 
-        <TabsContent value="transactions" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+        <TabsContent value="transactions" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)] space-y-8">
+          {/* Analytics Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-card border-border/50 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Revenue
+                </CardTitle>
+                <DollarSign className="w-4 h-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingStats ? "..." : `${stats?.totalRevenue ?? "0"} ETH`}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  From {stats?.totalSales} sales
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border/50 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Active Traits
+                </CardTitle>
+                <Package className="w-4 h-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingStats ? "..." : stats?.activeTraits}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Out of {stats?.totalTraits} total
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border/50 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Top Seller
+                </CardTitle>
+                <BarChart3 className="w-4 h-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold truncate">
+                  {isLoadingStats ? "..." : stats?.topSellingTraits[0]?.name || "N/A"}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats?.topSellingTraits[0]?.salesCount || 0} sales
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
           <TransactionsLog />
         </TabsContent>
 

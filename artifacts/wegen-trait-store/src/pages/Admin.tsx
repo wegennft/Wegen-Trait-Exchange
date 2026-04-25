@@ -363,6 +363,7 @@ export function Admin() {
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [editingTrait, setEditingTrait] = useState<Trait | null>(null);
   const [traitView, setTraitView] = useState<"all" | "in-store" | "vault">("all");
+  const [traitCategory, setTraitCategory] = useState<string>("all");
 
   const createTrait = useCreateTrait({
     mutation: {
@@ -516,22 +517,28 @@ export function Admin() {
         </Card>
       </div>
 
-      <div className="flex items-center justify-between mt-12 mb-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold tracking-tight">Trait Management</h2>
-          <div className="flex bg-secondary border border-border/50 rounded-md p-1 gap-1">
-            {(["all", "in-store", "vault"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setTraitView(v)}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${traitView === v ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                {v === "all" ? `All (${traitsData?.traits?.length ?? 0})` : v === "in-store" ? `In Store (${traitsData?.traits?.filter(t => t.isActive).length ?? 0})` : `Vault (${traitsData?.traits?.filter(t => !t.isActive).length ?? 0})`}
-              </button>
-            ))}
+      <div className="mt-12 mb-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold tracking-tight">Trait Management</h2>
+            {/* Primary tabs: All / In Store / Vault */}
+            <div className="flex bg-secondary border border-border/50 rounded-md p-1 gap-1">
+              {(["all", "in-store", "vault"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => { setTraitView(v); setTraitCategory("all"); }}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${traitView === v ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {v === "all"
+                    ? `All (${traitsData?.traits?.length ?? 0})`
+                    : v === "in-store"
+                    ? `In Store (${traitsData?.traits?.filter(t => t.isActive).length ?? 0})`
+                    : `Vault (${traitsData?.traits?.filter(t => !t.isActive).length ?? 0})`}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
           {/* Batch upload */}
           <Dialog open={isBatchOpen} onOpenChange={setIsBatchOpen}>
             <DialogTrigger asChild>
@@ -566,7 +573,43 @@ export function Admin() {
               />
             </DialogContent>
           </Dialog>
+          </div>
         </div>
+
+        {/* Secondary tabs: category filter */}
+        {(() => {
+          const primaryFiltered = (traitsData?.traits ?? []).filter(t =>
+            traitView === "all" ? true : traitView === "in-store" ? t.isActive : !t.isActive
+          );
+          const cats = ["all", ...CATEGORIES] as const;
+          return (
+            <div className="flex flex-wrap gap-1.5">
+              {cats.map((cat) => {
+                const count = cat === "all"
+                  ? primaryFiltered.length
+                  : primaryFiltered.filter(t => t.category === cat).length;
+                const isActive = traitCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setTraitCategory(cat)}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                      isActive
+                        ? "bg-primary/20 border-primary/60 text-primary shadow-[0_0_8px_rgba(124,58,237,0.25)]"
+                        : "bg-secondary/50 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+                    }`}
+                  >
+                    {cat !== "all" && <span className="text-sm leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>}
+                    {cat === "all" ? "All Categories" : cat}
+                    <span className={`ml-0.5 ${isActive ? "text-primary/80" : "text-muted-foreground/50"}`}>
+                      ({count})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       <Card className="bg-card border-border/50">
@@ -692,7 +735,8 @@ export function Admin() {
                 );
 
                 const filteredTraits = (traitsData?.traits ?? []).filter(trait =>
-                  traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive
+                  (traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive) &&
+                  (traitCategory === "all" ? true : trait.category === traitCategory)
                 );
 
                 if (filteredTraits.length === 0) {
@@ -705,12 +749,12 @@ export function Admin() {
                   );
                 }
 
-                // For All / In Store — plain flat list
-                if (traitView !== "vault") {
+                // For All / In Store, or vault with a specific category selected — plain flat list
+                if (traitView !== "vault" || traitCategory !== "all") {
                   return <>{filteredTraits.map(renderTraitRow)}</>;
                 }
 
-                // Vault — group by category
+                // Vault + All Categories — group by category
                 const grouped: Record<string, TraitItem[]> = {};
                 for (const t of filteredTraits) {
                   const cat = (t.category as string) || "Other";

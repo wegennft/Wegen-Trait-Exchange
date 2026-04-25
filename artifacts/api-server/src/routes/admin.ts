@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, asc } from "drizzle-orm";
+import { eq, sql, asc, inArray, desc } from "drizzle-orm";
 import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable } from "@workspace/db";
 import { z } from "zod";
 import { encryptAuthorityKey, verifyStoredKey } from "../keyEncryption.js";
@@ -712,6 +712,55 @@ router.post("/admin/rarities/:id/move-down", async (req, res): Promise<void> => 
   await db.update(rarityTiersTable).set({ rank: current.rank }).where(eq(rarityTiersTable.id, below.id));
   const updated = await db.select().from(rarityTiersTable).orderBy(asc(rarityTiersTable.rank));
   res.json({ tiers: updated });
+});
+
+/* ── Airdrop ────────────────────────────────────────────────────────────── */
+
+const AirdropBody = z.object({
+  walletAddress: z.string().min(1, "Wallet address required"),
+  traitIds: z.array(z.number().int().positive()).min(1).max(100),
+});
+
+router.post("/admin/airdrop", async (req, res): Promise<void> => {
+  const body = AirdropBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid body" }); return; }
+
+  const { walletAddress, traitIds } = body.data;
+
+  const traits = await db.select({ id: traitsTable.id }).from(traitsTable).where(inArray(traitsTable.id, traitIds));
+  const foundIds = new Set(traits.map((t) => t.id));
+  const missing = traitIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) { res.status(404).json({ error: `Trait IDs not found: ${missing.join(", ")}` }); return; }
+
+  const rows = traitIds.map((traitId) => ({
+    traitId,
+    walletAddress: walletAddress.toLowerCase(),
+    quantity: 1,
+    txHash: "AIRDROP",
+  }));
+
+  const inserted = await db.insert(lockerItemsTable).values(rows).returning();
+  res.json({ ok: true, count: inserted.length });
+});
+
+router.get("/admin/airdrop-history", async (req, res): Promise<void> => {
+  const limit = Math.min(Number(req.query.limit ?? 50), 200);
+  const rows = await db
+    .select({
+      id: lockerItemsTable.id,
+      walletAddress: lockerItemsTable.walletAddress,
+      traitId: lockerItemsTable.traitId,
+      traitName: traitsTable.name,
+      traitCategory: traitsTable.category,
+      traitImageUrl: traitsTable.imageUrl,
+      purchasedAt: lockerItemsTable.purchasedAt,
+    })
+    .from(lockerItemsTable)
+    .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
+    .where(eq(lockerItemsTable.txHash, "AIRDROP"))
+    .orderBy(desc(lockerItemsTable.purchasedAt))
+    .limit(limit);
+  res.json({ airdrops: rows });
 });
 
 export default router;

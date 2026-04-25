@@ -90,6 +90,9 @@ import {
   Power,
   Gamepad2,
   Trophy,
+  Send,
+  Gift,
+  History,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -535,6 +538,9 @@ export function Admin() {
           </TabsTrigger>
           <TabsTrigger value="games" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <Gamepad2 className="w-4 h-4" /> Games
+          </TabsTrigger>
+          <TabsTrigger value="airdrop" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <Gift className="w-4 h-4" /> Airdrop
           </TabsTrigger>
         </TabsList>
 
@@ -1054,6 +1060,10 @@ export function Admin() {
 
         <TabsContent value="games" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <GamesTab />
+        </TabsContent>
+
+        <TabsContent value="airdrop" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <AirdropTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -4089,6 +4099,405 @@ function GamesTab() {
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         Save Game Settings
       </Button>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AIRDROP TAB
+═══════════════════════════════════════════════════════════════════════════ */
+
+type AirdropTrait = {
+  id: number;
+  name: string;
+  category: string;
+  imageUrl?: string | null;
+  isActive: boolean;
+  rarity: string;
+};
+
+type AirdropHistoryRow = {
+  id: number;
+  walletAddress: string;
+  traitId: number;
+  traitName: string;
+  traitCategory: string;
+  traitImageUrl: string | null;
+  purchasedAt: string;
+};
+
+const AIRDROP_CATEGORIES = ["All", "Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
+const BANGERS_AD = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
+
+function AirdropTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [wallet, setWallet] = useState("");
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("All");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const { data: traitsData, isLoading: traitsLoading } = useListTraits({ limit: 9999, includeAll: true });
+  const allTraits = useMemo(
+    () => (traitsData?.traits ?? []) as AirdropTrait[],
+    [traitsData],
+  );
+
+  const { data: historyData, refetch: refetchHistory } = useQuery<{ airdrops: AirdropHistoryRow[] }>({
+    queryKey: ["admin-airdrop-history"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/airdrop-history?limit=50");
+      if (!res.ok) throw new Error("Failed to load history");
+      return res.json();
+    },
+  });
+
+  const filtered = useMemo(() => {
+    let list = allTraits;
+    if (catFilter !== "All") list = list.filter((t) => t.category === catFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((t) => t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+    }
+    return list;
+  }, [allTraits, catFilter, search]);
+
+  const selectedTraits = useMemo(
+    () => allTraits.filter((t) => selectedIds.has(t.id)),
+    [allTraits, selectedIds],
+  );
+
+  function toggle(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearSelection() { setSelectedIds(new Set()); }
+
+  const { mutate: sendAirdrop, isPending: sending } = useMutation({
+    mutationFn: async () => {
+      if (!wallet.trim()) throw new Error("Enter a wallet address");
+      if (selectedIds.size === 0) throw new Error("Select at least one trait");
+      const res = await fetch("/api/admin/airdrop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress: wallet.trim(), traitIds: [...selectedIds] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Airdrop failed");
+      return data as { ok: boolean; count: number };
+    },
+    onSuccess: (data) => {
+      toast({ title: `✅ Airdropped ${data.count} trait${data.count !== 1 ? "s" : ""} to ${wallet.slice(0, 8)}…` });
+      clearSelection();
+      setWallet("");
+      refetchHistory();
+      queryClient.invalidateQueries({ queryKey: ["admin-airdrop-history"] });
+    },
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+  });
+
+  const isValidWallet = /^0x[0-9a-fA-F]{40}$/.test(wallet.trim());
+  const canSend = isValidWallet && selectedIds.size > 0 && !sending;
+
+  return (
+    <div className="space-y-6">
+      {/* ── Header ── */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+          <Gift className="w-4 h-4" />
+        </div>
+        <div>
+          <div className="font-bold text-base" style={BANGERS_AD}>Trait Airdrop</div>
+          <div className="text-sm text-muted-foreground">
+            Send any traits directly to a wallet's Locker — no purchase required.
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
+        {/* ── Left: Trait Picker ── */}
+        <div className="space-y-4">
+          {/* Search + category filter */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Input
+                placeholder="Search traits by name…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 border-border/40"
+              />
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {AIRDROP_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCatFilter(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                    catFilter === cat
+                      ? "border-primary/70 text-primary"
+                      : "border-border/30 text-muted-foreground hover:border-primary/40"
+                  }`}
+                  style={catFilter === cat ? { background: "hsl(272 100% 62% / 0.12)" } : {}}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Trait grid */}
+          <div
+            className="rounded-xl p-3 overflow-y-auto"
+            style={{ background: "hsl(272 20% 7%)", border: "1px solid hsl(272 100% 62% / 0.15)", maxHeight: 520 }}
+          >
+            {traitsLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground/40 text-sm">No traits match your search.</div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                {filtered.map((trait) => {
+                  const sel = selectedIds.has(trait.id);
+                  return (
+                    <button
+                      key={trait.id}
+                      onClick={() => toggle(trait.id)}
+                      className={`group relative flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all ${
+                        sel
+                          ? "border-primary/70 shadow-[0_0_12px_hsl(272_100%_62%_/_0.3)]"
+                          : "border-border/20 bg-secondary/20 hover:border-primary/40 hover:bg-secondary/40"
+                      }`}
+                      style={sel ? { background: "linear-gradient(135deg, hsl(272 100% 62% / 0.18), hsl(272 100% 62% / 0.06))" } : {}}
+                    >
+                      {/* Checkmark */}
+                      {sel && (
+                        <div
+                          className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center z-10"
+                          style={{ background: "hsl(272 100% 62%)" }}
+                        >
+                          <CheckCircle2 className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+
+                      {/* Vault badge */}
+                      {!trait.isActive && (
+                        <div className="absolute top-1.5 left-1.5 px-1 py-0 rounded text-[7px] font-bold uppercase bg-secondary/80 text-muted-foreground/50 border border-border/30 z-10">
+                          Vault
+                        </div>
+                      )}
+
+                      {/* Image */}
+                      <div className="w-full aspect-square rounded-lg overflow-hidden bg-secondary/40">
+                        {trait.imageUrl ? (
+                          <TraitMedia
+                            url={trait.imageUrl}
+                            mediaType={undefined}
+                            alt={trait.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xl">📦</div>
+                        )}
+                      </div>
+
+                      {/* Name */}
+                      <p className={`text-[10px] font-semibold truncate w-full text-center ${sel ? "text-primary" : "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
+                        {trait.name}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground/40 font-mono">{trait.category}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <p className="text-[10px] text-muted-foreground/40 font-mono">
+            {filtered.length} traits shown · {allTraits.length} total · click to select
+          </p>
+        </div>
+
+        {/* ── Right: Send Panel ── */}
+        <div className="space-y-4 sticky top-4">
+          {/* Wallet input */}
+          <div
+            className="rounded-xl p-5 space-y-4"
+            style={{ background: "hsl(272 20% 7%)", border: "1px solid hsl(272 100% 62% / 0.2)" }}
+          >
+            <div className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Recipient Wallet</span>
+            </div>
+            <div className="space-y-1.5">
+              <Input
+                placeholder="0x..."
+                value={wallet}
+                onChange={(e) => setWallet(e.target.value)}
+                className={`font-mono text-sm border-border/40 ${
+                  wallet && !isValidWallet ? "border-destructive/60 focus-visible:ring-destructive/40" : ""
+                }`}
+              />
+              {wallet && !isValidWallet && (
+                <p className="text-[11px] text-destructive/80 font-mono">Must be a valid 0x… ETH address (42 chars)</p>
+              )}
+              {isValidWallet && (
+                <p className="text-[11px] text-green-500 font-mono flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Valid address
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Selected traits */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                  Selected Traits
+                </span>
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={clearSelection}
+                    className="text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" /> Clear all
+                  </button>
+                )}
+              </div>
+
+              {selectedIds.size === 0 ? (
+                <div
+                  className="flex flex-col items-center justify-center py-8 rounded-xl text-center"
+                  style={{ background: "hsl(272 20% 5%)", border: "1px dashed hsl(272 100% 62% / 0.2)" }}
+                >
+                  <Package className="w-6 h-6 text-muted-foreground/25 mb-2" />
+                  <p className="text-xs text-muted-foreground/40">No traits selected</p>
+                  <p className="text-[10px] text-muted-foreground/30 mt-0.5">Click traits in the grid to add them</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                  {selectedTraits.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                      style={{ background: "hsl(272 30% 9%)", border: "1px solid hsl(272 100% 62% / 0.15)" }}
+                    >
+                      <div className="w-8 h-8 rounded-md overflow-hidden bg-secondary/40 flex-shrink-0">
+                        {t.imageUrl ? (
+                          <TraitMedia url={t.imageUrl} mediaType={undefined} alt={t.name} className="w-full h-full object-contain" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm">📦</div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{t.name}</p>
+                        <p className="text-[10px] text-muted-foreground/50 font-mono">{t.category}</p>
+                      </div>
+                      <button onClick={() => toggle(t.id)} className="text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Count badge */}
+            {selectedIds.size > 0 && (
+              <div
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-xs"
+                style={{ background: "hsl(272 100% 62% / 0.08)", border: "1px solid hsl(272 100% 62% / 0.2)" }}
+              >
+                <span className="text-muted-foreground/70">Total to airdrop</span>
+                <span className="font-bold" style={{ color: "hsl(272 100% 75%)", ...BANGERS_AD }}>
+                  {selectedIds.size} trait{selectedIds.size !== 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+
+            {/* Send button */}
+            <Button
+              className="w-full gap-2 font-bold text-sm"
+              onClick={() => sendAirdrop()}
+              disabled={!canSend}
+              style={canSend ? {
+                background: "linear-gradient(135deg, hsl(43 100% 52%), hsl(35 100% 50%))",
+                color: "#000",
+                border: "none",
+                boxShadow: "0 0 20px hsl(43 100% 52% / 0.35)",
+              } : {}}
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {sending ? "Sending…" : `Airdrop ${selectedIds.size > 0 ? selectedIds.size : ""} Trait${selectedIds.size !== 1 ? "s" : ""}`}
+            </Button>
+
+            {!isValidWallet && wallet.length > 0 && <p className="text-[10px] text-center text-muted-foreground/40">Fix the wallet address to proceed</p>}
+            {isValidWallet && selectedIds.size === 0 && <p className="text-[10px] text-center text-muted-foreground/40">Select at least one trait from the grid</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Airdrop History ── */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+            <History className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-sm" style={BANGERS_AD}>Recent Airdrops</div>
+            <p className="text-xs text-muted-foreground">Last 50 airdrop entries — newest first.</p>
+          </div>
+        </div>
+
+        {!historyData || historyData.airdrops.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground/40 text-sm">
+            No airdrops sent yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border/30">
+                  {["When", "Wallet", "Category", "Trait"].map((h) => (
+                    <th key={h} className="text-left py-2.5 pr-4 text-muted-foreground/50 font-mono uppercase tracking-widest whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {historyData.airdrops.map((row) => (
+                  <tr key={row.id} className="border-b border-border/15 hover:bg-secondary/20 transition-colors">
+                    <td className="py-2.5 pr-4 whitespace-nowrap text-muted-foreground/50 font-mono">
+                      {new Date(row.purchasedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}{" "}
+                      <span className="text-muted-foreground/30">{new Date(row.purchasedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                    </td>
+                    <td className="py-2.5 pr-4 font-mono" style={{ color: "hsl(272 100% 72%)" }}>
+                      {row.walletAddress.slice(0, 6)}…{row.walletAddress.slice(-4)}
+                    </td>
+                    <td className="py-2.5 pr-4 text-muted-foreground/60">{row.traitCategory}</td>
+                    <td className="py-2.5 pr-4">
+                      <div className="flex items-center gap-2">
+                        {row.traitImageUrl && (
+                          <img src={row.traitImageUrl} alt={row.traitName} className="w-5 h-5 object-contain rounded" />
+                        )}
+                        <span className="font-medium">{row.traitName}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

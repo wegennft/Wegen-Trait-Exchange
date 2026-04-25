@@ -39,6 +39,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -76,6 +77,7 @@ import {
   ChevronUp,
   ChevronDown,
   Search,
+  Gem,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -458,6 +460,9 @@ export function Admin() {
           <TabsTrigger value="layers" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <Layers className="w-4 h-4" /> Layers
           </TabsTrigger>
+          <TabsTrigger value="rarities" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <Gem className="w-4 h-4" /> Rarity Tiers
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
@@ -834,7 +839,256 @@ export function Admin() {
         <TabsContent value="layers" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <LayerOrderSettings />
         </TabsContent>
+
+        <TabsContent value="rarities" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <RarityTiersSettings />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ── Rarity Tiers Settings Tab ─────────────────────────────────────────────────
+type RarityTierItem = {
+  id: number;
+  name: string;
+  rank: number;
+  color: string | null;
+  createdAt: string;
+};
+
+function RarityTiersSettings() {
+  const { toast } = useToast();
+  const [tiers, setTiers] = useState<RarityTierItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [newColor, setNewColor] = useState("#888888");
+  const [isAdding, setIsAdding] = useState(false);
+  const [movingId, setMovingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const fetchTiers = async () => {
+    const res = await fetch("/api/admin/rarities");
+    if (!res.ok) return;
+    const data = await res.json();
+    setTiers(data.tiers ?? []);
+    setIsLoading(false);
+  };
+
+  useEffect(() => { fetchTiers(); }, []);
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    setIsAdding(true);
+    try {
+      const res = await fetch("/api/admin/rarities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim(), color: newColor }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Error", description: data.error ?? "Failed to add rarity", variant: "destructive" });
+        return;
+      }
+      setNewName("");
+      setNewColor("#888888");
+      await fetchTiers();
+      toast({ title: "Rarity added", description: `"${data.tier.name}" has been added to the tier list.` });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleMove = async (id: number, dir: "up" | "down") => {
+    setMovingId(id);
+    try {
+      const res = await fetch(`/api/admin/rarities/${id}/move-${dir}`, { method: "POST" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setTiers(data.tiers ?? []);
+    } finally {
+      setMovingId(null);
+    }
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+    setDeletingId(id);
+    try {
+      await fetch(`/api/admin/rarities/${id}`, { method: "DELETE" });
+      await fetchTiers();
+      toast({ title: "Rarity removed", description: `"${name}" has been deleted.` });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const PRESET_COLORS = ["#F59E0B", "#60A5FA", "#34D399", "#9CA3AF", "#F472B6", "#A78BFA", "#FB923C", "#EF4444"];
+
+  // API returns tiers ASC by rank; rank 1 = highest (legendary), displayed at top naturally
+  const displayTiers = tiers;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1,2,3,4].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* Header */}
+      <div>
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Gem className="w-5 h-5 text-primary" />
+          Rarity Tiers
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Highest rarity is at the top, lowest at the bottom. Use the arrows to reorder.
+        </p>
+      </div>
+
+      {/* Tier list — highest rank at top */}
+      <div className="space-y-2">
+        {displayTiers.map((tier, idx) => (
+          <div
+            key={tier.id}
+            className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-secondary/30 group transition-all hover:border-primary/30"
+          >
+            {/* Color swatch */}
+            <div
+              className="w-4 h-10 rounded-md flex-shrink-0 ring-1 ring-black/20"
+              style={{ background: tier.color ?? "#888888" }}
+            />
+
+            {/* Position label */}
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+              style={{
+                background: `${tier.color ?? "#888888"}22`,
+                color: tier.color ?? "#888888",
+                border: `1px solid ${tier.color ?? "#888888"}55`,
+              }}
+            >
+              #{idx + 1}
+            </div>
+
+            {/* Name */}
+            <div className="flex-1 min-w-0">
+              <div className="font-bold capitalize text-base">{tier.name}</div>
+              <div className="text-xs text-muted-foreground/60 font-mono">{tier.color ?? "#888888"}</div>
+            </div>
+
+            {/* Move buttons — rank 1 = highest tier at top */}
+            <div className="flex flex-col gap-0.5">
+              <button
+                onClick={() => handleMove(tier.id, "up")}
+                disabled={idx === 0 || movingId === tier.id}
+                className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-25 disabled:cursor-not-allowed transition-all"
+                title="Move up (increase rarity)"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => handleMove(tier.id, "down")}
+                disabled={idx === displayTiers.length - 1 || movingId === tier.id}
+                className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-25 disabled:cursor-not-allowed transition-all"
+                title="Move down (decrease rarity)"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Delete */}
+            <button
+              onClick={() => handleDelete(tier.id, tier.name)}
+              disabled={deletingId === tier.id}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all opacity-0 group-hover:opacity-100"
+              title="Delete rarity"
+            >
+              {deletingId === tier.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        ))}
+
+        {tiers.length === 0 && (
+          <div className="text-center py-10 text-muted-foreground/50 border border-dashed border-border/30 rounded-xl">
+            No rarity tiers yet. Add one below.
+          </div>
+        )}
+      </div>
+
+      {/* Add new tier form */}
+      <div className="border border-primary/20 rounded-xl p-5 space-y-4 bg-primary/5">
+        <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Plus className="w-3.5 h-3.5" />
+          Add New Rarity Tier
+        </h4>
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Label className="text-xs mb-1.5 block">Name</Label>
+            <Input
+              placeholder="e.g. mythic, godlike…"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              className="bg-secondary/50 border-border/50 h-9"
+            />
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 block">Color</Label>
+            <input
+              type="color"
+              value={newColor}
+              onChange={e => setNewColor(e.target.value)}
+              className="h-9 w-12 rounded-md border border-border/50 bg-secondary/50 cursor-pointer p-0.5"
+              title="Pick a color for this rarity"
+            />
+          </div>
+        </div>
+
+        {/* Color presets */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground/50">Presets:</span>
+          {PRESET_COLORS.map(c => (
+            <button
+              key={c}
+              onClick={() => setNewColor(c)}
+              title={c}
+              className={`w-5 h-5 rounded-full ring-1 ring-black/20 transition-all hover:scale-125 ${newColor === c ? "ring-2 ring-white scale-125" : ""}`}
+              style={{ background: c }}
+            />
+          ))}
+        </div>
+
+        {/* Preview */}
+        {newName && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground/50">Preview:</span>
+            <span
+              className="px-2.5 py-0.5 rounded-full text-xs font-bold capitalize"
+              style={{
+                background: `${newColor}22`,
+                color: newColor,
+                border: `1px solid ${newColor}55`,
+              }}
+            >
+              {newName.trim()}
+            </span>
+          </div>
+        )}
+
+        <Button
+          onClick={handleAdd}
+          disabled={isAdding || !newName.trim()}
+          className="w-full bg-primary text-white hover:bg-primary/90 gap-2"
+        >
+          {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          Add Rarity Tier
+        </Button>
+      </div>
     </div>
   );
 }

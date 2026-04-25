@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
-import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable } from "@workspace/db";
+import { eq, sql, asc } from "drizzle-orm";
+import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable } from "@workspace/db";
 import { z } from "zod";
 
 const UpdateFeesBody = z.object({
@@ -399,6 +399,126 @@ router.put("/admin/layers", async (req, res): Promise<void> => {
     .where(eq(storeSettingsTable.id, existing.id))
     .returning();
   res.json({ layerOrder: JSON.parse(updated.layerOrder ?? "[]") });
+});
+
+// ── Rarity Tiers ─────────────────────────────────────────────────────────────
+
+const DEFAULT_RARITIES = [
+  { name: "legendary", rank: 1, color: "#F59E0B" },
+  { name: "rare",      rank: 2, color: "#60A5FA" },
+  { name: "uncommon",  rank: 3, color: "#34D399" },
+  { name: "common",    rank: 4, color: "#9CA3AF" },
+];
+
+async function ensureDefaultRarities() {
+  const existing = await db.select().from(rarityTiersTable);
+  if (existing.length === 0) {
+    await db.insert(rarityTiersTable).values(DEFAULT_RARITIES);
+  }
+}
+
+router.get("/admin/rarities", async (_req, res): Promise<void> => {
+  await ensureDefaultRarities();
+  const tiers = await db
+    .select()
+    .from(rarityTiersTable)
+    .orderBy(asc(rarityTiersTable.rank));
+  res.json({ tiers });
+});
+
+const CreateRarityBody = z.object({
+  name: z.string().min(1).max(64),
+  color: z.string().optional().default("#888888"),
+});
+
+router.post("/admin/rarities", async (req, res): Promise<void> => {
+  const body = CreateRarityBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
+  const name = body.data.name.toLowerCase().trim();
+  const existing = await db
+    .select()
+    .from(rarityTiersTable)
+    .where(eq(rarityTiersTable.name, name));
+  if (existing.length > 0) {
+    res.status(409).json({ error: `Rarity "${name}" already exists` });
+    return;
+  }
+  const maxRankResult = await db.execute(
+    sql`SELECT COALESCE(MAX(rank), 0) as max_rank FROM rarity_tiers`
+  );
+  const maxRank = Number((maxRankResult.rows[0] as { max_rank: number }).max_rank ?? 0);
+  const [tier] = await db
+    .insert(rarityTiersTable)
+    .values({ name, rank: maxRank + 1, color: body.data.color })
+    .returning();
+  res.status(201).json({ tier });
+});
+
+const UpdateRarityBody = z.object({
+  name: z.string().min(1).max(64).optional(),
+  color: z.string().optional(),
+  rank: z.number().int().optional(),
+});
+
+router.patch("/admin/rarities/:id", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const body = UpdateRarityBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: "Invalid body" }); return; }
+
+  const [updated] = await db
+    .update(rarityTiersTable)
+    .set(body.data)
+    .where(eq(rarityTiersTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ tier: updated });
+});
+
+router.delete("/admin/rarities/:id", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(rarityTiersTable).where(eq(rarityTiersTable.id, id));
+  res.json({ ok: true });
+});
+
+// Move rarity up (swap with the tier above it — lower rank number)
+router.post("/admin/rarities/:id/move-up", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const tiers = await db
+    .select()
+    .from(rarityTiersTable)
+    .orderBy(asc(rarityTiersTable.rank));
+  const idx = tiers.findIndex(t => t.id === id);
+  if (idx <= 0) { res.json({ tiers }); return; }
+  const above = tiers[idx - 1];
+  const current = tiers[idx];
+  await db.update(rarityTiersTable).set({ rank: above.rank }).where(eq(rarityTiersTable.id, current.id));
+  await db.update(rarityTiersTable).set({ rank: current.rank }).where(eq(rarityTiersTable.id, above.id));
+  const updated = await db.select().from(rarityTiersTable).orderBy(asc(rarityTiersTable.rank));
+  res.json({ tiers: updated });
+});
+
+// Move rarity down (swap with the tier below it — higher rank number)
+router.post("/admin/rarities/:id/move-down", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const tiers = await db
+    .select()
+    .from(rarityTiersTable)
+    .orderBy(asc(rarityTiersTable.rank));
+  const idx = tiers.findIndex(t => t.id === id);
+  if (idx < 0 || idx >= tiers.length - 1) { res.json({ tiers }); return; }
+  const below = tiers[idx + 1];
+  const current = tiers[idx];
+  await db.update(rarityTiersTable).set({ rank: below.rank }).where(eq(rarityTiersTable.id, current.id));
+  await db.update(rarityTiersTable).set({ rank: current.rank }).where(eq(rarityTiersTable.id, below.id));
+  const updated = await db.select().from(rarityTiersTable).orderBy(asc(rarityTiersTable.rank));
+  res.json({ tiers: updated });
 });
 
 export default router;

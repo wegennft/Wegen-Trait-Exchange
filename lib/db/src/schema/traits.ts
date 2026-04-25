@@ -6,17 +6,9 @@ import {
   integer,
   boolean,
   jsonb,
-  pgEnum,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-
-export const rarityEnum = pgEnum("rarity", [
-  "common",
-  "uncommon",
-  "rare",
-  "legendary",
-]);
 
 export const traitsTable = pgTable("traits", {
   id: serial("id").primaryKey(),
@@ -32,7 +24,7 @@ export const traitsTable = pgTable("traits", {
   theme: text("theme"),
   dropName: text("drop_name"),
   isActive: boolean("is_active").notNull().default(true),
-  rarity: rarityEnum("rarity").notNull().default("common"),
+  rarity: text("rarity").notNull().default("common"),
   payoutSplits: jsonb("payout_splits").notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -43,6 +35,16 @@ export const traitsTable = pgTable("traits", {
     .$onUpdate(() => new Date()),
 });
 
+export const rarityTiersTable = pgTable("rarity_tiers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  rank: integer("rank").notNull().default(0),
+  color: text("color").default("#888888"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const insertTraitSchema = createInsertSchema(traitsTable).omit({
   id: true,
   createdAt: true,
@@ -50,3 +52,4 @@ export const insertTraitSchema = createInsertSchema(traitsTable).omit({
 });
 export type InsertTrait = z.infer<typeof insertTraitSchema>;
 export type Trait = typeof traitsTable.$inferSelect;
+export type RarityTier = typeof rarityTiersTable.$inferSelect;

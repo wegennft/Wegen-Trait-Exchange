@@ -85,7 +85,7 @@ export const ListTraitsResponse = zod.object({
       totalSupply: zod.number(),
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
-      rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      rarity: zod.string(),
       payoutSplits: zod
         .array(
           zod.object({
@@ -140,7 +140,7 @@ export const GetTraitResponse = zod.object({
   totalSupply: zod.number(),
   remainingSupply: zod.number(),
   isActive: zod.boolean(),
-  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+  rarity: zod.string(),
   payoutSplits: zod
     .array(
       zod.object({
@@ -209,7 +209,7 @@ export const GetLockerResponse = zod.object({
         totalSupply: zod.number(),
         remainingSupply: zod.number(),
         isActive: zod.boolean(),
-        rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+        rarity: zod.string(),
         payoutSplits: zod
           .array(
             zod.object({
@@ -299,7 +299,7 @@ export const GetUserNftsResponse = zod.object({
             totalSupply: zod.number(),
             remainingSupply: zod.number(),
             isActive: zod.boolean(),
-            rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+            rarity: zod.string(),
             payoutSplits: zod
               .array(
                 zod.object({
@@ -380,7 +380,7 @@ export const ApplyTraitResponse = zod.object({
           totalSupply: zod.number(),
           remainingSupply: zod.number(),
           isActive: zod.boolean(),
-          rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          rarity: zod.string(),
           payoutSplits: zod
             .array(
               zod.object({
@@ -430,7 +430,7 @@ export const ApplyTraitResponse = zod.object({
       totalSupply: zod.number(),
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
-      rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      rarity: zod.string(),
       payoutSplits: zod
         .array(
           zod.object({
@@ -511,7 +511,7 @@ export const RemoveTraitResponse = zod.object({
           totalSupply: zod.number(),
           remainingSupply: zod.number(),
           isActive: zod.boolean(),
-          rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          rarity: zod.string(),
           payoutSplits: zod
             .array(
               zod.object({
@@ -561,7 +561,7 @@ export const RemoveTraitResponse = zod.object({
       totalSupply: zod.number(),
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
-      rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      rarity: zod.string(),
       payoutSplits: zod
         .array(
           zod.object({
@@ -629,7 +629,7 @@ export const CreateTraitBody = zod.object({
   mediaType: zod.string().nullish(),
   priceEth: zod.string(),
   totalSupply: zod.number(),
-  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+  rarity: zod.string(),
   isActive: zod.boolean().default(createTraitBodyIsActiveDefault),
   payoutSplits: zod
     .array(
@@ -666,7 +666,7 @@ export const UpdateTraitBody = zod.object({
   priceEth: zod.string().optional(),
   totalSupply: zod.number().optional(),
   isActive: zod.boolean().optional(),
-  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]).optional(),
+  rarity: zod.string().optional(),
   theme: zod
     .string()
     .nullish()
@@ -713,7 +713,7 @@ export const UpdateTraitResponse = zod.object({
   totalSupply: zod.number(),
   remainingSupply: zod.number(),
   isActive: zod.boolean(),
-  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+  rarity: zod.string(),
   payoutSplits: zod
     .array(
       zod.object({

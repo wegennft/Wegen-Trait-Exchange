@@ -670,21 +670,28 @@ export function Admin() {
                       <PayoutSplitsSummary splits={trait.payoutSplits ?? []} />
                     </TableCell>
                     <TableCell>
-                      <button
-                        disabled={updateTrait.isPending}
-                        onClick={() => updateTrait.mutate({ traitId: trait.id, data: { isActive: !trait.isActive } })}
-                        data-testid={`switch-active-${trait.id}`}
-                        title={trait.isActive ? "Click to move to Vault" : "Click to publish to Store"}
-                        className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-full border font-bold text-xs uppercase tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                          trait.isActive
-                            ? "bg-emerald-500/15 border-emerald-400/60 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.35)] hover:shadow-[0_0_16px_rgba(52,211,153,0.55)] hover:bg-emerald-500/25 hover:border-emerald-400"
-                            : "bg-secondary/60 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                        }`}
-                      >
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${trait.isActive ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse" : "bg-muted-foreground/40"}`} />
-                        {trait.isActive ? "Live" : "Vaulted"}
-                        {updateTrait.isPending && <Loader2 className="w-3 h-3 animate-spin ml-0.5" />}
-                      </button>
+                      {(() => {
+                        const isPendingThis = updateTrait.isPending &&
+                          (updateTrait.variables as { traitId: number } | undefined)?.traitId === trait.id;
+                        const displayActive = isPendingThis ? !trait.isActive : trait.isActive;
+                        return (
+                          <button
+                            disabled={updateTrait.isPending}
+                            onClick={() => updateTrait.mutate({ traitId: trait.id, data: { isActive: !trait.isActive } })}
+                            data-testid={`switch-active-${trait.id}`}
+                            title={displayActive ? "Click to move to Vault" : "Click to publish to Store"}
+                            className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-full border font-bold text-xs uppercase tracking-wider transition-all duration-200 disabled:cursor-not-allowed ${
+                              displayActive
+                                ? "bg-emerald-500/15 border-emerald-400/60 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.35)] hover:shadow-[0_0_16px_rgba(52,211,153,0.55)] hover:bg-emerald-500/25 hover:border-emerald-400"
+                                : "bg-secondary/60 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${displayActive ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse" : "bg-muted-foreground/40"}`} />
+                            {displayActive ? "ON" : "OFF"}
+                            {isPendingThis && <Loader2 className="w-3 h-3 animate-spin ml-0.5" />}
+                          </button>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

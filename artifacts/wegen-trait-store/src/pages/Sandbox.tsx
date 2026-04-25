@@ -147,7 +147,7 @@ export function Sandbox() {
   const bountyTraits = useMemo<Record<string, TraitItem | null>>(() => {
     const picks: Record<string, TraitItem | null> = {};
     for (const cat of CATEGORIES) {
-      const pool = (byCategory[cat] ?? []).filter((t) => t.isActive);
+      const pool = byCategory[cat] ?? [];
       if (pool.length === 0) { picks[cat] = null; continue; }
       const idx = Math.floor(seededRand(bountyKey + "|" + cat) * pool.length);
       picks[cat] = pool[Math.min(idx, pool.length - 1)];

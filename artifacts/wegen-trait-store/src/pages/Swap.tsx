@@ -89,6 +89,116 @@ interface MarketListing {
   createdAt: string;
 }
 
+// ── Sample preview data ───────────────────────────────────────────────────────
+
+const SAMPLE_SWAP_LISTINGS: SwapListing[] = [
+  {
+    id: -1,
+    posterWallet: "0xAbCd1234F00dBEeF1234567890abcdef12345678",
+    lookingFor: "Any rare Eyes trait, or a Legendary Headgear. Open to offers from the Cosmic collection!",
+    status: "open",
+    acceptedByWallet: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 47).toISOString(),
+    offeredItems: [
+      {
+        id: -1, listingId: -1, lockerItemId: -1, traitId: 266,
+        traitName: "420 Black And Green",
+        traitCategory: "Background",
+        traitImageUrl: "/api/storage/objects/uploads/86f560bd-abc4-4307-8e2b-960a44c3cee1",
+      },
+    ],
+  },
+  {
+    id: -2,
+    posterWallet: "0xF00DBeeF9999deAdC0dE1337C0ffee1234567890",
+    lookingFor: "Looking for a Gold Body or Silver Body — DM if you have something rare!",
+    status: "open",
+    acceptedByWallet: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    offeredItems: [
+      {
+        id: -2, listingId: -2, lockerItemId: -2, traitId: 365,
+        traitName: "Crimson",
+        traitCategory: "Body",
+        traitImageUrl: "/api/storage/objects/uploads/d7bb5b5b-b090-4de6-a305-9ea96d875308",
+      },
+      {
+        id: -3, listingId: -2, lockerItemId: -3, traitId: 272,
+        traitName: "Arcade Spot",
+        traitCategory: "Background",
+        traitImageUrl: "/api/storage/objects/uploads/35ac29b2-f60b-4209-86fc-baaabac561a3",
+      },
+    ],
+  },
+  {
+    id: -3,
+    posterWallet: "0x13370xC0de5A7eDEfFace987654321abcdef0000",
+    lookingFor: "Any Clothes trait from the vintage drop, or a rare Mouth. Willing to add a Background too.",
+    status: "open",
+    acceptedByWallet: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 11).toISOString(),
+    offeredItems: [
+      {
+        id: -4, listingId: -3, lockerItemId: -4, traitId: 362,
+        traitName: "Azure",
+        traitCategory: "Body",
+        traitImageUrl: "/api/storage/objects/uploads/34f5dc22-fb4c-4fed-9434-9efdf23da646",
+      },
+    ],
+  },
+];
+
+const SAMPLE_MARKET_LISTINGS: MarketListing[] = [
+  {
+    id: -1,
+    sellerWallet: "0xAbCd1234F00dBEeF1234567890abcdef12345678",
+    lockerItemId: -1, traitId: 270,
+    traitName: "Alchemical Mixdown",
+    traitCategory: "Background",
+    traitImageUrl: "/api/storage/objects/uploads/c1f47943-e8dd-4efc-9ea4-37dc54f17a90",
+    priceEth: "0.025",
+    status: "active",
+    buyerWallet: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+  },
+  {
+    id: -2,
+    sellerWallet: "0xF00DBeeF9999deAdC0dE1337C0ffee1234567890",
+    lockerItemId: -2, traitId: 369,
+    traitName: "Gold",
+    traitCategory: "Body",
+    traitImageUrl: "/api/storage/objects/uploads/4858e6ce-c4f2-48d2-8c4b-e5ef9d39f5b5",
+    priceEth: "0.05",
+    status: "active",
+    buyerWallet: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+  },
+  {
+    id: -3,
+    sellerWallet: "0x13370xC0de5A7eDEfFace987654321abcdef0000",
+    lockerItemId: -3, traitId: 268,
+    traitName: "Abstract Guitars",
+    traitCategory: "Background",
+    traitImageUrl: "/api/storage/objects/uploads/a68ac960-c8d1-4be6-a9b3-25e9edf25b1e",
+    priceEth: "0.015",
+    status: "active",
+    buyerWallet: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+  },
+  {
+    id: -4,
+    sellerWallet: "0xDeAdBeEf4321bEeF9876543210fedcba98765432",
+    lockerItemId: -4, traitId: 271,
+    traitName: "Anima Sanctum",
+    traitCategory: "Background",
+    traitImageUrl: "/api/storage/objects/uploads/c8c7ed72-fb22-4685-b266-b3cdf1889b84",
+    priceEth: "0.035",
+    status: "active",
+    buyerWallet: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+  },
+];
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function timeAgo(dateStr: string) {
@@ -975,26 +1085,59 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : !isConnected ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-4 text-muted-foreground/50">
-              <Wallet className="w-12 h-12" />
-              <p className="text-sm">Connect your wallet to browse and buy traits.</p>
-              <Button onClick={connect} className="bg-primary text-white">Connect Wallet</Button>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-primary/20 bg-primary/5 text-sm text-muted-foreground">
+                <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
+                <span>Connect your wallet to buy traits — here's what's available.</span>
+                <Button
+                  size="sm"
+                  className="ml-auto bg-primary hover:bg-primary/90 text-white gap-1.5 h-7 text-xs flex-shrink-0"
+                  onClick={connect}
+                >
+                  Connect Wallet
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 opacity-70 pointer-events-none select-none">
+                {SAMPLE_MARKET_LISTINGS.map(listing => (
+                  <MarketListingCard
+                    key={listing.id}
+                    listing={listing}
+                    myWallet={null}
+                    onBuy={() => {}}
+                    onCancel={() => {}}
+                    isBuying={false}
+                    isCancelling={false}
+                  />
+                ))}
+              </div>
             </div>
           ) : browsed.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground/50">
-              <Store className="w-16 h-16" />
-              <div className="text-center">
-                <p className="text-base font-semibold text-foreground/60">No traits listed yet</p>
-                <p className="text-sm mt-1">Be the first to list a trait for sale!</p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-primary/20 bg-primary/5 text-sm text-muted-foreground">
+                <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+                <span>No traits for sale yet — here's a preview of how the market will look.</span>
+                <Button
+                  size="sm"
+                  className="ml-auto bg-primary hover:bg-primary/90 text-white gap-1.5 h-7 text-xs flex-shrink-0"
+                  onClick={() => setListOpen(true)}
+                >
+                  <Tag className="w-3 h-3" />
+                  List a Trait
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                className="border-primary/50 text-primary hover:bg-primary/10 gap-2"
-                onClick={() => setListOpen(true)}
-              >
-                <Tag className="w-4 h-4" />
-                List for Sale
-              </Button>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 opacity-70 pointer-events-none select-none">
+                {SAMPLE_MARKET_LISTINGS.map(listing => (
+                  <MarketListingCard
+                    key={listing.id}
+                    listing={listing}
+                    myWallet={null}
+                    onBuy={() => {}}
+                    onCancel={() => {}}
+                    isBuying={false}
+                    isCancelling={false}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -1274,22 +1417,33 @@ export function Swap() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : openListings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground/50">
-              <Repeat2 className="w-16 h-16" />
-              <div className="text-center">
-                <p className="text-base font-semibold text-foreground/60">No open swaps yet</p>
-                <p className="text-sm mt-1">Be the first to post a trait swap listing!</p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-primary/20 bg-primary/5 text-sm text-muted-foreground">
+                <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+                <span>No live swaps yet — here's a preview of what listings will look like.</span>
+                {isConnected && (
+                  <Button
+                    size="sm"
+                    className="ml-auto bg-primary hover:bg-primary/90 text-white gap-1.5 h-7 text-xs flex-shrink-0"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    <Plus className="w-3 h-3" />
+                    Post a Swap
+                  </Button>
+                )}
               </div>
-              {isConnected && (
-                <Button
-                  variant="outline"
-                  className="border-primary/50 text-primary hover:bg-primary/10 gap-2"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                  Post a Swap
-                </Button>
-              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-70 pointer-events-none select-none">
+                {SAMPLE_SWAP_LISTINGS.map(listing => (
+                  <SwapCard
+                    key={listing.id}
+                    listing={listing}
+                    myWallet={null}
+                    myLockerItems={[]}
+                    onCancel={() => {}}
+                    onAccept={() => {}}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

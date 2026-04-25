@@ -31,19 +31,145 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground dark">
 
+      {/* ── Ambient Background Layer ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        {/* Large purple aurora orb — top left */}
+        <div
+          className="orb-drift"
+          style={{
+            position: 'absolute', top: '-10%', left: '-5%',
+            width: 700, height: 500,
+            borderRadius: '60% 40% 55% 45% / 50% 60% 40% 50%',
+            background: 'radial-gradient(ellipse at center, hsl(272 100% 55% / 0.14) 0%, hsl(272 100% 40% / 0.06) 50%, transparent 75%)',
+            filter: 'blur(40px)',
+            animationDuration: '18s',
+          }}
+        />
+        {/* Violet mist orb — top right */}
+        <div
+          className="orb-breathe"
+          style={{
+            position: 'absolute', top: '5%', right: '-8%',
+            width: 500, height: 650,
+            borderRadius: '45% 55% 40% 60% / 55% 45% 60% 40%',
+            background: 'radial-gradient(ellipse at center, hsl(285 80% 45% / 0.11) 0%, transparent 70%)',
+            filter: 'blur(50px)',
+            animationDuration: '9s',
+            animationDelay: '2s',
+          }}
+        />
+        {/* Deep purple orb — bottom right */}
+        <div
+          className="orb-drift"
+          style={{
+            position: 'absolute', bottom: '10%', right: '5%',
+            width: 550, height: 450,
+            borderRadius: '50% 50% 60% 40% / 40% 60% 50% 50%',
+            background: 'radial-gradient(ellipse at center, hsl(272 100% 38% / 0.1) 0%, transparent 70%)',
+            filter: 'blur(45px)',
+            animationDuration: '22s',
+            animationDelay: '5s',
+          }}
+        />
+        {/* Gold warmth orb — bottom left */}
+        <div
+          className="orb-breathe"
+          style={{
+            position: 'absolute', bottom: '5%', left: '5%',
+            width: 420, height: 320,
+            borderRadius: '55% 45% 50% 50% / 60% 40% 55% 45%',
+            background: 'radial-gradient(ellipse at center, hsl(43 100% 52% / 0.08) 0%, transparent 70%)',
+            filter: 'blur(40px)',
+            animationDuration: '7s',
+            animationDelay: '3.5s',
+          }}
+        />
+        {/* Centre micro orb — teal/gold */}
+        <div
+          className="orb-drift"
+          style={{
+            position: 'absolute', top: '45%', left: '45%',
+            width: 250, height: 200,
+            borderRadius: '50%',
+            background: 'radial-gradient(ellipse at center, hsl(43 80% 50% / 0.06) 0%, transparent 70%)',
+            filter: 'blur(30px)',
+            animationDuration: '15s',
+            animationDelay: '1s',
+          }}
+        />
+
+        {/* Floating particles — small glowing dots */}
+        {[
+          { left: '12%',  bottom: '20%', size: 3, color: 'hsl(272 100% 65%)', dur: '9s',  delay: '0s',   drift: '15px'  },
+          { left: '28%',  bottom: '35%', size: 2, color: 'hsl(43 100% 56%)',  dur: '12s', delay: '1.5s', drift: '-10px' },
+          { left: '45%',  bottom: '15%', size: 2, color: 'hsl(272 100% 70%)', dur: '8s',  delay: '3s',   drift: '20px'  },
+          { left: '63%',  bottom: '40%', size: 3, color: 'hsl(43 100% 60%)',  dur: '11s', delay: '0.8s', drift: '-18px' },
+          { left: '78%',  bottom: '25%', size: 2, color: 'hsl(272 100% 65%)', dur: '14s', delay: '4s',   drift: '12px'  },
+          { left: '88%',  bottom: '55%', size: 2, color: 'hsl(43 100% 56%)',  dur: '10s', delay: '2s',   drift: '-8px'  },
+          { left: '20%',  bottom: '60%', size: 2, color: 'hsl(272 100% 75%)', dur: '13s', delay: '5s',   drift: '16px'  },
+          { left: '55%',  bottom: '70%', size: 3, color: 'hsl(43 100% 65%)',  dur: '7s',  delay: '1s',   drift: '-14px' },
+          { left: '38%',  bottom: '80%', size: 2, color: 'hsl(272 100% 65%)', dur: '16s', delay: '6s',   drift: '10px'  },
+          { left: '72%',  bottom: '75%', size: 2, color: 'hsl(43 100% 56%)',  dur: '9s',  delay: '3.5s', drift: '-20px' },
+          { left: '5%',   bottom: '50%', size: 2, color: 'hsl(272 100% 70%)', dur: '11s', delay: '2.5s', drift: '18px'  },
+          { left: '93%',  bottom: '30%', size: 2, color: 'hsl(43 100% 60%)',  dur: '13s', delay: '7s',   drift: '-12px' },
+        ].map((p, i) => (
+          <div
+            key={i}
+            className="particle"
+            style={{
+              left: p.left,
+              bottom: p.bottom,
+              width: p.size,
+              height: p.size,
+              background: p.color,
+              boxShadow: `0 0 ${p.size * 3}px ${p.color}, 0 0 ${p.size * 6}px ${p.color}`,
+              '--dur': p.dur,
+              '--delay': p.delay,
+              '--drift': p.drift,
+            } as React.CSSProperties}
+          />
+        ))}
+
+        {/* Twinkling stationary sparks */}
+        {[
+          { left: '8%',  top: '25%', size: 2, color: 'hsl(43 100% 70%)',  dur: '3.2s', delay: '0s'   },
+          { left: '32%', top: '12%', size: 1, color: 'hsl(272 100% 80%)', dur: '4.5s', delay: '1.2s' },
+          { left: '58%', top: '8%',  size: 2, color: 'hsl(43 100% 65%)',  dur: '2.8s', delay: '2.1s' },
+          { left: '75%', top: '18%', size: 1, color: 'hsl(272 100% 75%)', dur: '5s',   delay: '0.7s' },
+          { left: '90%', top: '42%', size: 2, color: 'hsl(43 100% 70%)',  dur: '3.8s', delay: '3s'   },
+          { left: '15%', top: '68%', size: 1, color: 'hsl(272 100% 80%)', dur: '4.2s', delay: '1.8s' },
+          { left: '50%', top: '55%', size: 2, color: 'hsl(43 100% 60%)',  dur: '3s',   delay: '0.5s' },
+          { left: '82%', top: '72%', size: 1, color: 'hsl(272 100% 75%)', dur: '6s',   delay: '4s'   },
+        ].map((s, i) => (
+          <div
+            key={i}
+            className="particle-twinkle"
+            style={{
+              left: s.left, top: s.top,
+              width: s.size, height: s.size,
+              background: s.color,
+              boxShadow: `0 0 ${s.size * 4}px ${s.color}`,
+              '--dur': s.dur,
+              '--delay': s.delay,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 w-full border-b-2 border-primary/40 bg-background/95 backdrop-blur-xl"
+      <header
+        className="sticky top-0 z-50 w-full border-b border-primary/25 backdrop-blur-2xl"
         style={{
-          boxShadow: '0 4px 30px hsl(272 100% 62% / 0.15), 0 0 0 1px hsl(272 100% 62% / 0.08)',
+          background: 'linear-gradient(180deg, hsl(268 40% 4% / 0.97) 0%, hsl(268 38% 3% / 0.92) 100%)',
+          boxShadow: '0 4px 40px hsl(272 100% 55% / 0.12), 0 1px 0 hsl(272 100% 65% / 0.15), 0 0 80px hsl(268 40% 3% / 0.8)',
         }}
       >
-        {/* Top spray bar — thick gradient strip */}
+        {/* Top neon filigree bar */}
         <div
-          className="h-1.5 w-full"
+          className="h-[2px] w-full"
           style={{
-            background: 'linear-gradient(90deg, hsl(272 100% 62%) 0%, hsl(43 100% 52%) 50%, hsl(272 100% 62%) 100%)',
-            filter: 'blur(0.5px)',
-            boxShadow: '0 0 12px hsl(272 100% 62% / 0.7), 0 2px 20px hsl(43 100% 52% / 0.4)',
+            background: 'linear-gradient(90deg, transparent 0%, hsl(272 100% 65%) 20%, hsl(43 100% 56%) 50%, hsl(272 100% 65%) 80%, transparent 100%)',
+            boxShadow: '0 0 16px hsl(272 100% 65% / 0.8), 0 0 40px hsl(43 100% 52% / 0.4), 0 2px 30px hsl(272 100% 65% / 0.3)',
           }}
         />
 
@@ -205,95 +331,115 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Banner ── */}
       {settings.bannerUrl && !isAdminPage && (
-        <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/1', maxHeight: 500 }}>
+        <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/1', maxHeight: 500, zIndex: 1 }}>
           <img
             src={settings.bannerUrl}
             alt="Site Banner"
             className="w-full h-full object-cover"
           />
-          {/* Scanline overlay for retro feel */}
-          <div className="absolute inset-0 scanlines opacity-30 pointer-events-none" />
-          {/* Bottom fade to bg */}
+          <div className="absolute inset-0 scanlines opacity-20 pointer-events-none" />
           <div
-            className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: 'linear-gradient(to bottom, transparent, hsl(272 25% 4%))' }}
+            className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+            style={{ background: 'linear-gradient(to bottom, transparent, hsl(268 40% 3%))' }}
+          />
+          {/* Gold filigree bar at bottom of banner */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[1px] pointer-events-none"
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, hsl(43 100% 56% / 0.6) 30%, hsl(43 100% 70% / 0.9) 50%, hsl(43 100% 56% / 0.6) 70%, transparent 100%)',
+              boxShadow: '0 0 12px hsl(43 100% 56% / 0.4)',
+            }}
           />
         </div>
       )}
 
       {/* ── Main ── */}
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-8" style={{ position: 'relative', zIndex: 1 }}>
         {children}
       </main>
 
       {/* ── Footer ── */}
       <footer
-        className="relative border-t-4 border-primary/30 py-10 overflow-hidden"
-        style={{ background: 'hsl(272 28% 3%)' }}
+        className="relative py-12 overflow-hidden"
+        style={{
+          zIndex: 1,
+          background: 'linear-gradient(180deg, transparent 0%, hsl(268 40% 2% / 0.95) 30%, hsl(268 45% 2%) 100%)',
+        }}
       >
-        {/* Background brick texture */}
-        <div className="absolute inset-0 brick-bg opacity-60 pointer-events-none" />
+        {/* Gold filigree top border */}
+        <div
+          className="absolute top-0 left-0 right-0 pointer-events-none"
+          style={{ height: 1,
+            background: 'linear-gradient(90deg, transparent 0%, hsl(43 100% 56% / 0.4) 15%, hsl(43 100% 70% / 0.85) 50%, hsl(43 100% 56% / 0.4) 85%, transparent 100%)',
+            boxShadow: '0 0 20px hsl(43 100% 56% / 0.5), 0 0 60px hsl(43 100% 40% / 0.2)',
+          }}
+        />
+        {/* Diamond filigree row */}
+        <div
+          className="absolute top-0 left-0 right-0 h-8 pointer-events-none overflow-hidden opacity-30"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(45deg, hsl(43 100% 56% / 0.4) 0px, transparent 1px, transparent 18px, hsl(43 100% 56% / 0.4) 19px), repeating-linear-gradient(-45deg, hsl(43 100% 56% / 0.4) 0px, transparent 1px, transparent 18px, hsl(43 100% 56% / 0.4) 19px)',
+            backgroundSize: '26px 26px',
+            maskImage: 'linear-gradient(180deg, hsl(268 40% 2%) 0%, transparent 100%)',
+          }}
+        />
 
-        {/* Paint drips at top */}
-        <div className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden">
-          {/* Purple drips */}
-          {[8, 22, 41, 58, 73, 89].map((pct, i) => (
-            <div
-              key={i}
-              className="absolute"
-              style={{
-                left: `${pct}%`,
-                top: 0,
-                width: `${3 + (i % 3)}px`,
-                height: `${16 + (i % 4) * 8}px`,
-                background: i % 2 === 0 ? 'hsl(272 100% 62%)' : 'hsl(43 100% 52%)',
-                borderRadius: '0 0 50% 50%',
-                opacity: 0.6 + (i % 3) * 0.1,
-                filter: 'blur(0.5px)',
-              }}
-            />
-          ))}
-        </div>
+        {/* Ambient gold orb behind footer */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 800px 200px at 50% 100%, hsl(43 100% 40% / 0.07) 0%, transparent 70%)',
+          }}
+        />
 
-        <div className="container mx-auto px-4 relative z-10 flex flex-col items-center gap-4">
+        <div className="container mx-auto px-4 relative z-10 flex flex-col items-center gap-5">
           {/* Big graffiti tag */}
           <div className="text-center">
             <span
-              className="block text-6xl sm:text-7xl"
+              className="block text-6xl sm:text-8xl"
               style={{
                 ...BANGERS,
-                color: 'hsl(43 100% 52%)',
+                color: 'hsl(43 100% 56%)',
                 textShadow:
-                  '4px 4px 0px hsl(272 22% 3%), -2px -2px 0px hsl(272 22% 3%), ' +
-                  '6px 6px 0px rgba(0,0,0,0.8), 0 0 40px hsl(43 100% 52% / 0.5)',
-                WebkitTextStroke: '2px rgba(0,0,0,0.7)',
+                  '5px 5px 0px hsl(268 40% 2%), -2px -2px 0px hsl(268 40% 2%), ' +
+                  '8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(43 100% 56% / 0.6), 0 0 100px hsl(43 100% 40% / 0.3)',
+                WebkitTextStroke: '2px rgba(0,0,0,0.8)',
                 paintOrder: 'stroke fill',
               }}
             >
-              WEGEN<span style={{
-                color: 'hsl(272 100% 62%)',
+              WEGEN
+              <span style={{
+                color: 'hsl(272 100% 65%)',
                 textShadow:
-                  '4px 4px 0px hsl(272 22% 3%), -2px -2px 0px hsl(272 22% 3%), ' +
-                  '6px 6px 0px rgba(0,0,0,0.8), 0 0 40px hsl(272 100% 62% / 0.5)',
+                  '5px 5px 0px hsl(268 40% 2%), -2px -2px 0px hsl(268 40% 2%), ' +
+                  '8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(272 100% 65% / 0.7), 0 0 100px hsl(272 100% 50% / 0.3)',
               }}> NFT</span>
             </span>
           </div>
 
-          {/* Separator tag line */}
-          <div className="flex items-center gap-4 w-full max-w-xs">
+          {/* Gold filigree divider */}
+          <div className="flex items-center gap-3 w-full max-w-sm">
             <div
-              className="flex-1 h-0.5 opacity-30"
-              style={{ background: 'linear-gradient(to right, transparent, hsl(272 100% 62%))' }}
+              className="flex-1 h-px"
+              style={{ background: 'linear-gradient(to right, transparent, hsl(43 100% 56% / 0.6))' }}
+            />
+            <div
+              className="w-2 h-2 rotate-45 flex-shrink-0"
+              style={{ background: 'hsl(43 100% 56%)', boxShadow: '0 0 8px hsl(43 100% 56%)' }}
             />
             <span
-              className="text-muted-foreground/50 text-xs"
+              className="text-muted-foreground/40 text-xs flex-shrink-0"
               style={MARKER}
             >
               © {new Date().getFullYear()} all rights reserved
             </span>
             <div
-              className="flex-1 h-0.5 opacity-30"
-              style={{ background: 'linear-gradient(to left, transparent, hsl(43 100% 52%))' }}
+              className="w-2 h-2 rotate-45 flex-shrink-0"
+              style={{ background: 'hsl(272 100% 65%)', boxShadow: '0 0 8px hsl(272 100% 65%)' }}
+            />
+            <div
+              className="flex-1 h-px"
+              style={{ background: 'linear-gradient(to left, transparent, hsl(272 100% 65% / 0.6))' }}
             />
           </div>
         </div>

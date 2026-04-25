@@ -10,6 +10,7 @@ import {
   FlaskConical,
   ChevronRight,
   XCircle,
+  Download,
 } from "lucide-react";
 
 const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: "0.1em" };
@@ -39,6 +40,7 @@ type TraitItem = {
 export function Sandbox() {
   const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch all traits (including vaulted) for sandbox
   const { data: traitsData, isLoading } = useListTraits({ includeAll: true, limit: 9999 });
@@ -85,6 +87,48 @@ export function Sandbox() {
       next[cat] = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
     }
     setSelected(next);
+  }
+
+  async function saveImage() {
+    if (selectedCount === 0) return;
+    setIsSaving(true);
+    try {
+      const SIZE = 1024;
+      const offscreen = document.createElement("canvas");
+      offscreen.width = SIZE;
+      offscreen.height = SIZE;
+      const ctx = offscreen.getContext("2d");
+      if (!ctx) return;
+
+      // Draw layers back-to-front (last in layerOrder = background, first = foreground)
+      const layersBackToFront = [...layerOrder].reverse();
+      for (const cat of layersBackToFront) {
+        const trait = selected[cat];
+        if (!trait?.imageUrl) continue;
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, SIZE, SIZE);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = trait.imageUrl!;
+        });
+      }
+
+      offscreen.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wegen-sandbox-${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, "image/png");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   // Layers rendered back-to-front: iterate in reverse so index 0 (front) is on top
@@ -210,23 +254,45 @@ export function Sandbox() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2 w-full" style={{ maxWidth: 380 }}>
+            <div className="flex flex-col gap-2 w-full" style={{ maxWidth: 380 }}>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 border-primary/40 hover:bg-primary/10 hover:border-primary text-sm"
+                  onClick={randomize}
+                >
+                  <Shuffle className="w-3.5 h-3.5" />
+                  Randomize
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 border-border/40 hover:bg-destructive/10 hover:border-destructive/60 hover:text-destructive text-sm"
+                  onClick={clearAll}
+                  disabled={selectedCount === 0}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear All
+                </Button>
+              </div>
               <Button
-                variant="outline"
-                className="flex-1 gap-2 border-primary/40 hover:bg-primary/10 hover:border-primary text-sm"
-                onClick={randomize}
+                className="w-full gap-2 text-sm font-semibold"
+                onClick={saveImage}
+                disabled={selectedCount === 0 || isSaving}
+                style={{
+                  background: selectedCount === 0
+                    ? undefined
+                    : "linear-gradient(135deg, hsl(43 100% 52%), hsl(35 100% 50%))",
+                  color: selectedCount === 0 ? undefined : "#000",
+                  border: "none",
+                  boxShadow: selectedCount > 0 ? "0 0 18px hsl(43 100% 52% / 0.35)" : undefined,
+                }}
               >
-                <Shuffle className="w-3.5 h-3.5" />
-                Randomize
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 gap-2 border-border/40 hover:bg-destructive/10 hover:border-destructive/60 hover:text-destructive text-sm"
-                onClick={clearAll}
-                disabled={selectedCount === 0}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Clear All
+                {isSaving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                {isSaving ? "Saving…" : "Save Image"}
               </Button>
             </div>
 

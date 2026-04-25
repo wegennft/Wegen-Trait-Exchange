@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "7Xw9BZhNWtxX-yo5s1MvV"
+uri = "file://artifacts/wegen-trait-store/public/graffiti-bg.png"
+type = "image"
+title = "graffiti street art background"

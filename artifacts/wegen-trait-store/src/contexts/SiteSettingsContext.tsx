@@ -16,16 +16,18 @@ export interface SiteSettings {
 }
 
 export const DEFAULT_COLORS: SiteColors = {
-  primary: "#9900ff",
-  secondary: "#1f1329",
-  text: "#f0ece8",
-  headerLine: "#9900ff",
-  cardPanel: "#180e22",
+  primary: "#8800ee",
+  secondary: "#17091f",
+  text: "#f5ede0",
+  headerLine: "#c8920a",
+  cardPanel: "#110714",
 };
+
+const SETTINGS_VERSION = 4;
 
 const DEFAULT_SETTINGS: SiteSettings = {
   logoUrl: null,
-  backgroundUrl: null,
+  backgroundUrl: "/graffiti-bg.png",
   bannerUrl: null,
   colors: DEFAULT_COLORS,
 };
@@ -91,7 +93,14 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+      if (stored) {
+        const parsed = JSON.parse(stored) as SiteSettings & { _version?: number };
+        if ((parsed._version ?? 0) >= SETTINGS_VERSION) {
+          return { ...DEFAULT_SETTINGS, ...parsed };
+        }
+        // Version mismatch — wipe stale settings and apply fresh defaults
+        localStorage.removeItem(STORAGE_KEY);
+      }
     } catch {
       /* ignore */
     }
@@ -105,10 +114,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const body = document.body;
     if (settings.backgroundUrl) {
-      body.style.backgroundImage = `url(${settings.backgroundUrl}), repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(0,0,0,0.2) 28px,rgba(0,0,0,0.2) 29px), repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(0,0,0,0.15) 28px,rgba(0,0,0,0.15) 29px)`;
-      body.style.backgroundSize = "cover, auto, auto";
-      body.style.backgroundAttachment = "fixed, scroll, scroll";
-      body.style.backgroundBlendMode = "overlay, normal, normal";
+      body.style.backgroundImage = `url(${settings.backgroundUrl}), linear-gradient(180deg, hsl(270 45% 4% / 0.55) 0%, hsl(270 45% 2% / 0.75) 100%)`;
+      body.style.backgroundSize = "cover, cover";
+      body.style.backgroundAttachment = "fixed, fixed";
+      body.style.backgroundBlendMode = "screen, normal";
     } else {
       body.style.backgroundImage = "";
       body.style.backgroundSize = "";
@@ -119,13 +128,13 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const persist = useCallback((next: SiteSettings) => {
     setSettings(next);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
   }, []);
 
   const updateColors = useCallback((colors: Partial<SiteColors>) => {
     setSettings(prev => {
       const next = { ...prev, colors: { ...prev.colors, ...colors } };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
       return next;
     });
   }, []);

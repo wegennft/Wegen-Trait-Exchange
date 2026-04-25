@@ -55,31 +55,31 @@
 }
 
 :root {
-  --background: 268 40% 3%;
-  --foreground: 48 30% 94%;
-  --card: 268 35% 6%;
-  --card-foreground: 48 30% 94%;
-  --popover: 268 35% 6%;
-  --popover-foreground: 48 30% 94%;
+  --background: 270 45% 2%;
+  --foreground: 38 30% 94%;
+  --card: 270 38% 5%;
+  --card-foreground: 38 30% 94%;
+  --popover: 270 38% 5%;
+  --popover-foreground: 38 30% 94%;
 
-  --primary: 272 100% 65%;
+  --primary: 272 100% 60%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 268 25% 11%;
-  --secondary-foreground: 48 25% 90%;
+  --secondary: 268 30% 9%;
+  --secondary-foreground: 38 20% 88%;
 
-  --muted: 268 20% 14%;
-  --muted-foreground: 268 12% 52%;
+  --muted: 268 22% 12%;
+  --muted-foreground: 30 12% 50%;
 
-  --accent: 43 100% 56%;
-  --accent-foreground: 268 40% 3%;
+  --accent: 43 100% 52%;
+  --accent-foreground: 270 45% 2%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 268 22% 16%;
-  --input: 268 20% 12%;
-  --ring: 272 100% 65%;
+  --border: 38 40% 18%;
+  --input: 268 22% 10%;
+  --ring: 272 100% 60%;
 
   --radius: 0px;
 
@@ -89,31 +89,31 @@
 }
 
 .dark {
-  --background: 268 40% 3%;
-  --foreground: 48 30% 94%;
-  --card: 268 35% 5%;
-  --card-foreground: 48 30% 94%;
-  --popover: 268 35% 5%;
-  --popover-foreground: 48 30% 94%;
+  --background: 270 45% 2%;
+  --foreground: 38 30% 94%;
+  --card: 270 38% 4%;
+  --card-foreground: 38 30% 94%;
+  --popover: 270 38% 4%;
+  --popover-foreground: 38 30% 94%;
 
-  --primary: 272 100% 65%;
+  --primary: 272 100% 60%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 268 25% 10%;
-  --secondary-foreground: 48 25% 90%;
+  --secondary: 268 30% 8%;
+  --secondary-foreground: 38 20% 88%;
 
-  --muted: 268 20% 13%;
-  --muted-foreground: 268 12% 52%;
+  --muted: 268 22% 11%;
+  --muted-foreground: 30 12% 50%;
 
-  --accent: 43 100% 56%;
-  --accent-foreground: 268 40% 3%;
+  --accent: 43 100% 52%;
+  --accent-foreground: 270 45% 2%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 268 22% 15%;
-  --input: 268 20% 11%;
-  --ring: 272 100% 65%;
+  --border: 38 40% 16%;
+  --input: 268 22% 9%;
+  --ring: 272 100% 60%;
 }
 
 @layer base {
@@ -123,33 +123,31 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-color: hsl(268 40% 3%);
+    background-color: hsl(270 45% 2%);
     background-image:
-      /* Central purple aurora bloom */
-      radial-gradient(ellipse 1100px 700px at 25% 15%, hsl(272 100% 55% / 0.13) 0%, transparent 65%),
-      /* Upper-right violet mist */
-      radial-gradient(ellipse 700px 900px at 88% 10%, hsl(285 80% 45% / 0.1) 0%, transparent 65%),
-      /* Lower-right deep purple orb */
-      radial-gradient(ellipse 600px 600px at 90% 80%, hsl(272 100% 40% / 0.1) 0%, transparent 70%),
-      /* Lower-left gold accent orb */
-      radial-gradient(ellipse 500px 400px at 8% 85%, hsl(43 100% 52% / 0.07) 0%, transparent 70%),
-      /* Centre-bottom gold haze */
-      radial-gradient(ellipse 800px 300px at 50% 100%, hsl(43 100% 40% / 0.06) 0%, transparent 70%),
-      /* Faint filigree grid shimmer — horizontal */
+      /* Deep purple spray bloom — top left */
+      radial-gradient(ellipse 900px 600px at 15% 10%, hsl(272 100% 45% / 0.18) 0%, transparent 65%),
+      /* Gold smoke accent — top right */
+      radial-gradient(ellipse 500px 700px at 90% 8%, hsl(43 100% 48% / 0.09) 0%, transparent 60%),
+      /* Purple drip pool — bottom center */
+      radial-gradient(ellipse 700px 400px at 50% 100%, hsl(272 100% 35% / 0.15) 0%, transparent 70%),
+      /* Gold warmth — bottom left */
+      radial-gradient(ellipse 450px 350px at 5% 88%, hsl(43 100% 52% / 0.1) 0%, transparent 70%),
+      /* Brick mortar grid — horizontal lines */
       repeating-linear-gradient(
         0deg,
         transparent 0px,
-        transparent 80px,
-        hsl(43 100% 52% / 0.018) 80px,
-        hsl(43 100% 52% / 0.018) 81px
+        transparent 28px,
+        hsl(0 10% 8% / 0.55) 28px,
+        hsl(0 10% 8% / 0.55) 29px
       ),
-      /* Faint filigree grid shimmer — vertical */
+      /* Brick mortar grid — vertical */
       repeating-linear-gradient(
         90deg,
         transparent 0px,
-        transparent 80px,
-        hsl(272 100% 65% / 0.015) 80px,
-        hsl(272 100% 65% / 0.015) 81px
+        transparent 56px,
+        hsl(0 10% 8% / 0.35) 56px,
+        hsl(0 10% 8% / 0.35) 57px
       );
   }
 

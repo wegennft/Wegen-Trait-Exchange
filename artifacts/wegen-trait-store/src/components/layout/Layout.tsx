@@ -34,68 +34,68 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Ambient Background Layer ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-        {/* Large purple aurora orb — top left */}
+        {/* Heavy purple spray cloud — top left */}
         <div
           className="orb-drift"
           style={{
-            position: 'absolute', top: '-10%', left: '-5%',
-            width: 700, height: 500,
+            position: 'absolute', top: '-15%', left: '-8%',
+            width: 800, height: 600,
             borderRadius: '60% 40% 55% 45% / 50% 60% 40% 50%',
-            background: 'radial-gradient(ellipse at center, hsl(272 100% 55% / 0.14) 0%, hsl(272 100% 40% / 0.06) 50%, transparent 75%)',
-            filter: 'blur(40px)',
-            animationDuration: '18s',
+            background: 'radial-gradient(ellipse at center, hsl(272 100% 50% / 0.22) 0%, hsl(272 100% 35% / 0.1) 50%, transparent 78%)',
+            filter: 'blur(55px)',
+            animationDuration: '20s',
           }}
         />
-        {/* Violet mist orb — top right */}
+        {/* Gold spray burst — top right */}
         <div
           className="orb-breathe"
           style={{
-            position: 'absolute', top: '5%', right: '-8%',
-            width: 500, height: 650,
-            borderRadius: '45% 55% 40% 60% / 55% 45% 60% 40%',
-            background: 'radial-gradient(ellipse at center, hsl(285 80% 45% / 0.11) 0%, transparent 70%)',
+            position: 'absolute', top: '0%', right: '-10%',
+            width: 520, height: 480,
+            borderRadius: '40% 60% 45% 55% / 55% 45% 65% 35%',
+            background: 'radial-gradient(ellipse at center, hsl(43 100% 52% / 0.14) 0%, hsl(38 100% 40% / 0.06) 55%, transparent 75%)',
             filter: 'blur(50px)',
-            animationDuration: '9s',
-            animationDelay: '2s',
+            animationDuration: '8s',
+            animationDelay: '1.5s',
           }}
         />
-        {/* Deep purple orb — bottom right */}
+        {/* Deep purple drip cloud — bottom right */}
         <div
           className="orb-drift"
           style={{
-            position: 'absolute', bottom: '10%', right: '5%',
-            width: 550, height: 450,
+            position: 'absolute', bottom: '5%', right: '2%',
+            width: 600, height: 500,
             borderRadius: '50% 50% 60% 40% / 40% 60% 50% 50%',
-            background: 'radial-gradient(ellipse at center, hsl(272 100% 38% / 0.1) 0%, transparent 70%)',
-            filter: 'blur(45px)',
-            animationDuration: '22s',
-            animationDelay: '5s',
+            background: 'radial-gradient(ellipse at center, hsl(272 100% 40% / 0.16) 0%, hsl(285 80% 30% / 0.07) 55%, transparent 72%)',
+            filter: 'blur(48px)',
+            animationDuration: '25s',
+            animationDelay: '4s',
           }}
         />
-        {/* Gold warmth orb — bottom left */}
+        {/* Gold warm drip — bottom left */}
         <div
           className="orb-breathe"
           style={{
-            position: 'absolute', bottom: '5%', left: '5%',
-            width: 420, height: 320,
+            position: 'absolute', bottom: '0%', left: '0%',
+            width: 480, height: 380,
             borderRadius: '55% 45% 50% 50% / 60% 40% 55% 45%',
-            background: 'radial-gradient(ellipse at center, hsl(43 100% 52% / 0.08) 0%, transparent 70%)',
-            filter: 'blur(40px)',
-            animationDuration: '7s',
-            animationDelay: '3.5s',
+            background: 'radial-gradient(ellipse at center, hsl(43 100% 48% / 0.13) 0%, hsl(38 100% 36% / 0.05) 60%, transparent 75%)',
+            filter: 'blur(44px)',
+            animationDuration: '11s',
+            animationDelay: '3s',
           }}
         />
-        {/* Centre micro orb — teal/gold */}
+        {/* Volumetric smoke centre */}
         <div
           className="orb-drift"
           style={{
-            position: 'absolute', top: '45%', left: '45%',
-            width: 250, height: 200,
+            position: 'absolute', top: '40%', left: '40%',
+            width: 350, height: 280,
             borderRadius: '50%',
-            background: 'radial-gradient(ellipse at center, hsl(43 80% 50% / 0.06) 0%, transparent 70%)',
-            filter: 'blur(30px)',
-            animationDuration: '15s',
-            animationDelay: '1s',
+            background: 'radial-gradient(ellipse at center, hsl(272 80% 45% / 0.08) 0%, transparent 70%)',
+            filter: 'blur(35px)',
+            animationDuration: '17s',
+            animationDelay: '2s',
           }}
         />
 
@@ -159,18 +159,18 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Header ── */}
       <header
-        className="sticky top-0 z-50 w-full border-b border-primary/25 backdrop-blur-2xl"
+        className="sticky top-0 z-50 w-full border-b border-accent/20 backdrop-blur-2xl"
         style={{
-          background: 'linear-gradient(180deg, hsl(268 40% 4% / 0.97) 0%, hsl(268 38% 3% / 0.92) 100%)',
-          boxShadow: '0 4px 40px hsl(272 100% 55% / 0.12), 0 1px 0 hsl(272 100% 65% / 0.15), 0 0 80px hsl(268 40% 3% / 0.8)',
+          background: 'linear-gradient(180deg, hsl(270 45% 3% / 0.97) 0%, hsl(270 42% 2% / 0.93) 100%)',
+          boxShadow: '0 4px 40px hsl(272 100% 50% / 0.14), 0 1px 0 hsl(43 100% 52% / 0.2), 0 0 80px hsl(270 45% 2% / 0.85)',
         }}
       >
-        {/* Top neon filigree bar */}
+        {/* Top neon filigree bar — gold-to-purple-to-gold */}
         <div
           className="h-[2px] w-full"
           style={{
-            background: 'linear-gradient(90deg, transparent 0%, hsl(272 100% 65%) 20%, hsl(43 100% 56%) 50%, hsl(272 100% 65%) 80%, transparent 100%)',
-            boxShadow: '0 0 16px hsl(272 100% 65% / 0.8), 0 0 40px hsl(43 100% 52% / 0.4), 0 2px 30px hsl(272 100% 65% / 0.3)',
+            background: 'linear-gradient(90deg, transparent 0%, hsl(43 100% 52%) 15%, hsl(272 100% 60%) 50%, hsl(43 100% 52%) 85%, transparent 100%)',
+            boxShadow: '0 0 14px hsl(43 100% 52% / 0.9), 0 0 35px hsl(272 100% 60% / 0.5), 0 2px 28px hsl(43 100% 40% / 0.35)',
           }}
         />
 

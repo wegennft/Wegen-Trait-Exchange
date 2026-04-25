@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useListTraits } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
+import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
 import { TraitMedia } from "@/components/TraitMedia";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,6 +130,8 @@ export function Sandbox() {
     },
     staleTime: 1000 * 60 * 5,
   });
+
+  const { ethUsd } = useEthPrice();
 
   const layerOrder: string[] = layerData?.layerOrder ?? DEFAULT_LAYER_ORDER;
   const traits = (traitsData?.traits ?? []) as TraitItem[];
@@ -720,6 +723,11 @@ export function Sandbox() {
                           </p>
                           <p className="text-[10px] text-muted-foreground/40 font-mono">
                             {trait.priceEth} ETH
+                            {formatUsd(trait.priceEth, ethUsd) && (
+                              <span className="text-muted-foreground/30">
+                                {" · "}{formatUsd(trait.priceEth, ethUsd)}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </button>

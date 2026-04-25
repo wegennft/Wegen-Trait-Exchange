@@ -371,10 +371,10 @@ export function Store() {
   const { data: themesData } = useListStoreThemes();
   const { data: categoriesData, isLoading: isLoadingCategories } = useListTraitCategories();
   const { data: traitsData, isLoading: isLoadingTraits } = useListTraits(
-    { category: selectedCategory, theme: selectedTheme },
+    { category: selectedCategory, theme: selectedTheme, limit: 9999 },
     {
       query: {
-        queryKey: getListTraitsQueryKey({ category: selectedCategory, theme: selectedTheme }),
+        queryKey: getListTraitsQueryKey({ category: selectedCategory, theme: selectedTheme, limit: 9999 }),
       },
     },
   );

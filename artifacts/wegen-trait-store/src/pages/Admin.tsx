@@ -354,7 +354,7 @@ function LayerOrderSettings() {
 
 export function Admin() {
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
-  const { data: traitsData, isLoading: isLoadingTraits } = useListTraits({ includeAll: true });
+  const { data: traitsData, isLoading: isLoadingTraits } = useListTraits({ includeAll: true, limit: 9999 });
 
   const { toast } = useToast();
   const queryClient = useQueryClient();

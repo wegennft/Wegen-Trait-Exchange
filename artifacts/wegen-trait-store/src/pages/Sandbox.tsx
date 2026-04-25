@@ -41,7 +41,7 @@ export function Sandbox() {
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
 
   // Fetch all traits (including vaulted) for sandbox
-  const { data: traitsData, isLoading } = useListTraits({ includeAll: true });
+  const { data: traitsData, isLoading } = useListTraits({ includeAll: true, limit: 9999 });
 
   // Fetch layer order from admin settings
   const { data: layerData } = useQuery({

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, sql, asc } from "drizzle-orm";
 import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable } from "@workspace/db";
 import { z } from "zod";
+import { encryptAuthorityKey, verifyStoredKey } from "../keyEncryption.js";
 
 const UpdateFeesBody = z.object({
   buyingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number"),
@@ -428,6 +429,11 @@ const DEFAULT_STORE_SETTINGS = {
 };
 
 function serializeStoreSettings(settings: typeof storeSettingsTable.$inferSelect) {
+  const ciphertext = settings.updateAuthorityKeyCiphertext;
+  let hasUpdateAuthorityKey = false;
+  if (ciphertext) {
+    try { hasUpdateAuthorityKey = verifyStoredKey(ciphertext); } catch { hasUpdateAuthorityKey = false; }
+  }
   return {
     storeName: settings.storeName ?? "Wegen Trait Store",
     storeTagline: settings.storeTagline ?? "",
@@ -443,6 +449,7 @@ function serializeStoreSettings(settings: typeof storeSettingsTable.$inferSelect
     maintenanceMode: settings.maintenanceMode ?? false,
     maintenanceWhitelist: JSON.parse(settings.maintenanceWhitelist ?? "[]") as string[],
     ineligibleNfts: JSON.parse(settings.ineligibleNfts ?? "[]") as string[],
+    hasUpdateAuthorityKey,
   };
 }
 
@@ -496,6 +503,52 @@ router.put("/admin/store-settings", async (req, res): Promise<void> => {
     .returning();
 
   res.json(serializeStoreSettings(updated));
+});
+
+// ── Update Authority Key (set / clear) ────────────────────────────────────────
+
+const SetAuthorityKeyBody = z.object({
+  key: z.string().min(1, "Key must not be empty"),
+});
+
+router.post("/admin/update-authority-key", async (req, res): Promise<void> => {
+  const body = SetAuthorityKeyBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid request" });
+    return;
+  }
+  let ciphertext: string;
+  try {
+    ciphertext = encryptAuthorityKey(body.data.key);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Encryption failed";
+    res.status(500).json({ error: msg });
+    return;
+  }
+  let [existing] = await db.select().from(storeSettingsTable).limit(1);
+  if (!existing) {
+    [existing] = await db.insert(storeSettingsTable).values({ buyingFeePercent: "0", sellingFeePercent: "0" }).returning();
+  }
+  const [updated] = await db
+    .update(storeSettingsTable)
+    .set({ updateAuthorityKeyCiphertext: ciphertext })
+    .where(eq(storeSettingsTable.id, existing.id))
+    .returning();
+  res.json({ hasUpdateAuthorityKey: true, message: "Update authority key encrypted and stored." });
+  void updated;
+});
+
+router.delete("/admin/update-authority-key", async (_req, res): Promise<void> => {
+  let [existing] = await db.select().from(storeSettingsTable).limit(1);
+  if (!existing) {
+    res.json({ hasUpdateAuthorityKey: false, message: "No key was stored." });
+    return;
+  }
+  await db
+    .update(storeSettingsTable)
+    .set({ updateAuthorityKeyCiphertext: null })
+    .where(eq(storeSettingsTable.id, existing.id));
+  res.json({ hasUpdateAuthorityKey: false, message: "Update authority key cleared." });
 });
 
 // ── Rarity Tiers ─────────────────────────────────────────────────────────────

@@ -1068,6 +1068,7 @@ type StoreSettingsData = {
   maintenanceMode: boolean;
   maintenanceWhitelist: string[];
   ineligibleNfts: string[];
+  hasUpdateAuthorityKey: boolean;
 };
 
 const NETWORKS = [
@@ -1097,10 +1098,17 @@ function StoreSettingsTab() {
     maintenanceMode: false,
     maintenanceWhitelist: [],
     ineligibleNfts: [],
+    hasUpdateAuthorityKey: false,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [newWalletInput, setNewWalletInput] = useState("");
   const [newNftInput, setNewNftInput] = useState("");
+
+  // ── Update Authority Key state (separate from main form) ──
+  const [keyInput, setKeyInput] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [keyActionLoading, setKeyActionLoading] = useState<"set" | "clear" | null>(null);
+  const [keyConfirmClear, setKeyConfirmClear] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/store-settings")
@@ -1112,6 +1120,7 @@ function StoreSettingsTab() {
           maintenanceWhitelist: Array.isArray(data.maintenanceWhitelist) ? data.maintenanceWhitelist : [],
           maintenanceMode: data.maintenanceMode ?? false,
           ineligibleNfts: Array.isArray(data.ineligibleNfts) ? data.ineligibleNfts : [],
+          hasUpdateAuthorityKey: data.hasUpdateAuthorityKey ?? false,
         }));
         setIsLoading(false);
       })
@@ -1120,6 +1129,49 @@ function StoreSettingsTab() {
 
   const set = (key: keyof StoreSettingsData, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
+
+  const handleSetKey = async () => {
+    if (!keyInput.trim()) return;
+    setKeyActionLoading("set");
+    try {
+      const res = await fetch("/api/admin/update-authority-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: keyInput.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ title: "Failed to save key", description: err.error ?? "Unknown error", variant: "destructive" });
+        return;
+      }
+      setForm(prev => ({ ...prev, hasUpdateAuthorityKey: true }));
+      setKeyInput("");
+      setShowKey(false);
+      toast({ title: "Key encrypted and saved", description: "The update authority key has been securely stored." });
+    } catch {
+      toast({ title: "Network error", description: "Could not reach the server.", variant: "destructive" });
+    } finally {
+      setKeyActionLoading(null);
+    }
+  };
+
+  const handleClearKey = async () => {
+    setKeyActionLoading("clear");
+    try {
+      const res = await fetch("/api/admin/update-authority-key", { method: "DELETE" });
+      if (!res.ok) {
+        toast({ title: "Failed to clear key", variant: "destructive" });
+        return;
+      }
+      setForm(prev => ({ ...prev, hasUpdateAuthorityKey: false }));
+      setKeyConfirmClear(false);
+      toast({ title: "Key cleared", description: "The update authority key has been removed." });
+    } catch {
+      toast({ title: "Network error", description: "Could not reach the server.", variant: "destructive" });
+    } finally {
+      setKeyActionLoading(null);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -1579,6 +1631,123 @@ function StoreSettingsTab() {
             </div>
           </Field>
         </div>
+      </div>
+
+      {/* ── Update Authority Key ─────────────────────────────────── */}
+      <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6 space-y-5">
+        <SectionHeader
+          icon={
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+            </svg>
+          }
+          title="Update Authority Key"
+          description="Private key required to authorize NFT metadata updates (renaming, trait changes). Encrypted with AES-256-GCM before storage — the plaintext is never logged or returned by any API."
+        />
+
+        {/* Security warning */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/25">
+          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-red-300/80 leading-relaxed space-y-1">
+            <p className="font-semibold text-red-300">Handle with extreme care.</p>
+            <p>This key has authority over your NFT collection. Never share it, store it in plaintext, or expose it in client-side code. Only enter it here — it will be encrypted immediately and the plaintext discarded.</p>
+          </div>
+        </div>
+
+        {/* Current status */}
+        <div className="flex items-center gap-3">
+          {form.hasUpdateAuthorityKey ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-semibold">
+              <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]" />
+              Key Configured — Encrypted
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border/40 text-muted-foreground/60 text-xs font-semibold">
+              <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+              No Key Stored
+            </div>
+          )}
+        </div>
+
+        {/* Key input + set action */}
+        <div className="space-y-3">
+          <label className="text-sm font-semibold text-foreground/80">
+            {form.hasUpdateAuthorityKey ? "Replace Key" : "Set Key"}
+          </label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type={showKey ? "text" : "password"}
+                value={keyInput}
+                onChange={e => setKeyInput(e.target.value)}
+                placeholder={form.hasUpdateAuthorityKey ? "Enter new key to replace existing…" : "Paste private key…"}
+                className="w-full h-10 rounded-md border border-border/50 bg-secondary/50 px-3 pr-10 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/60 placeholder:text-muted-foreground/40"
+                onKeyDown={e => { if (e.key === "Enter" && keyInput.trim()) handleSetKey(); }}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(v => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors"
+                tabIndex={-1}
+              >
+                {showKey ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+              </button>
+            </div>
+            <button
+              onClick={handleSetKey}
+              disabled={!keyInput.trim() || keyActionLoading === "set"}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600/20 border border-green-500/40 text-green-300 text-sm font-semibold hover:bg-green-600/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+            >
+              {keyActionLoading === "set" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><polyline points="9 12 11 14 15 10"/></svg>
+              )}
+              {keyActionLoading === "set" ? "Encrypting…" : "Encrypt & Save"}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
+            The key is encrypted with AES-256-GCM using a server-managed secret before being written to the database. The plaintext is never persisted.
+          </p>
+        </div>
+
+        {/* Clear key section */}
+        {form.hasUpdateAuthorityKey && (
+          <div className="pt-2 border-t border-red-500/20">
+            {keyConfirmClear ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-red-300 font-semibold">Are you sure? This cannot be undone.</span>
+                <button
+                  onClick={handleClearKey}
+                  disabled={keyActionLoading === "clear"}
+                  className="px-3 py-1.5 rounded-lg bg-red-600/25 border border-red-500/50 text-red-300 text-xs font-bold hover:bg-red-600/40 disabled:opacity-50 transition-all"
+                >
+                  {keyActionLoading === "clear" ? "Clearing…" : "Yes, Delete Key"}
+                </button>
+                <button
+                  onClick={() => setKeyConfirmClear(false)}
+                  className="px-3 py-1.5 rounded-lg border border-border/40 text-muted-foreground/60 text-xs hover:text-foreground transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setKeyConfirmClear(true)}
+                className="flex items-center gap-1.5 text-xs text-red-400/60 hover:text-red-400 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Remove stored key
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Sticky bottom save */}

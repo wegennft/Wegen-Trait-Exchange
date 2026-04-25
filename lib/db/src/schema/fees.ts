@@ -28,6 +28,7 @@ export const storeSettingsTable = pgTable("store_settings", {
   maintenanceMode: boolean("maintenance_mode").default(false),
   maintenanceWhitelist: text("maintenance_whitelist").default("[]"),
   ineligibleNfts: text("ineligible_nfts").default("[]"),
+  updateAuthorityKeyCiphertext: text("update_authority_key_ciphertext"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

@@ -419,6 +419,7 @@ const UpdateStoreSettingsBody = z.object({
   announcementBanner: z.string().max(300).nullable().optional(),
   maxTraitsPerOrder: z.number().int().min(1).max(100).optional(),
   contractAddress: z.string().nullable().optional(),
+  collectionWallet: z.string().nullable().optional(),
   networkName: z.string().optional(),
   twitterUrl: z.string().url().nullable().optional().or(z.literal("")),
   discordUrl: z.string().url().nullable().optional().or(z.literal("")),
@@ -449,6 +450,7 @@ function serializeStoreSettings(settings: typeof storeSettingsTable.$inferSelect
     announcementBanner: settings.announcementBanner ?? null,
     maxTraitsPerOrder: settings.maxTraitsPerOrder ?? 10,
     contractAddress: settings.contractAddress ?? null,
+    collectionWallet: settings.collectionWallet ?? null,
     networkName: settings.networkName ?? "mainnet",
     twitterUrl: settings.twitterUrl ?? null,
     discordUrl: settings.discordUrl ?? null,
@@ -489,6 +491,7 @@ router.put("/admin/store-settings", async (req, res): Promise<void> => {
   if (d.announcementBanner !== undefined) toUpdate.announcementBanner = d.announcementBanner || null;
   if (d.maxTraitsPerOrder !== undefined) toUpdate.maxTraitsPerOrder = d.maxTraitsPerOrder;
   if (d.contractAddress !== undefined) toUpdate.contractAddress = d.contractAddress || null;
+  if (d.collectionWallet !== undefined) toUpdate.collectionWallet = d.collectionWallet || null;
   if (d.networkName !== undefined) toUpdate.networkName = d.networkName;
   if (d.twitterUrl !== undefined) toUpdate.twitterUrl = d.twitterUrl || null;
   if (d.discordUrl !== undefined) toUpdate.discordUrl = d.discordUrl || null;

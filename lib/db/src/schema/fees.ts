@@ -22,6 +22,7 @@ export const storeSettingsTable = pgTable("store_settings", {
   announcementBanner: text("announcement_banner"),
   maxTraitsPerOrder: integer("max_traits_per_order").default(10),
   contractAddress: text("contract_address"),
+  collectionWallet: text("collection_wallet"),
   networkName: text("network_name").default("mainnet"),
   twitterUrl: text("twitter_url"),
   discordUrl: text("discord_url"),

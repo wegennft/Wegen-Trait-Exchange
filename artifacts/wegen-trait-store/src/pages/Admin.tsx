@@ -1080,6 +1080,7 @@ type StoreSettingsData = {
   announcementBanner: string | null;
   maxTraitsPerOrder: number;
   contractAddress: string | null;
+  collectionWallet: string | null;
   networkName: string;
   twitterUrl: string | null;
   discordUrl: string | null;
@@ -1134,6 +1135,7 @@ function StoreSettingsTab() {
     announcementBanner: null,
     maxTraitsPerOrder: 10,
     contractAddress: null,
+    collectionWallet: null,
     networkName: "mainnet",
     twitterUrl: null,
     discordUrl: null,
@@ -1520,6 +1522,20 @@ function StoreSettingsTab() {
             </select>
           </Field>
         </div>
+        <Field
+          label="Collection Wallet"
+          hint="The wallet address where all trait store revenue is sent. This is the primary payout destination for trait purchases."
+        >
+          <div className="relative">
+            <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 pointer-events-none" />
+            <Input
+              value={form.collectionWallet ?? ""}
+              onChange={e => set("collectionWallet", e.target.value || null)}
+              placeholder="0x000… (ETH wallet address)"
+              className="bg-secondary/50 border-border/50 font-mono text-sm pl-9"
+            />
+          </div>
+        </Field>
       </div>
 
       {/* ── Ineligible NFTs ─────────────────────────────────────────── */}

@@ -87,6 +87,17 @@ export function Locker() {
   );
 }
 
+/* ─── Demo state types ────────────────────────────────────────────── */
+
+type DemoNft = {
+  tokenId: number; name: string; imageUrl: string | null;
+  equippedTraits: { category: string; trait: { id: number; name: string; imageUrl?: string | null; mediaType?: string } }[];
+};
+type DemoItem = {
+  id: number; quantity: number; purchasedAt: string; equippedToTokenId: number | null;
+  trait: { id: number; name: string; category: string; rarity: string; imageUrl?: string | null; mediaType?: string };
+};
+
 /* ─── Main workspace ──────────────────────────────────────────────── */
 
 function LockerContent({ demo = false }: { demo?: boolean }) {
@@ -100,6 +111,11 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const [filterLayer, setFilterLayer]   = useState("all");
   const [filterRarity, setFilterRarity] = useState("all");
   const [sortBy, setSortBy]             = useState<"rarity-desc" | "rarity-asc" | "name" | "date">("rarity-desc");
+
+  // Demo-mode local interactive state — fully mutable without wallet
+  const [demoNfts, setDemoNfts]           = useState<DemoNft[]>(() => SAMPLE_NFTS.map(n => ({ ...n, equippedTraits: n.equippedTraits.map(e => ({ ...e })) })));
+  const [demoItems, setDemoItems]         = useState<DemoItem[]>(() => DEMO_LOCKER_ITEMS.map(i => ({ ...i })));
+  const [demoEquipping, setDemoEquipping] = useState<number | null>(null);
 
   const { data: lockerData, isLoading: isLoadingLocker } = useGetLocker(walletAddress || "", {
     query: { enabled: !!walletAddress && !demo, queryKey: getGetLockerQueryKey(walletAddress || "") },
@@ -132,13 +148,11 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     },
   });
 
-  const nfts = demo ? SAMPLE_NFTS : (nftsData?.nfts ?? []);
-  const lockerItems = demo ? DEMO_LOCKER_ITEMS : (lockerData?.items ?? []);
-  const activeNft = selectedTokenId != null
-    ? nfts.find(n => n.tokenId === selectedTokenId)
-    : nfts[0] ?? null;
+  const nfts       = demo ? demoNfts  : (nftsData?.nfts ?? []);
+  const lockerItems = demo ? demoItems : (lockerData?.items ?? []);
+  const activeNft  = (selectedTokenId != null ? nfts.find(n => n.tokenId === selectedTokenId) : nfts[0]) ?? null;
 
-  const allLayers  = useMemo(() => Array.from(new Set(lockerItems.map(i => i.trait.category))).sort(), [lockerItems]);
+  const allLayers   = useMemo(() => Array.from(new Set(lockerItems.map(i => i.trait.category))).sort(), [lockerItems]);
   const allRarities = ["legendary", "rare", "uncommon", "common"];
 
   const filteredStash = useMemo(() => {
@@ -156,14 +170,52 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   }, [lockerItems, filterLayer, filterRarity, sortBy]);
 
   const handleEquip = (lockerItemId: number) => {
-    if (demo) { toast({ title: "Demo Mode", description: "Connect your wallet to equip traits." }); return; }
-    if (!activeNft || !walletAddress) return;
+    if (!activeNft) return;
+    if (demo) {
+      // Capture item synchronously before any async delay
+      const item = demoItems.find(i => i.id === lockerItemId);
+      if (!item) return;
+      const tokenId = activeNft.tokenId;
+      const replacing = activeNft.equippedTraits.some(et => et.category === item.trait.category);
+      setDemoEquipping(lockerItemId);
+      setTimeout(() => {
+        setDemoEquipping(null);
+        setDemoItems(prev => prev.map(i => {
+          if (i.trait.category === item.trait.category && i.equippedToTokenId === tokenId) return { ...i, equippedToTokenId: null };
+          if (i.id === lockerItemId) return { ...i, equippedToTokenId: tokenId };
+          return i;
+        }));
+        setDemoNfts(prev => prev.map(n => {
+          if (n.tokenId !== tokenId) return n;
+          const filtered = n.equippedTraits.filter(et => et.category !== item.trait.category);
+          return { ...n, equippedTraits: [...filtered, { category: item.trait.category, trait: { id: item.trait.id, name: item.trait.name, imageUrl: item.trait.imageUrl, mediaType: item.trait.mediaType } }] };
+        }));
+        toast({ title: replacing ? "Trait Swapped!" : "Trait Equipped!", description: replacing ? "Swapped out the old one." : "Looking fresh." });
+      }, 350);
+      return;
+    }
+    if (!walletAddress) return;
     applyTrait.mutate({ tokenId: activeNft.tokenId, data: { lockerItemId, walletAddress } });
   };
 
   const handleRemove = (category: string) => {
-    if (demo) { toast({ title: "Demo Mode", description: "Connect your wallet to remove traits." }); return; }
-    if (!activeNft || !walletAddress) return;
+    if (!activeNft) return;
+    if (demo) {
+      // Fully interactive demo — update local state
+      setDemoNfts(prev => prev.map(n =>
+        n.tokenId === activeNft.tokenId
+          ? { ...n, equippedTraits: n.equippedTraits.filter(et => et.category !== category) }
+          : n
+      ));
+      setDemoItems(prev => prev.map(i =>
+        i.trait.category === category && i.equippedToTokenId === activeNft.tokenId
+          ? { ...i, equippedToTokenId: null }
+          : i
+      ));
+      toast({ title: "Trait Removed", description: "Returned to your stash." });
+      return;
+    }
+    if (!walletAddress) return;
     removeTrait.mutate({ tokenId: activeNft.tokenId, data: { category, walletAddress } });
   };
 
@@ -476,7 +528,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                     onEquip={() => handleEquip(item.id)}
                     onHover={() => item.trait.imageUrl && setHoverTrait({ imageUrl: item.trait.imageUrl, name: item.trait.name, category: item.trait.category })}
                     onHoverEnd={() => setHoverTrait(null)}
-                    isEquipping={applyTrait.isPending && (applyTrait.variables?.data as { lockerItemId?: number })?.lockerItemId === item.id}
+                    isEquipping={demo ? demoEquipping === item.id : (applyTrait.isPending && (applyTrait.variables?.data as { lockerItemId?: number })?.lockerItemId === item.id)}
                   />
                 ))}
               </div>

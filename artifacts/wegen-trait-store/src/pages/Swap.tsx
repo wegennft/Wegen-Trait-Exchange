@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
+import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -672,6 +673,7 @@ function MarketListingCard({
   onCancel,
   isBuying,
   isCancelling,
+  ethUsd,
 }: {
   listing: MarketListing;
   myWallet: string | null;
@@ -679,6 +681,7 @@ function MarketListingCard({
   onCancel: (id: number) => void;
   isBuying: boolean;
   isCancelling: boolean;
+  ethUsd: number | null;
 }) {
   const isOwn = myWallet?.toLowerCase() === listing.sellerWallet.toLowerCase();
 
@@ -727,6 +730,11 @@ function MarketListingCard({
             <div className="text-lg font-bold text-accent" style={{ fontFamily: "'Bangers', sans-serif", letterSpacing: "0.08em" }}>
               {parseFloat(listing.priceEth).toFixed(4)} <span className="text-primary">Ξ</span>
             </div>
+            {formatUsd(listing.priceEth, ethUsd) && (
+              <div className="text-[10px] text-muted-foreground/50 font-mono">
+                ≈ {formatUsd(listing.priceEth, ethUsd)}
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Seller</div>
@@ -1107,6 +1115,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
                     onCancel={() => {}}
                     isBuying={false}
                     isCancelling={false}
+                    ethUsd={ethUsd}
                   />
                 ))}
               </div>
@@ -1135,6 +1144,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
                     onCancel={() => {}}
                     isBuying={false}
                     isCancelling={false}
+                    ethUsd={ethUsd}
                   />
                 ))}
               </div>
@@ -1150,6 +1160,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
                   onCancel={id => cancelMarketListing.mutate(id)}
                   isBuying={buyListing.isPending}
                   isCancelling={cancelMarketListing.isPending}
+                  ethUsd={ethUsd}
                 />
               ))}
             </div>
@@ -1185,6 +1196,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
                         onCancel={id => cancelMarketListing.mutate(id)}
                         isBuying={false}
                         isCancelling={cancelMarketListing.isPending}
+                        ethUsd={ethUsd}
                       />
                     ))}
                   </div>
@@ -1203,6 +1215,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
                         onCancel={() => {}}
                         isBuying={false}
                         isCancelling={false}
+                        ethUsd={ethUsd}
                       />
                     ))}
                   </div>
@@ -1256,6 +1269,7 @@ export function Swap() {
   const { walletAddress, isConnected, connect } = useWallet();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { ethUsd } = useEthPrice();
 
   const { data: allListings, isLoading: loadingAll } = useQuery<{ listings: SwapListing[]; total: number }>({
     queryKey: ["swap-listings"],

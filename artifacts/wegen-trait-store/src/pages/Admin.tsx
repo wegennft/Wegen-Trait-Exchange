@@ -4128,14 +4128,17 @@ type AirdropHistoryRow = {
 
 const AIRDROP_CATEGORIES = ["All", "Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
 const BANGERS_AD = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
+const ETH_ADDR_RE = /^0x[0-9a-fA-F]{40}$/i;
 
 function AirdropTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [wallet, setWallet] = useState("");
+  const [wallets, setWallets] = useState<string[]>([]);
+  const [walletInput, setWalletInput] = useState("");
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
+  const [rarityFilter, setRarityFilter] = useState("All");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: traitsData, isLoading: traitsLoading } = useListTraits({ limit: 9999, includeAll: true });
@@ -4143,6 +4146,12 @@ function AirdropTab() {
     () => (traitsData?.traits ?? []) as AirdropTrait[],
     [traitsData],
   );
+
+  const rarityOptions = useMemo(() => {
+    const seen = new Set<string>();
+    allTraits.forEach((t) => { if (t.rarity) seen.add(t.rarity); });
+    return ["All", ...Array.from(seen).sort()];
+  }, [allTraits]);
 
   const { data: historyData, refetch: refetchHistory } = useQuery<{ airdrops: AirdropHistoryRow[] }>({
     queryKey: ["admin-airdrop-history"],
@@ -4156,12 +4165,13 @@ function AirdropTab() {
   const filtered = useMemo(() => {
     let list = allTraits;
     if (catFilter !== "All") list = list.filter((t) => t.category === catFilter);
+    if (rarityFilter !== "All") list = list.filter((t) => t.rarity === rarityFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((t) => t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
     }
     return list;
-  }, [allTraits, catFilter, search]);
+  }, [allTraits, catFilter, rarityFilter, search]);
 
   const selectedTraits = useMemo(
     () => allTraits.filter((t) => selectedIds.has(t.id)),
@@ -4179,31 +4189,47 @@ function AirdropTab() {
 
   function clearSelection() { setSelectedIds(new Set()); }
 
+  const walletInputValid = ETH_ADDR_RE.test(walletInput.trim());
+  const walletAlreadyAdded = wallets.map((w) => w.toLowerCase()).includes(walletInput.trim().toLowerCase());
+
+  function addWallet() {
+    const addr = walletInput.trim();
+    if (!ETH_ADDR_RE.test(addr)) return;
+    if (wallets.map((w) => w.toLowerCase()).includes(addr.toLowerCase())) return;
+    setWallets((prev) => [...prev, addr]);
+    setWalletInput("");
+  }
+
+  function removeWallet(addr: string) {
+    setWallets((prev) => prev.filter((w) => w.toLowerCase() !== addr.toLowerCase()));
+  }
+
   const { mutate: sendAirdrop, isPending: sending } = useMutation({
     mutationFn: async () => {
-      if (!wallet.trim()) throw new Error("Enter a wallet address");
+      if (wallets.length === 0) throw new Error("Add at least one wallet address");
       if (selectedIds.size === 0) throw new Error("Select at least one trait");
       const res = await fetch("/api/admin/airdrop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: wallet.trim(), traitIds: [...selectedIds] }),
+        body: JSON.stringify({ walletAddresses: wallets, traitIds: [...selectedIds] }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Airdrop failed");
-      return data as { ok: boolean; count: number };
+      return data as { ok: boolean; count: number; wallets: number; traitsPerWallet: number };
     },
     onSuccess: (data) => {
-      toast({ title: `✅ Airdropped ${data.count} trait${data.count !== 1 ? "s" : ""} to ${wallet.slice(0, 8)}…` });
+      toast({
+        title: `✅ Airdropped ${data.traitsPerWallet} trait${data.traitsPerWallet !== 1 ? "s" : ""} to ${data.wallets} wallet${data.wallets !== 1 ? "s" : ""} (${data.count} total entries)`,
+      });
       clearSelection();
-      setWallet("");
+      setWallets([]);
       refetchHistory();
       queryClient.invalidateQueries({ queryKey: ["admin-airdrop-history"] });
     },
     onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
 
-  const isValidWallet = /^0x[0-9a-fA-F]{40}$/.test(wallet.trim());
-  const canSend = isValidWallet && selectedIds.size > 0 && !sending;
+  const canSend = wallets.length > 0 && selectedIds.size > 0 && !sending;
 
   return (
     <div className="space-y-6">
@@ -4223,17 +4249,20 @@ function AirdropTab() {
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
         {/* ── Left: Trait Picker ── */}
         <div className="space-y-4">
-          {/* Search + category filter */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-              <Input
-                placeholder="Search traits by name…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 border-border/40"
-              />
-            </div>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+            <Input
+              placeholder="Search traits by name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 border-border/40"
+            />
+          </div>
+
+          {/* Category filter */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest">Category</p>
             <div className="flex gap-1.5 flex-wrap">
               {AIRDROP_CATEGORIES.map((cat) => (
                 <button
@@ -4251,6 +4280,46 @@ function AirdropTab() {
               ))}
             </div>
           </div>
+
+          {/* Rarity filter */}
+          {rarityOptions.length > 1 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest">Rarity</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {rarityOptions.map((rar) => {
+                  const count = rar === "All" ? allTraits.length : allTraits.filter((t) => t.rarity === rar).length;
+                  const RARITY_COLORS: Record<string, string> = {
+                    Common: "hsl(220 13% 55%)",
+                    Uncommon: "hsl(152 60% 52%)",
+                    Rare: "hsl(210 100% 62%)",
+                    Legendary: "hsl(43 100% 55%)",
+                    Mythic: "hsl(272 100% 68%)",
+                    Divine: "hsl(340 100% 68%)",
+                  };
+                  const color = RARITY_COLORS[rar] ?? "hsl(272 100% 62%)";
+                  const active = rarityFilter === rar;
+                  return (
+                    <button
+                      key={rar}
+                      onClick={() => setRarityFilter(rar)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+                        active ? "border-opacity-70" : "border-border/30 text-muted-foreground hover:border-primary/40"
+                      }`}
+                      style={active
+                        ? { borderColor: `${color}80`, color, background: `${color}18` }
+                        : {}}
+                    >
+                      {rar !== "All" && (
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                      )}
+                      {rar}
+                      <span className="text-[9px] opacity-50 font-mono">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Trait grid */}
           <div
@@ -4328,33 +4397,93 @@ function AirdropTab() {
 
         {/* ── Right: Send Panel ── */}
         <div className="space-y-4 sticky top-4">
-          {/* Wallet input */}
+          {/* Multi-wallet input */}
           <div
             className="rounded-xl p-5 space-y-4"
             style={{ background: "hsl(272 20% 7%)", border: "1px solid hsl(272 100% 62% / 0.2)" }}
           >
-            <div className="flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-primary" />
-              <span className="font-semibold text-sm">Recipient Wallet</span>
-            </div>
-            <div className="space-y-1.5">
-              <Input
-                placeholder="0x..."
-                value={wallet}
-                onChange={(e) => setWallet(e.target.value)}
-                className={`font-mono text-sm border-border/40 ${
-                  wallet && !isValidWallet ? "border-destructive/60 focus-visible:ring-destructive/40" : ""
-                }`}
-              />
-              {wallet && !isValidWallet && (
-                <p className="text-[11px] text-destructive/80 font-mono">Must be a valid 0x… ETH address (42 chars)</p>
-              )}
-              {isValidWallet && (
-                <p className="text-[11px] text-green-500 font-mono flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Valid address
-                </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                <span className="font-semibold text-sm">Recipient Wallets</span>
+              </div>
+              {wallets.length > 0 && (
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: "hsl(272 100% 62% / 0.15)", color: "hsl(272 100% 72%)" }}
+                >
+                  {wallets.length} added
+                </span>
               )}
             </div>
+
+            {/* Add wallet row */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  placeholder="0x..."
+                  value={walletInput}
+                  onChange={(e) => setWalletInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addWallet(); } }}
+                  className={`font-mono text-sm border-border/40 pr-3 ${
+                    walletInput && !walletInputValid ? "border-destructive/60 focus-visible:ring-destructive/40" : ""
+                  } ${walletInputValid && !walletAlreadyAdded ? "border-green-500/40" : ""}`}
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={addWallet}
+                disabled={!walletInputValid || walletAlreadyAdded}
+                className="shrink-0 border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-30"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add
+              </Button>
+            </div>
+
+            {/* Inline validation hint */}
+            {walletInput && !walletInputValid && (
+              <p className="text-[11px] text-destructive/70 font-mono -mt-2">Must be a valid 0x… ETH address (42 chars)</p>
+            )}
+            {walletAlreadyAdded && walletInputValid && (
+              <p className="text-[11px] text-yellow-500/70 font-mono -mt-2">Already in the list</p>
+            )}
+
+            {/* Wallet chips */}
+            {wallets.length > 0 && (
+              <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                {wallets.map((addr, i) => (
+                  <div
+                    key={addr}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                    style={{ background: "hsl(272 30% 9%)", border: "1px solid hsl(272 100% 62% / 0.15)" }}
+                  >
+                    <span
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                      style={{ background: "hsl(272 100% 62% / 0.15)", color: "hsl(272 100% 72%)" }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 font-mono text-xs text-muted-foreground truncate">
+                      {addr.slice(0, 6)}…{addr.slice(-4)}
+                      <span className="text-muted-foreground/30 ml-1 text-[10px]">{addr.slice(6, 10)}…</span>
+                    </span>
+                    <button
+                      onClick={() => removeWallet(addr)}
+                      className="text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {wallets.length === 0 && (
+              <p className="text-[11px] text-muted-foreground/30 text-center py-2">
+                Type an address and press Enter or click Add
+              </p>
+            )}
 
             <Separator />
 
@@ -4437,11 +4566,15 @@ function AirdropTab() {
               } : {}}
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {sending ? "Sending…" : `Airdrop ${selectedIds.size > 0 ? selectedIds.size : ""} Trait${selectedIds.size !== 1 ? "s" : ""}`}
+              {sending
+                ? "Sending…"
+                : wallets.length > 1 && selectedIds.size > 0
+                  ? `Airdrop ${selectedIds.size} Trait${selectedIds.size !== 1 ? "s" : ""} × ${wallets.length} Wallets`
+                  : `Airdrop ${selectedIds.size > 0 ? selectedIds.size : ""} Trait${selectedIds.size !== 1 ? "s" : ""}`}
             </Button>
 
-            {!isValidWallet && wallet.length > 0 && <p className="text-[10px] text-center text-muted-foreground/40">Fix the wallet address to proceed</p>}
-            {isValidWallet && selectedIds.size === 0 && <p className="text-[10px] text-center text-muted-foreground/40">Select at least one trait from the grid</p>}
+            {wallets.length === 0 && <p className="text-[10px] text-center text-muted-foreground/40">Add at least one wallet address to proceed</p>}
+            {wallets.length > 0 && selectedIds.size === 0 && <p className="text-[10px] text-center text-muted-foreground/40">Select at least one trait from the grid</p>}
           </div>
         </div>
       </div>

@@ -716,8 +716,13 @@ router.post("/admin/rarities/:id/move-down", async (req, res): Promise<void> => 
 
 /* ── Airdrop ────────────────────────────────────────────────────────────── */
 
+const ETH_ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
+
 const AirdropBody = z.object({
-  walletAddress: z.string().min(1, "Wallet address required"),
+  walletAddresses: z
+    .array(z.string().regex(ETH_ADDR_RE, "Invalid ETH address"))
+    .min(1, "At least one wallet address required")
+    .max(50, "Maximum 50 wallets per airdrop"),
   traitIds: z.array(z.number().int().positive()).min(1).max(100),
 });
 
@@ -725,22 +730,24 @@ router.post("/admin/airdrop", async (req, res): Promise<void> => {
   const body = AirdropBody.safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid body" }); return; }
 
-  const { walletAddress, traitIds } = body.data;
+  const { walletAddresses, traitIds } = body.data;
 
   const traits = await db.select({ id: traitsTable.id }).from(traitsTable).where(inArray(traitsTable.id, traitIds));
   const foundIds = new Set(traits.map((t) => t.id));
   const missing = traitIds.filter((id) => !foundIds.has(id));
   if (missing.length > 0) { res.status(404).json({ error: `Trait IDs not found: ${missing.join(", ")}` }); return; }
 
-  const rows = traitIds.map((traitId) => ({
-    traitId,
-    walletAddress: walletAddress.toLowerCase(),
-    quantity: 1,
-    txHash: "AIRDROP",
-  }));
+  const rows = walletAddresses.flatMap((walletAddress) =>
+    traitIds.map((traitId) => ({
+      traitId,
+      walletAddress: walletAddress.toLowerCase(),
+      quantity: 1,
+      txHash: "AIRDROP",
+    }))
+  );
 
   const inserted = await db.insert(lockerItemsTable).values(rows).returning();
-  res.json({ ok: true, count: inserted.length });
+  res.json({ ok: true, count: inserted.length, wallets: walletAddresses.length, traitsPerWallet: traitIds.length });
 });
 
 router.get("/admin/airdrop-history", async (req, res): Promise<void> => {

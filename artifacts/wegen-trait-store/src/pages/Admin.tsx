@@ -75,6 +75,7 @@ import {
   RotateCw,
   ChevronUp,
   ChevronDown,
+  Search,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -362,6 +363,7 @@ export function Admin() {
   const [editingTrait, setEditingTrait] = useState<Trait | null>(null);
   const [traitView, setTraitView] = useState<"all" | "in-store" | "vault">("all");
   const [traitCategory, setTraitCategory] = useState<string>("all");
+  const [traitSearch, setTraitSearch] = useState<string>("");
 
   const createTrait = useCreateTrait({
     mutation: {
@@ -537,6 +539,25 @@ export function Admin() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+          {/* Search by name */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search by name…"
+              value={traitSearch}
+              onChange={(e) => setTraitSearch(e.target.value)}
+              className="pl-8 h-9 w-48 text-sm bg-secondary/40 border-border/50 focus:border-primary/60 focus:w-60 transition-all duration-200"
+            />
+            {traitSearch && (
+              <button
+                onClick={() => setTraitSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
           {/* Batch upload */}
           <Dialog open={isBatchOpen} onOpenChange={setIsBatchOpen}>
             <DialogTrigger asChild>
@@ -741,14 +762,17 @@ export function Admin() {
 
                 const filteredTraits = (traitsData?.traits ?? []).filter(trait =>
                   (traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive) &&
-                  (traitCategory === "all" ? true : trait.category === traitCategory)
+                  (traitCategory === "all" ? true : trait.category === traitCategory) &&
+                  (traitSearch.trim() === "" ? true : trait.name.toLowerCase().includes(traitSearch.trim().toLowerCase()))
                 );
 
                 if (filteredTraits.length === 0) {
                   return (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-10 text-muted-foreground text-sm">
-                        {traitView === "vault" ? "No vaulted traits" : traitView === "in-store" ? "No active traits in store" : "No traits yet"}
+                        {traitSearch.trim()
+                          ? `No traits matching "${traitSearch.trim()}"`
+                          : traitView === "vault" ? "No vaulted traits" : traitView === "in-store" ? "No active traits in store" : "No traits yet"}
                       </TableCell>
                     </TableRow>
                   );

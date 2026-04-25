@@ -416,7 +416,7 @@ function LockerContent() {
 
             {!isOpen ? (
               <div
-                className="text-center py-16 border-2 border-dashed border-primary/20 bg-card/20 brick-bg"
+                className="text-center py-16 border-2 border-dashed border-primary/20 bg-card/88 brick-bg"
               >
                 <div className="float-bounce inline-block mb-4">
                   <Lock
@@ -434,7 +434,7 @@ function LockerContent() {
               </div>
             ) : lockerItems.length === 0 ? (
               <div
-                className="text-center py-16 border-2 border-dashed border-primary/20 bg-card/20"
+                className="text-center py-16 border-2 border-dashed border-primary/20 bg-card/88"
               >
                 <Package className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">

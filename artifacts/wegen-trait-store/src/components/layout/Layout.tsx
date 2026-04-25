@@ -42,8 +42,8 @@ export function Layout({ children }: { children: ReactNode }) {
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundAttachment: 'fixed',
-            filter: 'brightness(1.25) saturate(1.1) contrast(0.95)',
-            opacity: 0.72,
+            filter: 'brightness(1.2) saturate(1.05) contrast(0.95)',
+            opacity: 0.5,
           }}
         />
       )}

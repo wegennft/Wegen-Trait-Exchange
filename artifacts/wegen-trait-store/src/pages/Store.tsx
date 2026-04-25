@@ -119,7 +119,7 @@ function NftPreviewBanner({
 
   return (
     <div
-      className="rounded-xl border border-primary/40 bg-card/60 overflow-hidden"
+      className="rounded-xl border border-primary/40 bg-card/92 overflow-hidden"
       style={{ boxShadow: "0 0 0 1px hsl(var(--primary) / 0.15) inset" }}
     >
       {/* ── Header ── */}
@@ -695,7 +695,7 @@ export function Store() {
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-card/30 border-border/50">
+        <Card className="bg-card/90 border-border/60">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-full bg-primary/20 text-primary">
               <Package className="w-5 h-5" />
@@ -706,7 +706,7 @@ export function Store() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-card/30 border-border/50">
+        <Card className="bg-card/90 border-border/60">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-full bg-accent/20 text-accent">
               <Coins className="w-5 h-5" />
@@ -717,7 +717,7 @@ export function Store() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-card/30 border-border/50">
+        <Card className="bg-card/90 border-border/60">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-full bg-blue-500/20 text-blue-500">
               <Users className="w-5 h-5" />
@@ -728,7 +728,7 @@ export function Store() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-card/30 border-border/50">
+        <Card className="bg-card/90 border-border/60">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-full bg-green-500/20 text-green-500">
               <TrendingUp className="w-5 h-5" />
@@ -842,7 +842,7 @@ export function Store() {
           ))}
         </div>
       ) : traitsData?.traits?.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-border/50 rounded-xl bg-card/30">
+        <div className="text-center py-20 border border-dashed border-border/50 rounded-xl bg-card/90">
           <div className="w-16 h-16 rounded-full bg-secondary mx-auto flex items-center justify-center mb-4">
             <ShoppingBag className="w-8 h-8 text-muted-foreground" />
           </div>
@@ -862,7 +862,7 @@ export function Store() {
           {traitsData?.traits?.map((trait, index) => (
             <Card
               key={trait.id}
-              className={`bg-card/50 border-border/50 overflow-hidden group transition-all duration-200 flex flex-col cursor-pointer ${
+              className={`bg-card/92 border-border/60 overflow-hidden group transition-all duration-200 flex flex-col cursor-pointer ${
                 previewTrait?.id === trait.id
                   ? "border-primary shadow-[0_0_22px_rgba(157,0,255,0.22)] scale-[1.015]"
                   : "hover:border-primary/50 hover:shadow-[0_0_20px_rgba(157,0,255,0.15)]"

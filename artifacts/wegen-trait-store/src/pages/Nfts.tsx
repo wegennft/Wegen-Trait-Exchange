@@ -163,7 +163,7 @@ function NftsContent() {
           ))}
         </div>
       ) : nftsData?.nfts?.length === 0 ? (
-        <div className="text-center py-24 border border-dashed border-border/50 rounded-xl bg-card/30">
+        <div className="text-center py-24 border border-dashed border-border/50 rounded-xl bg-card/90">
           <div className="w-20 h-20 rounded-full bg-secondary mx-auto flex items-center justify-center mb-6">
             <Gem className="w-10 h-10 text-muted-foreground" />
           </div>
@@ -175,7 +175,7 @@ function NftsContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {nftsData?.nfts?.map((nft) => (
-            <Card key={nft.tokenId} className="bg-card/30 border-border/50 overflow-hidden flex flex-col group relative">
+            <Card key={nft.tokenId} className="bg-card/90 border-border/60 overflow-hidden flex flex-col group relative">
               <div className="absolute top-4 left-4 z-10">
                 <Badge variant="secondary" className="bg-black/60 backdrop-blur-md font-mono">
                   <Fingerprint className="w-3 h-3 mr-1" />

@@ -93,6 +93,7 @@ import {
   Send,
   Gift,
   History,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -513,7 +514,7 @@ export function Admin() {
         </p>
       </div>
 
-      <Tabs defaultValue="dashboard" className="space-y-6">
+      <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") || "dashboard"} className="space-y-6">
         <TabsList className="bg-secondary border border-border/50 p-1 h-auto">
           <TabsTrigger value="dashboard" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <BarChart3 className="w-4 h-4" /> Dashboard
@@ -2349,6 +2350,8 @@ interface FeeSettings {
   buyingFeeWallet: string | null;
   sellingFeePercent: string;
   sellingFeeWallet: string | null;
+  marketplaceListingFeePercent: string;
+  marketplaceListingFeeWallet: string | null;
 }
 
 const feeSchema = z.object({
@@ -2362,6 +2365,11 @@ const feeSchema = z.object({
     .regex(/^\d+(\.\d+)?$/, "Must be a valid number (e.g. 2.5)")
     .refine(v => parseFloat(v) <= 100, "Cannot exceed 100%"),
   sellingFeeWallet: z.string().optional(),
+  marketplaceListingFeePercent: z
+    .string()
+    .regex(/^\d+(\.\d+)?$/, "Must be a valid number (e.g. 2.5)")
+    .refine(v => parseFloat(v) <= 100, "Cannot exceed 100%"),
+  marketplaceListingFeeWallet: z.string().optional(),
 });
 
 type FeeFormValues = z.infer<typeof feeSchema>;
@@ -2386,6 +2394,8 @@ function FeesSettings() {
       buyingFeeWallet: "",
       sellingFeePercent: "0",
       sellingFeeWallet: "",
+      marketplaceListingFeePercent: "0",
+      marketplaceListingFeeWallet: "",
     },
     values: fees
       ? {
@@ -2393,6 +2403,8 @@ function FeesSettings() {
           buyingFeeWallet: fees.buyingFeeWallet ?? "",
           sellingFeePercent: fees.sellingFeePercent,
           sellingFeeWallet: fees.sellingFeeWallet ?? "",
+          marketplaceListingFeePercent: fees.marketplaceListingFeePercent ?? "0",
+          marketplaceListingFeeWallet: fees.marketplaceListingFeeWallet ?? "",
         }
       : undefined,
   });
@@ -2407,6 +2419,8 @@ function FeesSettings() {
           buyingFeeWallet: data.buyingFeeWallet || null,
           sellingFeePercent: data.sellingFeePercent,
           sellingFeeWallet: data.sellingFeeWallet || null,
+          marketplaceListingFeePercent: data.marketplaceListingFeePercent,
+          marketplaceListingFeeWallet: data.marketplaceListingFeeWallet || null,
         }),
       });
       if (!res.ok) {
@@ -2434,6 +2448,7 @@ function FeesSettings() {
 
   const buyingPct = parseFloat(form.watch("buyingFeePercent") || "0");
   const sellingPct = parseFloat(form.watch("sellingFeePercent") || "0");
+  const marketplacePct = parseFloat(form.watch("marketplaceListingFeePercent") || "0");
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -2572,18 +2587,97 @@ function FeesSettings() {
           </CardContent>
         </Card>
 
+        {/* ── Marketplace Listing Fee ── */}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Store className="w-5 h-5 text-emerald-400" />
+              Trait Market Listing Fee
+              <span className="ml-auto text-2xl font-black text-emerald-400" style={{ fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
+                {isNaN(marketplacePct) ? "0" : marketplacePct.toFixed(1)}%
+              </span>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Charged when a trait is listed or sold on the Trait Market. The total fee is split equally — half paid by the buyer, half deducted from the seller's proceeds.
+            </p>
+            <div className="mt-2 flex items-center gap-2 text-[11px] font-mono px-3 py-1.5 rounded border border-emerald-500/25 bg-emerald-500/5 text-emerald-400/80 w-fit">
+              <ArrowLeftRight className="w-3 h-3 flex-shrink-0" />
+              Buyer pays {isNaN(marketplacePct) ? "0" : (marketplacePct / 2).toFixed(2)}% · Seller pays {isNaN(marketplacePct) ? "0" : (marketplacePct / 2).toFixed(2)}%
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="marketplaceListingFeePercent">
+                  Total Fee Percentage
+                  <span className="ml-1 text-xs text-muted-foreground">(0 – 100, split 50/50)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="marketplaceListingFeePercent"
+                    {...form.register("marketplaceListingFeePercent")}
+                    placeholder="5.0"
+                    className="bg-secondary/50 pr-8"
+                  />
+                  <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+                {form.formState.errors.marketplaceListingFeePercent && (
+                  <p className="text-xs text-destructive">{form.formState.errors.marketplaceListingFeePercent.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="marketplaceListingFeeWallet">
+                  Recipient Wallet
+                  <span className="ml-1 text-xs text-muted-foreground">(ETH address)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="marketplaceListingFeeWallet"
+                    {...form.register("marketplaceListingFeeWallet")}
+                    placeholder="0x..."
+                    className="bg-secondary/50 font-mono text-xs pl-8"
+                  />
+                  <Wallet className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Preview bar */}
+            {marketplacePct > 0 && (
+              <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono space-y-1">
+                <div>
+                  On a <span className="text-foreground">0.1 ETH</span> listing →{" "}
+                  buyer pays <span className="text-emerald-400 font-bold">{(0.1 + 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span>{" "}
+                  (+{(marketplacePct / 2).toFixed(2)}% buyer share)
+                </div>
+                <div>
+                  Seller receives <span className="text-emerald-400 font-bold">{(0.1 - 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span>{" "}
+                  (−{(marketplacePct / 2).toFixed(2)}% seller share)
+                </div>
+                <div className="pt-1 border-t border-border/30 text-[10px] text-muted-foreground/60">
+                  Total fee collected: {(0.1 * marketplacePct / 100).toFixed(4)} ETH → forwarded to recipient wallet
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* ── Summary ── */}
-        {(buyingPct > 0 || sellingPct > 0) && (
+        {(buyingPct > 0 || sellingPct > 0 || marketplacePct > 0) && (
           <div className="p-4 border border-primary/30 bg-primary/5 flex items-start gap-3">
             <DollarSign className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div className="text-sm space-y-1">
-              <div className="font-semibold text-foreground">Combined fee impact on a 0.1 ETH trait</div>
+              <div className="font-semibold text-foreground">Combined fee impact on a 0.1 ETH transaction</div>
               <div className="text-muted-foreground font-mono text-xs space-y-0.5">
                 {buyingPct > 0 && (
-                  <div>Buyer pays: <span className="text-primary">{(0.1 + 0.1 * buyingPct / 100).toFixed(4)} ETH</span> (+{buyingPct}% buyer fee)</div>
+                  <div>Store buy — buyer pays: <span className="text-primary">{(0.1 + 0.1 * buyingPct / 100).toFixed(4)} ETH</span> (+{buyingPct}% buyer fee)</div>
                 )}
                 {sellingPct > 0 && (
-                  <div>Seller gets: <span className="text-accent">{(0.1 - 0.1 * sellingPct / 100).toFixed(4)} ETH</span> (−{sellingPct}% seller fee)</div>
+                  <div>Store buy — seller gets: <span className="text-accent">{(0.1 - 0.1 * sellingPct / 100).toFixed(4)} ETH</span> (−{sellingPct}% seller fee)</div>
+                )}
+                {marketplacePct > 0 && (
+                  <div>Market listing — buyer pays: <span className="text-emerald-400">{(0.1 + 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span>, seller gets: <span className="text-emerald-400">{(0.1 - 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span> ({marketplacePct}% split 50/50)</div>
                 )}
               </div>
             </div>

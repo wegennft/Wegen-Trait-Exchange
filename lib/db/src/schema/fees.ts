@@ -13,6 +13,8 @@ export const storeSettingsTable = pgTable("store_settings", {
   buyingFeeWallet: text("buying_fee_wallet"),
   sellingFeePercent: text("selling_fee_percent").notNull().default("0"),
   sellingFeeWallet: text("selling_fee_wallet"),
+  marketplaceListingFeePercent: text("marketplace_listing_fee_percent").notNull().default("0"),
+  marketplaceListingFeeWallet: text("marketplace_listing_fee_wallet"),
   layerOrder: text("layer_order").default('["Background","Body","Clothes","Mouth","Eyes","Headgear"]'),
   storeName: text("store_name").default("Wegen Trait Store"),
   storeTagline: text("store_tagline").default("Customize your Wegen NFT with unique traits"),

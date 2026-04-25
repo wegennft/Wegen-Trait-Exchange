@@ -9,6 +9,8 @@ const UpdateFeesBody = z.object({
   buyingFeeWallet: z.string().nullable().optional(),
   sellingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number"),
   sellingFeeWallet: z.string().nullable().optional(),
+  marketplaceListingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number").optional().default("0"),
+  marketplaceListingFeeWallet: z.string().nullable().optional(),
 });
 import {
   CreateTraitBody,
@@ -195,6 +197,8 @@ router.get("/admin/fees", async (_req, res): Promise<void> => {
         buyingFeeWallet: null,
         sellingFeePercent: "0",
         sellingFeeWallet: null,
+        marketplaceListingFeePercent: "0",
+        marketplaceListingFeeWallet: null,
       })
       .returning();
   }
@@ -219,6 +223,8 @@ router.put("/admin/fees", async (req, res): Promise<void> => {
         buyingFeeWallet: body.data.buyingFeeWallet ?? null,
         sellingFeePercent: body.data.sellingFeePercent,
         sellingFeeWallet: body.data.sellingFeeWallet ?? null,
+        marketplaceListingFeePercent: body.data.marketplaceListingFeePercent ?? "0",
+        marketplaceListingFeeWallet: body.data.marketplaceListingFeeWallet ?? null,
       })
       .returning();
     res.json(created);
@@ -232,6 +238,8 @@ router.put("/admin/fees", async (req, res): Promise<void> => {
       buyingFeeWallet: body.data.buyingFeeWallet ?? null,
       sellingFeePercent: body.data.sellingFeePercent,
       sellingFeeWallet: body.data.sellingFeeWallet ?? null,
+      marketplaceListingFeePercent: body.data.marketplaceListingFeePercent ?? "0",
+      marketplaceListingFeeWallet: body.data.marketplaceListingFeeWallet ?? null,
     })
     .where(eq(storeSettingsTable.id, existing.id))
     .returning();

@@ -197,10 +197,10 @@ export function Layout({ children }: { children: ReactNode }) {
               <img
                 src={settings.logoUrl}
                 alt="Site Logo"
-                className="w-9 h-9 object-contain"
+                className="w-10 h-10 object-contain"
               />
             ) : (
-              <div className="relative w-9 h-9 flex items-center justify-center flex-shrink-0">
+              <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
                 <div
                   className="absolute inset-0"
                   style={{
@@ -220,7 +220,7 @@ export function Layout({ children }: { children: ReactNode }) {
               className="hidden sm:inline-block leading-none select-none"
               style={{
                 ...BANGERS,
-                fontSize: 'clamp(1.75rem, 2.8vw, 2.55rem)',
+                fontSize: 'clamp(2rem, 2.9vw, 2.6rem)',
                 color: '#9900ff',
                 textShadow: [
                   '0 0 8px #9900ff',
@@ -329,16 +329,15 @@ export function Layout({ children }: { children: ReactNode }) {
               <Button
                 onClick={connect}
                 disabled={isConnecting}
-                className="relative text-white font-bold uppercase tracking-widest transition-all neon-pulse overflow-hidden"
+                className="relative text-white font-bold uppercase tracking-widest transition-all neon-pulse overflow-hidden px-3 py-1.5 h-auto text-xs"
                 style={{
                   ...BANGERS,
-                  fontSize: '1rem',
+                  fontSize: '0.75rem',
                   background: 'linear-gradient(135deg, hsl(272 100% 52%) 0%, hsl(272 100% 68%) 100%)',
                   border: '2px solid hsl(272 100% 70% / 0.6)',
-                  boxShadow: '3px 3px 0px rgba(0,0,0,0.9), 0 0 20px hsl(272 100% 62% / 0.4)',
+                  boxShadow: '2px 2px 0px rgba(0,0,0,0.9), 0 0 14px hsl(272 100% 62% / 0.4)',
                 }}
               >
-                {/* Spray shimmer */}
                 <span
                   className="absolute inset-0 opacity-20"
                   style={{
@@ -346,7 +345,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     backgroundSize: '200% 200%',
                   }}
                 />
-                <Wallet className="relative z-10 w-4 h-4 mr-2" />
+                <Wallet className="relative z-10 w-3 h-3 mr-1.5" />
                 <span className="relative z-10">
                   {isConnecting ? "Connecting..." : "Connect Wallet"}
                 </span>

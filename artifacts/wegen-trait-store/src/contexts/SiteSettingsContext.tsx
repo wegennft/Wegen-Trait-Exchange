@@ -113,17 +113,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const body = document.body;
-    if (settings.backgroundUrl) {
-      body.style.backgroundImage = `url(${settings.backgroundUrl}), linear-gradient(180deg, hsl(270 45% 4% / 0.55) 0%, hsl(270 45% 2% / 0.75) 100%)`;
-      body.style.backgroundSize = "cover, cover";
-      body.style.backgroundAttachment = "fixed, fixed";
-      body.style.backgroundBlendMode = "screen, normal";
-    } else {
-      body.style.backgroundImage = "";
-      body.style.backgroundSize = "";
-      body.style.backgroundAttachment = "";
-      body.style.backgroundBlendMode = "";
-    }
+    body.style.backgroundImage = "";
+    body.style.backgroundSize = "";
+    body.style.backgroundAttachment = "";
+    body.style.backgroundBlendMode = "";
   }, [settings.backgroundUrl]);
 
   const persist = useCallback((next: SiteSettings) => {

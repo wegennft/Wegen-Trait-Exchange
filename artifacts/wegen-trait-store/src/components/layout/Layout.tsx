@@ -30,7 +30,23 @@ export function Layout({ children }: { children: ReactNode }) {
   const isAdminPage = location === "/admin";
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background text-foreground dark">
+    <div className="min-h-[100dvh] flex flex-col bg-transparent text-foreground dark">
+
+      {/* ── Background Image Layer ── */}
+      {settings.backgroundUrl && (
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            zIndex: -1,
+            backgroundImage: `url(${settings.backgroundUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed',
+            filter: 'brightness(1.25) saturate(1.1) contrast(0.95)',
+            opacity: 0.72,
+          }}
+        />
+      )}
 
       {/* ── Ambient Background Layer ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>

@@ -356,6 +356,14 @@ function LayerOrderSettings() {
 export function Admin() {
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
   const { data: traitsData, isLoading: isLoadingTraits } = useListTraits({ includeAll: true, limit: 9999 });
+  const { data: rarityTiersData } = useQuery({
+    queryKey: ["admin-rarity-tiers"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/rarities");
+      if (!res.ok) return { tiers: [] };
+      return res.json() as Promise<{ tiers: { id: number; name: string; rank: number; color: string | null }[] }>;
+    },
+  });
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -365,6 +373,7 @@ export function Admin() {
   const [editingTrait, setEditingTrait] = useState<Trait | null>(null);
   const [traitView, setTraitView] = useState<"all" | "in-store" | "vault">("all");
   const [traitCategory, setTraitCategory] = useState<string>("all");
+  const [traitRarity, setTraitRarity] = useState<string>("all");
   const [traitSearch, setTraitSearch] = useState<string>("");
 
   const createTrait = useCreateTrait({
@@ -634,6 +643,63 @@ export function Admin() {
             </div>
           );
         })()}
+
+        {/* Rarity filter */}
+        {(() => {
+          const viewAndCatFiltered = (traitsData?.traits ?? []).filter(t =>
+            (traitView === "all" ? true : traitView === "in-store" ? t.isActive : !t.isActive) &&
+            (traitCategory === "all" ? true : t.category === traitCategory)
+          );
+          const tiers = rarityTiersData?.tiers ?? [];
+          return (
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <span className="text-[10px] text-muted-foreground/40 uppercase tracking-widest font-semibold flex items-center gap-1 mr-1">
+                <Gem className="w-3 h-3" />
+                Rarity
+              </span>
+              <button
+                onClick={() => setTraitRarity("all")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                  traitRarity === "all"
+                    ? "bg-primary/20 border-primary/60 text-primary shadow-[0_0_8px_rgba(124,58,237,0.25)]"
+                    : "bg-secondary/50 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+                }`}
+              >
+                All
+                <span className={`ml-0.5 ${traitRarity === "all" ? "text-primary/80" : "text-muted-foreground/50"}`}>
+                  ({viewAndCatFiltered.length})
+                </span>
+              </button>
+              {tiers.map((tier) => {
+                const count = viewAndCatFiltered.filter(t => (t.rarity as string) === tier.name).length;
+                const isActive = traitRarity === tier.name;
+                return (
+                  <button
+                    key={tier.id}
+                    onClick={() => setTraitRarity(tier.name)}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all capitalize ${
+                      isActive ? "shadow-[0_0_8px_rgba(124,58,237,0.2)]" : "bg-secondary/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                    style={isActive ? {
+                      background: `${tier.color ?? "#888"}22`,
+                      borderColor: `${tier.color ?? "#888"}80`,
+                      color: tier.color ?? "#888",
+                    } : {
+                      borderColor: "hsl(var(--border) / 0.4)",
+                    }}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: tier.color ?? "#888" }}
+                    />
+                    {tier.name}
+                    <span className="ml-0.5 opacity-60">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       <Card className="bg-card border-border/50">
@@ -768,6 +834,7 @@ export function Admin() {
                 const filteredTraits = (traitsData?.traits ?? []).filter(trait =>
                   (traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive) &&
                   (traitCategory === "all" ? true : trait.category === traitCategory) &&
+                  (traitRarity === "all" ? true : (trait.rarity as string) === traitRarity) &&
                   (traitSearch.trim() === "" ? true : trait.name.toLowerCase().includes(traitSearch.trim().toLowerCase()))
                 );
 

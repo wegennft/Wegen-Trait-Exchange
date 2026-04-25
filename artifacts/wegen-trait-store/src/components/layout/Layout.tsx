@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.12em' };
-const DISPLAY = { fontFamily: "'Rubik Spray Paint', 'Bebas Neue', Impact, sans-serif", letterSpacing: '0.06em' };
+const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
+const DISPLAY = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: '0.04em' };
 const MARKER  = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.03em' };
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -204,16 +204,28 @@ export function Layout({ children }: { children: ReactNode }) {
               )}
 
               <span
-                className="text-5xl hidden sm:inline-block leading-none"
+                className="hidden sm:inline-block leading-none select-none"
                 style={{
-                  ...DISPLAY,
-                  color: 'hsl(var(--primary))',
-                  textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 32px hsl(272 100% 65% / 0.7), 0 0 80px hsl(272 100% 65% / 0.25)',
-                  WebkitTextStroke: '1.5px rgba(0,0,0,0.9)',
-                  paintOrder: 'stroke fill',
+                  ...BANGERS,
+                  fontSize: '2.1rem',
+                  color: '#9900ff',
+                  textShadow: [
+                    '0 0 8px #9900ff',
+                    '0 0 18px #6600cc',
+                    '2px 2px 0px #000',
+                    '4px 4px 0px rgba(0,0,0,0.6)',
+                  ].join(', '),
                 }}
               >
-                TRAIT<span style={{ color: 'hsl(var(--accent))', textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 32px hsl(43 100% 56% / 0.9), 0 0 80px hsl(43 100% 40% / 0.35)' }}>STORE</span>
+                TRAIT<span style={{
+                  color: '#c8920a',
+                  textShadow: [
+                    '0 0 8px #c8920a',
+                    '0 0 18px #8a5c00',
+                    '2px 2px 0px #000',
+                    '4px 4px 0px rgba(0,0,0,0.6)',
+                  ].join(', '),
+                }}>STORE</span>
               </span>
             </Link>
 

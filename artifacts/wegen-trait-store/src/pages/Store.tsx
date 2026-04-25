@@ -49,8 +49,8 @@ import {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const BANGERS  = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: "0.1em" };
-const DISPLAY  = { fontFamily: "'Rubik Spray Paint', 'Bebas Neue', Impact, sans-serif", letterSpacing: "0.06em" };
+const BANGERS  = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
+const DISPLAY  = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: "0.02em" };
 
 function getRarityColor(rarity: string) {
   switch (rarity) {
@@ -619,20 +619,29 @@ export function Store() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1
-            className="text-primary leading-none mb-3"
+            className="leading-none mb-3 select-none"
             style={{
               ...DISPLAY,
-              fontSize: 'clamp(4rem, 10vw, 7rem)',
-              WebkitTextStroke: '2px rgba(0,0,0,0.9)',
-              paintOrder: 'stroke fill',
-              textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 50px hsl(272 100% 65% / 0.7), 0 0 100px hsl(272 100% 65% / 0.25)",
+              fontSize: 'clamp(3.5rem, 9vw, 6.5rem)',
+              color: '#9900ff',
+              textShadow: [
+                '0 0 12px #9900ff',
+                '0 0 30px #6600cc',
+                '0 0 60px #44009988',
+                '0 0 2px #000',
+              ].join(', '),
             }}
           >
             TRAIT{" "}
             <span
               style={{
-                color: "hsl(43 100% 56%)",
-                textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 50px hsl(43 100% 56% / 0.9), 0 0 100px hsl(43 100% 40% / 0.35)",
+                color: '#c8920a',
+                textShadow: [
+                  '0 0 12px #c8920a',
+                  '0 0 30px #8a5c00',
+                  '0 0 60px #5a360088',
+                  '0 0 2px #000',
+                ].join(', '),
               }}
             >
               STORE

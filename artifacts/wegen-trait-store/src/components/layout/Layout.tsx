@@ -247,51 +247,6 @@ export function Layout({ children }: { children: ReactNode }) {
               </span>
             </Link>
 
-            {/* ── ETH Price Ticker ── */}
-            <div
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full select-none"
-              style={{
-                background: "linear-gradient(135deg, hsl(272 60% 8%), hsl(272 40% 5%))",
-                border: "1px solid hsl(272 100% 62% / 0.25)",
-                boxShadow: "0 0 12px hsl(272 100% 50% / 0.1)",
-              }}
-            >
-              {/* ETH diamond icon */}
-              <svg width="13" height="13" viewBox="0 0 256 417" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <polygon points="128,0 0,208 128,284 256,208" fill="hsl(272,100%,72%)" opacity="0.95"/>
-                <polygon points="128,417 0,236 128,312" fill="hsl(272,100%,55%)" opacity="0.85"/>
-                <polygon points="128,417 256,236 128,312" fill="hsl(272,100%,65%)" opacity="0.9"/>
-                <polygon points="128,284 0,208 128,312" fill="hsl(272,100%,80%)" opacity="0.6"/>
-                <polygon points="128,284 256,208 128,312" fill="hsl(272,100%,75%)" opacity="0.7"/>
-              </svg>
-
-              {priceLoading || ethUsd === null ? (
-                <span className="text-xs font-mono text-muted-foreground/50 w-16">Loading…</span>
-              ) : (
-                <>
-                  <span
-                    className="text-xs font-mono font-bold tabular-nums"
-                    style={{ color: "hsl(272 100% 82%)", letterSpacing: "0.02em" }}
-                  >
-                    ${ethUsd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                  </span>
-                  {change24h !== null && (
-                    <span
-                      className="flex items-center gap-0.5 text-[10px] font-bold"
-                      style={{ color: change24h >= 0 ? "#4ade80" : "#f87171" }}
-                    >
-                      {change24h >= 0.05
-                        ? <TrendingUp className="w-2.5 h-2.5" />
-                        : change24h <= -0.05
-                          ? <TrendingDown className="w-2.5 h-2.5" />
-                          : <Minus className="w-2.5 h-2.5" />}
-                      {Math.abs(change24h).toFixed(1)}%
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-
             {/* ── Nav ── */}
             {!isAdminPage && (
               <nav className="hidden md:flex items-center gap-0">
@@ -341,6 +296,40 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* ── Right side ── */}
           <div className="flex items-center gap-3">
+
+            {/* ── ETH Price Ticker ── */}
+            <div
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full select-none flex-shrink-0"
+              style={{
+                background: "linear-gradient(135deg, hsl(272 60% 8%), hsl(272 40% 5%))",
+                border: "1px solid hsl(272 100% 62% / 0.25)",
+                boxShadow: "0 0 12px hsl(272 100% 50% / 0.1)",
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 256 417" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <polygon points="128,0 0,208 128,284 256,208" fill="hsl(272,100%,72%)" opacity="0.95"/>
+                <polygon points="128,417 0,236 128,312" fill="hsl(272,100%,55%)" opacity="0.85"/>
+                <polygon points="128,417 256,236 128,312" fill="hsl(272,100%,65%)" opacity="0.9"/>
+                <polygon points="128,284 0,208 128,312" fill="hsl(272,100%,80%)" opacity="0.6"/>
+                <polygon points="128,284 256,208 128,312" fill="hsl(272,100%,75%)" opacity="0.7"/>
+              </svg>
+              {priceLoading || ethUsd === null ? (
+                <span className="text-xs font-mono text-muted-foreground/40">···</span>
+              ) : (
+                <>
+                  <span className="text-xs font-mono font-bold tabular-nums" style={{ color: "hsl(272 100% 82%)" }}>
+                    ${ethUsd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                  {change24h !== null && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-bold" style={{ color: change24h >= 0 ? "#4ade80" : "#f87171" }}>
+                      {change24h >= 0.05 ? <TrendingUp className="w-2.5 h-2.5" /> : change24h <= -0.05 ? <TrendingDown className="w-2.5 h-2.5" /> : <Minus className="w-2.5 h-2.5" />}
+                      {Math.abs(change24h).toFixed(1)}%
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+
             <Link
               href="/admin"
               className="text-muted-foreground/60 hover:text-primary transition-colors p-2"

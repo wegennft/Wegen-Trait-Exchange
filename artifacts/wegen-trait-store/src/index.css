@@ -485,3 +485,44 @@
   -webkit-text-stroke: 1px rgba(0,0,0,0.9);
   paint-order: stroke fill;
 }
+
+/* ── Daily Wegen Game Animations ─────────────────────────────────────────── */
+@keyframes dailyGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 6px hsl(120 100% 55% / 0.5), 0 0 14px hsl(120 100% 55% / 0.2);
+    border-color: hsl(120 100% 50% / 0.6);
+  }
+  50% {
+    box-shadow: 0 0 14px hsl(120 100% 55% / 0.85), 0 0 28px hsl(120 100% 55% / 0.45);
+    border-color: hsl(120 100% 60% / 0.95);
+  }
+}
+.daily-trait-glow {
+  animation: dailyGlowPulse 1.6s ease-in-out infinite;
+}
+.daily-trait-selected {
+  animation: dailyGlowPulse 0.7s ease-in-out infinite;
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(-40px) rotate(0deg) scale(1); opacity: 1; }
+  80%  { opacity: 0.8; }
+  100% { transform: translateY(100vh) rotate(900deg) scale(0.5); opacity: 0; }
+}
+
+@keyframes celebrationPop {
+  0%   { transform: scale(0.3) rotate(-6deg); opacity: 0; }
+  55%  { transform: scale(1.12) rotate(2deg); opacity: 1; }
+  75%  { transform: scale(0.96) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes celebrationGlow {
+  0%, 100% { text-shadow: 3px 3px 0 #000, 0 0 24px hsl(120 100% 55% / 0.8), 0 0 56px hsl(120 100% 55% / 0.4); }
+  50%       { text-shadow: 3px 3px 0 #000, 0 0 48px hsl(120 100% 60% / 1), 0 0 90px hsl(120 100% 55% / 0.6); }
+}
+
+@keyframes dailyBadgePulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%       { opacity: 1; transform: scale(1.05); }
+}

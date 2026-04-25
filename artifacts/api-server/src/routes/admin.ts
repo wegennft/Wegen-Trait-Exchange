@@ -505,6 +505,49 @@ router.put("/admin/store-settings", async (req, res): Promise<void> => {
   res.json(serializeStoreSettings(updated));
 });
 
+// ── Game Settings ─────────────────────────────────────────────────────────────
+
+const UpdateGameSettingsBody = z.object({
+  dailyGameEnabled: z.boolean().optional(),
+  dailyGameOverrides: z.record(z.string(), z.record(z.string(), z.number().nullable())).optional(),
+  celebrationGifUrl: z.string().nullable().optional(),
+});
+
+function serializeGameSettings(settings: typeof storeSettingsTable.$inferSelect) {
+  return {
+    dailyGameEnabled: settings.dailyGameEnabled ?? true,
+    dailyGameOverrides: JSON.parse(settings.dailyGameOverrides ?? "{}") as Record<string, Record<string, number | null>>,
+    celebrationGifUrl: settings.celebrationGifUrl ?? null,
+  };
+}
+
+router.get("/admin/game-settings", async (_req, res): Promise<void> => {
+  let [settings] = await db.select().from(storeSettingsTable).limit(1);
+  if (!settings) {
+    [settings] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
+  }
+  res.json(serializeGameSettings(settings));
+});
+
+router.put("/admin/game-settings", async (req, res): Promise<void> => {
+  const body = UpdateGameSettingsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.issues.map(i => i.message).join(", ") });
+    return;
+  }
+  let [existing] = await db.select().from(storeSettingsTable).limit(1);
+  if (!existing) {
+    [existing] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
+  }
+  const toUpdate: Record<string, unknown> = {};
+  const d = body.data;
+  if (d.dailyGameEnabled !== undefined) toUpdate.dailyGameEnabled = d.dailyGameEnabled;
+  if (d.celebrationGifUrl !== undefined) toUpdate.celebrationGifUrl = d.celebrationGifUrl || null;
+  if (d.dailyGameOverrides !== undefined) toUpdate.dailyGameOverrides = JSON.stringify(d.dailyGameOverrides);
+  const [updated] = await db.update(storeSettingsTable).set(toUpdate).where(eq(storeSettingsTable.id, existing.id)).returning();
+  res.json(serializeGameSettings(updated));
+});
+
 // ── Update Authority Key (set / clear) ────────────────────────────────────────
 
 const SetAuthorityKeyBody = z.object({

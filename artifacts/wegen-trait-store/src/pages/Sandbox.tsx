@@ -94,8 +94,14 @@ const CONFETTI = Array.from({ length: 48 }, (_, i) => ({
   shape: i % 3 === 0 ? "50%" : i % 3 === 1 ? "2px" : "0%",
 }));
 
-/* ── Celebration GIF (Giphy confetti) ────────────────────────────────────── */
-const CELEBRATION_GIF = "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif";
+/* ── Celebration GIF default ─────────────────────────────────────────────── */
+const DEFAULT_CELEBRATION_GIF = "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif";
+
+type GameSettings = {
+  dailyGameEnabled: boolean;
+  dailyGameOverrides: Record<string, Record<string, number | null>>;
+  celebrationGifUrl: string | null;
+};
 
 export function Sandbox() {
   const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
@@ -119,6 +125,15 @@ export function Sandbox() {
       return res.json() as Promise<{ layerOrder: string[] }>;
     },
   });
+  const { data: gameSettings } = useQuery<GameSettings>({
+    queryKey: ["game-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/game-settings");
+      if (!res.ok) return { dailyGameEnabled: true, dailyGameOverrides: {}, celebrationGifUrl: null };
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
   const layerOrder: string[] = layerData?.layerOrder ?? DEFAULT_LAYER_ORDER;
   const traits = (traitsData?.traits ?? []) as TraitItem[];
@@ -133,17 +148,24 @@ export function Sandbox() {
     return map;
   }, [traits]);
 
-  /* ── Daily picks: deterministic per-date seed ───────────────────────── */
+  /* ── Daily picks: deterministic per-date seed + admin overrides ─────── */
   const dailyTraits = useMemo<Record<string, TraitItem | null>>(() => {
+    const todayOverrides = gameSettings?.dailyGameOverrides?.[todayKey] ?? {};
     const picks: Record<string, TraitItem | null> = {};
     for (const cat of CATEGORIES) {
       const pool = (byCategory[cat] ?? []).filter((t) => t.isActive);
+      // Check for admin override first
+      const overrideId = todayOverrides[cat];
+      if (overrideId !== undefined && overrideId !== null) {
+        picks[cat] = (byCategory[cat] ?? []).find((t) => t.id === overrideId) ?? null;
+        continue;
+      }
       if (pool.length === 0) { picks[cat] = null; continue; }
       const idx = Math.floor(seededRand(todayKey + "|" + cat) * pool.length);
       picks[cat] = pool[Math.min(idx, pool.length - 1)];
     }
     return picks;
-  }, [byCategory, todayKey]);
+  }, [byCategory, todayKey, gameSettings]);
 
   const dailyCats = useMemo(
     () => CATEGORIES.filter((c) => dailyTraits[c] !== null),
@@ -257,7 +279,7 @@ export function Sandbox() {
       </div>
 
       {/* ── Daily Wegen Challenge Banner ─────────────────────────────────── */}
-      {!isLoading && dailyCats.length > 0 && (
+      {!isLoading && dailyCats.length > 0 && (gameSettings?.dailyGameEnabled ?? true) && (
         <div
           className="rounded-xl p-4 space-y-3"
           style={{
@@ -783,7 +805,7 @@ export function Sandbox() {
               style={{ border: "2px solid hsl(120 100% 45% / 0.3)", maxWidth: 260, width: "100%" }}
             >
               <img
-                src={CELEBRATION_GIF}
+                src={gameSettings?.celebrationGifUrl ?? DEFAULT_CELEBRATION_GIF}
                 alt="Celebration!"
                 className="w-full"
                 style={{ display: "block" }}

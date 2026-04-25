@@ -29,6 +29,9 @@ export const storeSettingsTable = pgTable("store_settings", {
   maintenanceWhitelist: text("maintenance_whitelist").default("[]"),
   ineligibleNfts: text("ineligible_nfts").default("[]"),
   updateAuthorityKeyCiphertext: text("update_authority_key_ciphertext"),
+  dailyGameEnabled: boolean("daily_game_enabled").default(true),
+  dailyGameOverrides: text("daily_game_overrides").default("{}"),
+  celebrationGifUrl: text("celebration_gif_url"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

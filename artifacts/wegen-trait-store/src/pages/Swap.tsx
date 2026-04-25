@@ -923,6 +923,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { ethUsd } = useEthPrice();
 
   const { data: allMarketData, isLoading: loadingMarket } = useQuery<{ listings: MarketListing[]; total: number }>({
     queryKey: ["market-listings"],
@@ -1269,7 +1270,6 @@ export function Swap() {
   const { walletAddress, isConnected, connect } = useWallet();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { ethUsd } = useEthPrice();
 
   const { data: allListings, isLoading: loadingAll } = useQuery<{ listings: SwapListing[]; total: number }>({
     queryKey: ["swap-listings"],

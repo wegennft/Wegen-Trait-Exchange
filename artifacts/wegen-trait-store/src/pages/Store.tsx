@@ -30,6 +30,8 @@ import {
   Loader2,
   Coins,
   TrendingUp,
+  TrendingDown,
+  Minus,
   Users,
   Package,
   Layers,
@@ -435,7 +437,7 @@ export function Store() {
   const { walletAddress, isConnected, connect } = useWallet();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { ethUsd } = useEthPrice();
+  const { ethUsd, change24h, isLoading: priceLoading } = useEthPrice();
 
   // ── Maintenance mode gate ──
   const [storeConfig, setStoreConfig] = useState<{
@@ -661,9 +663,51 @@ export function Store() {
           </p>
         </div>
 
-        {/* ── Cart button ── */}
-        <button
-          onClick={() => { if (!isConnected) { connect(); return; } setCartOpen(true); }}
+        {/* ── ETH Ticker + Cart ── */}
+        <div className="flex items-center gap-3">
+          {/* ETH price pill */}
+          <div
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl select-none"
+            style={{
+              background: "linear-gradient(135deg, hsl(272 60% 8%), hsl(272 40% 5%))",
+              border: "1px solid hsl(272 100% 62% / 0.25)",
+              boxShadow: "0 0 14px hsl(272 100% 50% / 0.12)",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 256 417" fill="none" aria-hidden>
+              <polygon points="128,0 0,208 128,284 256,208" fill="hsl(272,100%,72%)" opacity="0.95"/>
+              <polygon points="128,417 0,236 128,312" fill="hsl(272,100%,55%)" opacity="0.85"/>
+              <polygon points="128,417 256,236 128,312" fill="hsl(272,100%,65%)" opacity="0.9"/>
+              <polygon points="128,284 0,208 128,312" fill="hsl(272,100%,80%)" opacity="0.6"/>
+              <polygon points="128,284 256,208 128,312" fill="hsl(272,100%,75%)" opacity="0.7"/>
+            </svg>
+            {priceLoading || ethUsd === null ? (
+              <span className="text-sm font-mono text-muted-foreground/40">···</span>
+            ) : (
+              <div className="flex flex-col leading-none">
+                <span className="text-sm font-mono font-bold tabular-nums" style={{ color: "hsl(272 100% 82%)" }}>
+                  ${ethUsd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+                {change24h !== null && (
+                  <span
+                    className="flex items-center gap-0.5 text-[10px] font-bold mt-0.5"
+                    style={{ color: change24h >= 0 ? "#4ade80" : "#f87171" }}
+                  >
+                    {change24h >= 0.05
+                      ? <TrendingUp className="w-2.5 h-2.5" />
+                      : change24h <= -0.05
+                        ? <TrendingDown className="w-2.5 h-2.5" />
+                        : <Minus className="w-2.5 h-2.5" />}
+                    {Math.abs(change24h).toFixed(1)}%
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Cart button ── */}
+          <button
+            onClick={() => { if (!isConnected) { connect(); return; } setCartOpen(true); }}
           className="relative flex items-center gap-3 px-5 py-3 rounded-xl border transition-all group"
           style={{
             background: cartCount > 0
@@ -699,7 +743,8 @@ export function Store() {
           {cartCount > 0 && (
             <Zap className="w-4 h-4 text-accent ml-1" />
           )}
-        </button>
+          </button>
+        </div>{/* end ETH+Cart wrapper */}
       </div>
 
       {/* ── Stats ── */}

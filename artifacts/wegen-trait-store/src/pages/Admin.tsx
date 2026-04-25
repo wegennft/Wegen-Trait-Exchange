@@ -1080,6 +1080,30 @@ const NETWORKS = [
   { value: "arbitrum", label: "Arbitrum One" },
 ];
 
+function SectionHeader({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-3 mb-6">
+      <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 text-primary">
+        {icon}
+      </div>
+      <div>
+        <div className="font-bold text-base">{title}</div>
+        <div className="text-sm text-muted-foreground">{description}</div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-semibold text-foreground/80">{label}</label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground/60">{hint}</p>}
+    </div>
+  );
+}
+
 function StoreSettingsTab() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -1211,26 +1235,6 @@ function StoreSettingsTab() {
       </div>
     );
   }
-
-  const SectionHeader = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
-    <div className="flex items-start gap-3 mb-6">
-      <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 text-primary">
-        {icon}
-      </div>
-      <div>
-        <div className="font-bold text-base">{title}</div>
-        <div className="text-sm text-muted-foreground">{description}</div>
-      </div>
-    </div>
-  );
-
-  const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-foreground/80">{label}</label>
-      {children}
-      {hint && <p className="text-xs text-muted-foreground/60">{hint}</p>}
-    </div>
-  );
 
   return (
     <div className="space-y-8 max-w-3xl">

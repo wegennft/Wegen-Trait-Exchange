@@ -190,18 +190,18 @@ export function Layout({ children }: { children: ReactNode }) {
           }}
         />
 
-        <div className="container mx-auto px-4 h-[60px] flex items-center justify-between">
+        <div className="container mx-auto px-4 h-[70px] flex items-center justify-between">
           {/* ── Logo ── */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-85 group">
+            <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-85 group">
               {settings.logoUrl ? (
                 <img
                   src={settings.logoUrl}
                   alt="Site Logo"
-                  className="w-9 h-9 object-contain"
+                  className="w-11 h-11 object-contain"
                 />
               ) : (
-                <div className="relative w-9 h-9 flex items-center justify-center flex-shrink-0">
+                <div className="relative w-11 h-11 flex items-center justify-center flex-shrink-0">
                   {/* Spray bloom behind icon */}
                   <div
                     className="absolute inset-0"
@@ -223,7 +223,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 className="hidden sm:inline-block leading-none select-none"
                 style={{
                   ...BANGERS,
-                  fontSize: '2.1rem',
+                  fontSize: '2.55rem',
                   color: '#9900ff',
                   textShadow: [
                     '0 0 8px #9900ff',

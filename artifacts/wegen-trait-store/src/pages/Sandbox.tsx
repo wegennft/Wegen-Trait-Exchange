@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useListTraits } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { TraitMedia } from "@/components/TraitMedia";
@@ -14,6 +14,8 @@ import {
   Trophy,
   Gamepad2,
   X,
+  SkipForward,
+  Zap,
 } from "lucide-react";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
@@ -41,32 +43,30 @@ type TraitItem = {
   isActive: boolean;
 };
 
-/* ── Daily mini-game utilities ───────────────────────────────────────────── */
-
+/* ── FNV-1a deterministic RNG ────────────────────────────────────────────── */
 function seededRand(s: string): number {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < s.length; i++) h = (Math.imul(h ^ s.charCodeAt(i), 16777619)) >>> 0;
   return h / 0xFFFFFFFF;
 }
 
-function getTodayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+function newBountyKey(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 function playCelebrationJingle() {
   try {
     const AC = (window.AudioContext ?? (window as Record<string, unknown>).webkitAudioContext) as typeof AudioContext;
     const ctx = new AC();
-    // Hip-hop celebration riff (C major pentatonic)
     const melody: [number, number, number][] = [
-      [523.25, 0.00, 0.14], // C5
-      [659.25, 0.15, 0.14], // E5
-      [783.99, 0.30, 0.14], // G5
-      [1046.50, 0.45, 0.24], // C6
-      [783.99, 0.70, 0.10], // G5
-      [659.25, 0.82, 0.10], // E5
-      [1046.50, 0.94, 0.10], // C6
-      [1318.51, 1.06, 0.38], // E6 long finish
+      [523.25, 0.00, 0.14],
+      [659.25, 0.15, 0.14],
+      [783.99, 0.30, 0.14],
+      [1046.50, 0.45, 0.24],
+      [783.99, 0.70, 0.10],
+      [659.25, 0.82, 0.10],
+      [1046.50, 0.94, 0.10],
+      [1318.51, 1.06, 0.38],
     ];
     melody.forEach(([freq, t, dur]) => {
       const osc = ctx.createOscillator();
@@ -83,7 +83,7 @@ function playCelebrationJingle() {
   } catch { /* audio not supported */ }
 }
 
-/* ── Confetti piece data (stable across renders) ─────────────────────────── */
+/* ── Confetti pieces ─────────────────────────────────────────────────────── */
 const CONFETTI = Array.from({ length: 48 }, (_, i) => ({
   id: i,
   left: `${(seededRand("conf" + i) * 100).toFixed(1)}%`,
@@ -94,7 +94,6 @@ const CONFETTI = Array.from({ length: 48 }, (_, i) => ({
   shape: i % 3 === 0 ? "50%" : i % 3 === 1 ? "2px" : "0%",
 }));
 
-/* ── Celebration GIF default ─────────────────────────────────────────────── */
 const DEFAULT_CELEBRATION_GIF = "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif";
 
 type GameSettings = {
@@ -108,12 +107,8 @@ export function Sandbox() {
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-
-  const todayKey = useMemo(() => getTodayKey(), []);
-  const wonLsKey = `wegen-daily-won-${todayKey}`;
-  const [alreadyWonToday] = useState<boolean>(() => {
-    try { return localStorage.getItem(`wegen-daily-won-${getTodayKey()}`) === "1"; } catch { return false; }
-  });
+  const [bountyKey, setBountyKey] = useState<string>(newBountyKey);
+  const [bountyCount, setBountyCount] = useState(0);
   const winTriggered = useRef(false);
 
   const { data: traitsData, isLoading } = useListTraits({ includeAll: true, limit: 9999 });
@@ -148,45 +143,51 @@ export function Sandbox() {
     return map;
   }, [traits]);
 
-  /* ── Daily picks: deterministic per-date seed + admin overrides ─────── */
-  const dailyTraits = useMemo<Record<string, TraitItem | null>>(() => {
-    const todayOverrides = gameSettings?.dailyGameOverrides?.[todayKey] ?? {};
+  /* ── Bounty target: pick one trait per category using seeded key ──────── */
+  const bountyTraits = useMemo<Record<string, TraitItem | null>>(() => {
     const picks: Record<string, TraitItem | null> = {};
     for (const cat of CATEGORIES) {
       const pool = (byCategory[cat] ?? []).filter((t) => t.isActive);
-      // Check for admin override first
-      const overrideId = todayOverrides[cat];
-      if (overrideId !== undefined && overrideId !== null) {
-        picks[cat] = (byCategory[cat] ?? []).find((t) => t.id === overrideId) ?? null;
-        continue;
-      }
       if (pool.length === 0) { picks[cat] = null; continue; }
-      const idx = Math.floor(seededRand(todayKey + "|" + cat) * pool.length);
+      const idx = Math.floor(seededRand(bountyKey + "|" + cat) * pool.length);
       picks[cat] = pool[Math.min(idx, pool.length - 1)];
     }
     return picks;
-  }, [byCategory, todayKey, gameSettings]);
+  }, [byCategory, bountyKey]);
 
-  const dailyCats = useMemo(
-    () => CATEGORIES.filter((c) => dailyTraits[c] !== null),
-    [dailyTraits],
+  const bountyCats = useMemo(
+    () => CATEGORIES.filter((c) => bountyTraits[c] !== null),
+    [bountyTraits],
   );
 
-  const dailyMatchCount = useMemo(
-    () => dailyCats.filter((c) => selected[c]?.id === dailyTraits[c]?.id).length,
-    [selected, dailyTraits, dailyCats],
+  const bountyMatchCount = useMemo(
+    () => bountyCats.filter((c) => selected[c]?.id === bountyTraits[c]?.id).length,
+    [selected, bountyTraits, bountyCats],
   );
 
-  const isDailyWin = dailyCats.length > 0 && dailyMatchCount === dailyCats.length;
+  const isBountyDone = bountyCats.length > 0 && bountyMatchCount === bountyCats.length;
+
+  /* ── Advance to next bounty ───────────────────────────────────────────── */
+  const advanceBounty = useCallback(() => {
+    winTriggered.current = false;
+    setBountyKey(newBountyKey());
+    setBountyCount((n) => n + 1);
+    setSelected({});
+    setShowCelebration(false);
+  }, []);
 
   useEffect(() => {
-    if (isDailyWin && !alreadyWonToday && !winTriggered.current) {
+    if (isBountyDone && !winTriggered.current) {
       winTriggered.current = true;
       playCelebrationJingle();
       setTimeout(() => setShowCelebration(true), 500);
-      try { localStorage.setItem(wonLsKey, "1"); } catch {}
     }
-  }, [isDailyWin, alreadyWonToday, wonLsKey]);
+  }, [isBountyDone]);
+
+  /* ── Reset winTriggered when bountyKey changes ────────────────────────── */
+  useEffect(() => {
+    winTriggered.current = false;
+  }, [bountyKey]);
 
   const activeCategoryTraits = byCategory[activeCategory] ?? [];
   const selectedCount = Object.values(selected).filter(Boolean).length;
@@ -241,6 +242,8 @@ export function Sandbox() {
   }
 
   const totalLayers = layerOrder.length;
+  const gameEnabled = gameSettings?.dailyGameEnabled ?? true;
+  const celebGif = gameSettings?.celebrationGifUrl ?? DEFAULT_CELEBRATION_GIF;
 
   return (
     <div className="space-y-5">
@@ -278,16 +281,16 @@ export function Sandbox() {
         </div>
       </div>
 
-      {/* ── Daily Wegen Challenge Banner ─────────────────────────────────── */}
-      {!isLoading && dailyCats.length > 0 && (gameSettings?.dailyGameEnabled ?? true) && (
+      {/* ── Bounty Challenge Banner ───────────────────────────────────────── */}
+      {!isLoading && bountyCats.length > 0 && gameEnabled && (
         <div
           className="rounded-xl p-4 space-y-3"
           style={{
-            background: alreadyWonToday || isDailyWin
+            background: isBountyDone
               ? "linear-gradient(135deg, hsl(120 60% 10% / 0.9), hsl(120 40% 8% / 0.9))"
               : "linear-gradient(135deg, hsl(272 30% 10% / 0.95), hsl(272 20% 7% / 0.95))",
-            border: `1px solid ${alreadyWonToday || isDailyWin ? "hsl(120 100% 45% / 0.45)" : "hsl(43 100% 52% / 0.35)"}`,
-            boxShadow: alreadyWonToday || isDailyWin
+            border: `1px solid ${isBountyDone ? "hsl(120 100% 45% / 0.45)" : "hsl(43 100% 52% / 0.35)"}`,
+            boxShadow: isBountyDone
               ? "0 0 24px hsl(120 100% 45% / 0.15)"
               : "0 0 16px hsl(43 100% 52% / 0.1)",
           }}
@@ -300,35 +303,54 @@ export function Sandbox() {
                 className="text-lg leading-none"
                 style={{ ...BANGERS, color: "hsl(43 100% 55%)", textShadow: "0 0 12px hsl(43 100% 52% / 0.5)" }}
               >
-                DAILY WEGEN
+                WEGEN BOUNTY
               </span>
-              <span className="text-[10px] font-mono text-muted-foreground/40 border border-border/30 px-1.5 py-0.5 rounded">
-                {todayKey}
-              </span>
+              {bountyCount > 0 && (
+                <span
+                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: "hsl(272 100% 62% / 0.2)", color: "hsl(272 100% 75%)", border: "1px solid hsl(272 100% 62% / 0.35)" }}
+                >
+                  <Zap className="w-2.5 h-2.5" />
+                  #{bountyCount + 1}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              {(alreadyWonToday || isDailyWin) && (
+              {isBountyDone && (
                 <span
                   className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg"
                   style={{ background: "hsl(120 100% 45% / 0.15)", color: "hsl(120 100% 60%)", border: "1px solid hsl(120 100% 45% / 0.4)" }}
                 >
-                  <Trophy className="w-3 h-3" /> COMPLETED
+                  <Trophy className="w-3 h-3" /> BUILT!
                 </span>
               )}
               <span className="text-[10px] font-mono text-muted-foreground/40">
-                {dailyMatchCount}/{dailyCats.length} matched
+                {bountyMatchCount}/{bountyCats.length} matched
               </span>
+              <button
+                onClick={advanceBounty}
+                className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all hover:opacity-100 opacity-60"
+                style={{
+                  background: "hsl(272 20% 10%)",
+                  border: "1px solid hsl(272 100% 62% / 0.25)",
+                  color: "hsl(272 100% 75%)",
+                }}
+                title="Skip to next bounty"
+              >
+                <SkipForward className="w-3 h-3" />
+                Skip
+              </button>
             </div>
           </div>
 
           <p className="text-[11px] text-muted-foreground/50 font-mono">
-            // assemble today's Wegen — find all 6 highlighted traits across each layer //
+            // match the target Wegen — select each highlighted trait to complete the bounty //
           </p>
 
-          {/* Daily target chips */}
+          {/* Bounty target chips */}
           <div className="flex flex-wrap gap-2">
-            {dailyCats.map((cat) => {
-              const t = dailyTraits[cat];
+            {bountyCats.map((cat) => {
+              const t = bountyTraits[cat];
               const matched = selected[cat]?.id === t?.id;
               return (
                 <button
@@ -371,11 +393,11 @@ export function Sandbox() {
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
                 style={{
-                  width: `${dailyCats.length > 0 ? (dailyMatchCount / dailyCats.length) * 100 : 0}%`,
-                  background: isDailyWin
+                  width: `${bountyCats.length > 0 ? (bountyMatchCount / bountyCats.length) * 100 : 0}%`,
+                  background: isBountyDone
                     ? "linear-gradient(90deg, hsl(120 100% 45%), hsl(120 100% 65%))"
                     : "linear-gradient(90deg, hsl(43 100% 45%), hsl(43 100% 62%))",
-                  boxShadow: isDailyWin ? "0 0 8px hsl(120 100% 50%)" : undefined,
+                  boxShadow: isBountyDone ? "0 0 8px hsl(120 100% 50%)" : undefined,
                 }}
               />
             </div>
@@ -399,10 +421,10 @@ export function Sandbox() {
                 height: 380,
                 maxWidth: "100%",
                 background: "radial-gradient(ellipse at 30% 30%, hsl(272 40% 12%), hsl(272 25% 6%) 70%)",
-                border: isDailyWin
+                border: isBountyDone
                   ? "2px solid hsl(120 100% 55% / 0.7)"
                   : "2px solid hsl(272 100% 62% / 0.35)",
-                boxShadow: isDailyWin
+                boxShadow: isBountyDone
                   ? "0 0 40px hsl(120 100% 55% / 0.35), inset 0 0 40px rgba(0,0,0,0.4)"
                   : "0 0 40px hsl(272 100% 62% / 0.15), inset 0 0 40px rgba(0,0,0,0.4)",
                 transition: "border-color 0.5s, box-shadow 0.5s",
@@ -437,7 +459,7 @@ export function Sandbox() {
                 className="absolute bottom-2 right-2 z-50 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest opacity-40"
                 style={{ ...BANGERS, background: "rgba(0,0,0,0.5)", color: "hsl(43 100% 52%)" }}
               >
-                {isDailyWin ? "Daily Win!" : "Preview"}
+                {isBountyDone ? "Bounty Built!" : "Preview"}
               </div>
             </div>
 
@@ -488,21 +510,21 @@ export function Sandbox() {
                   {layerOrder.map((cat) => {
                     const t = selected[cat];
                     if (!t) return null;
-                    const isMatchedDaily = dailyTraits[cat]?.id === t.id;
+                    const isMatchedBounty = bountyTraits[cat]?.id === t.id;
                     return (
                       <div
                         key={cat}
                         className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all"
                         style={{
-                          background: isMatchedDaily ? "hsl(120 60% 8%)" : "hsl(272 20% 10%)",
-                          border: isMatchedDaily ? "1px solid hsl(120 100% 45% / 0.4)" : "1px solid hsl(272 100% 62% / 0.2)",
+                          background: isMatchedBounty ? "hsl(120 60% 8%)" : "hsl(272 20% 10%)",
+                          border: isMatchedBounty ? "1px solid hsl(120 100% 45% / 0.4)" : "1px solid hsl(272 100% 62% / 0.2)",
                         }}
                       >
                         <span className="text-base leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>
                         <span className="text-muted-foreground/60 w-16 flex-shrink-0">{cat}</span>
                         <ChevronRight className="w-3 h-3 text-muted-foreground/30 flex-shrink-0" />
                         <span className="text-foreground font-medium flex-1 truncate">{t.name}</span>
-                        {isMatchedDaily && <span className="text-green-400 text-sm">✓</span>}
+                        {isMatchedBounty && <span className="text-green-400 text-sm">✓</span>}
                         <button
                           onClick={() => selectTrait(cat, null)}
                           className="text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0"
@@ -524,8 +546,8 @@ export function Sandbox() {
               {CATEGORIES.map((cat) => {
                 const isActive = activeCategory === cat;
                 const sel = selected[cat];
-                const hasDailyForCat = dailyTraits[cat] !== null;
-                const catMatched = sel?.id === dailyTraits[cat]?.id;
+                const hasBountyForCat = bountyTraits[cat] !== null;
+                const catMatched = sel?.id === bountyTraits[cat]?.id;
                 return (
                   <button
                     key={cat}
@@ -543,8 +565,8 @@ export function Sandbox() {
                   >
                     <span className="text-base leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>
                     {cat}
-                    {/* Daily game dot (green = matched, gold = pending) */}
-                    {hasDailyForCat && (
+                    {/* Bounty dot: green = matched, gold = pending */}
+                    {hasBountyForCat && gameEnabled && (
                       <span
                         className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background"
                         style={{
@@ -554,8 +576,8 @@ export function Sandbox() {
                         }}
                       />
                     )}
-                    {/* Selected dot (only when no daily) */}
-                    {!hasDailyForCat && sel && (
+                    {/* Selected dot (only when no bounty) */}
+                    {(!hasBountyForCat || !gameEnabled) && sel && (
                       <span
                         className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary border-2 border-background"
                         style={{ boxShadow: "0 0 6px hsl(272 100% 62% / 0.8)" }}
@@ -566,7 +588,7 @@ export function Sandbox() {
               })}
             </div>
 
-            {/* Trait grid for active category */}
+            {/* Trait grid */}
             <div
               className="rounded-xl p-4"
               style={{ background: "hsl(272 20% 7%)", border: "1px solid hsl(272 100% 62% / 0.15)" }}
@@ -580,7 +602,7 @@ export function Sandbox() {
                 <span className="text-xs text-muted-foreground/50 ml-1">
                   {activeCategoryTraits.length} available
                 </span>
-                {dailyTraits[activeCategory] && (
+                {gameEnabled && bountyTraits[activeCategory] && (
                   <span
                     className="ml-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
                     style={{
@@ -590,7 +612,7 @@ export function Sandbox() {
                       animation: "dailyBadgePulse 1.8s ease-in-out infinite",
                     }}
                   >
-                    🎮 Daily Pick Active
+                    🎮 Bounty Target
                   </span>
                 )}
                 {selected[activeCategory] && (
@@ -629,27 +651,27 @@ export function Sandbox() {
 
                   {activeCategoryTraits.map((trait) => {
                     const isSelected = selected[activeCategory]?.id === trait.id;
-                    const isDaily = dailyTraits[activeCategory]?.id === trait.id;
+                    const isBounty = gameEnabled && bountyTraits[activeCategory]?.id === trait.id;
 
                     return (
                       <button
                         key={trait.id}
                         onClick={() => selectTrait(activeCategory, isSelected ? null : trait)}
                         className={`group flex flex-col items-center gap-2 p-2.5 rounded-xl border transition-all ${
-                          isSelected && isDaily
+                          isSelected && isBounty
                             ? "daily-trait-selected border-green-500/80"
                             : isSelected
                             ? "border-primary/70 shadow-[0_0_14px_hsl(272_100%_62%_/_0.35)]"
-                            : isDaily
+                            : isBounty
                             ? "daily-trait-glow border-green-500/60"
                             : "border-border/30 bg-secondary/20 hover:border-primary/40 hover:bg-secondary/50"
                         }`}
                         style={
-                          isSelected && isDaily
+                          isSelected && isBounty
                             ? { background: "linear-gradient(135deg, hsl(120 80% 12% / 0.6), hsl(120 60% 8% / 0.4))" }
                             : isSelected
                             ? { background: "linear-gradient(135deg, hsl(272 100% 62% / 0.18), hsl(272 100% 62% / 0.06))" }
-                            : isDaily
+                            : isBounty
                             ? { background: "linear-gradient(135deg, hsl(120 80% 10% / 0.5), hsl(120 60% 7% / 0.3))" }
                             : {}
                         }
@@ -674,28 +696,28 @@ export function Sandbox() {
                             </div>
                           )}
 
-                          {/* Daily crown badge */}
-                          {isDaily && (
+                          {/* Bounty badge */}
+                          {isBounty && (
                             <div
                               className="absolute top-1 right-1 text-sm leading-none"
                               style={{ animation: "dailyBadgePulse 1.4s ease-in-out infinite", filter: "drop-shadow(0 0 4px hsl(120 100% 55%))" }}
-                              title="Today's Daily Pick!"
+                              title="Bounty Target!"
                             >
-                              {isSelected ? "✅" : "🎮"}
+                              {isSelected ? "✅" : "🎯"}
                             </div>
                           )}
 
-                          {/* Selected ring */}
-                          {(isSelected || isDaily) && (
+                          {/* Selected / bounty ring */}
+                          {(isSelected || isBounty) && (
                             <div
                               className="absolute inset-0 rounded-lg pointer-events-none"
                               style={{
-                                border: isSelected && isDaily
+                                border: isSelected && isBounty
                                   ? "2px solid hsl(120 100% 60%)"
                                   : isSelected
                                   ? "2px solid hsl(272 100% 62% / 0.8)"
                                   : "2px solid hsl(120 100% 45% / 0.5)",
-                                boxShadow: isSelected && isDaily
+                                boxShadow: isSelected && isBounty
                                   ? "inset 0 0 10px hsl(120 100% 55% / 0.3)"
                                   : isSelected
                                   ? "inset 0 0 8px hsl(272 100% 62% / 0.3)"
@@ -708,9 +730,9 @@ export function Sandbox() {
                         {/* Name */}
                         <div className="w-full text-center">
                           <p className={`text-[11px] font-semibold truncate ${
-                            isSelected && isDaily ? "text-green-400"
+                            isSelected && isBounty ? "text-green-400"
                             : isSelected ? "text-primary"
-                            : isDaily ? "text-green-500"
+                            : isBounty ? "text-green-500"
                             : "text-muted-foreground group-hover:text-foreground"
                           } transition-colors`}>
                             {trait.name}
@@ -785,19 +807,24 @@ export function Sandbox() {
                   paintOrder: "stroke fill",
                 }}
               >
-                DAILY WEGEN
+                BOUNTY
               </h2>
               <h3
                 className="text-2xl leading-none"
                 style={{
                   ...BANGERS,
                   color: "hsl(43 100% 55%)",
-                  textShadow: "2px 2px 0 #000, 0 0 20px hsl(43 100% 52% / 0.7)",
+                  textShadow: "2px 2px 0 rgba(0,0,0,1), 0 0 20px hsl(43 100% 52% / 0.6)",
                 }}
               >
-                ACHIEVED!
+                COMPLETE!
               </h3>
             </div>
+
+            <p className="text-center text-sm text-muted-foreground/70 font-mono leading-relaxed">
+              You nailed the Wegen build.<br />
+              A new bounty is ready — keep going!
+            </p>
 
             {/* GIF */}
             <div
@@ -805,48 +832,37 @@ export function Sandbox() {
               style={{ border: "2px solid hsl(120 100% 45% / 0.3)", maxWidth: 260, width: "100%" }}
             >
               <img
-                src={gameSettings?.celebrationGifUrl ?? DEFAULT_CELEBRATION_GIF}
+                src={celebGif}
                 alt="Celebration!"
                 className="w-full"
                 style={{ display: "block" }}
               />
             </div>
 
-            {/* Matched traits recap */}
-            <div className="w-full space-y-1.5">
-              <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest text-center">
-                Today's winning combo
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {dailyCats.map((cat) => {
-                  const t = dailyTraits[cat];
-                  return (
-                    <div
-                      key={cat}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
-                      style={{ background: "hsl(120 60% 8%)", border: "1px solid hsl(120 100% 45% / 0.3)" }}
-                    >
-                      <span className="text-sm leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>
-                      <span className="text-muted-foreground/50 flex-shrink-0">{cat}:</span>
-                      <span className="font-semibold text-green-300 truncate">{t?.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Bounty counter */}
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-xl"
+              style={{ background: "hsl(272 40% 10%)", border: "1px solid hsl(272 100% 62% / 0.3)" }}
+            >
+              <Zap className="w-4 h-4" style={{ color: "hsl(272 100% 75%)" }} />
+              <span className="text-sm font-semibold" style={{ color: "hsl(272 100% 80%)", ...BANGERS }}>
+                {bountyCount + 1} BUILT
+              </span>
             </div>
 
-            {/* CTA */}
+            {/* Next button */}
             <Button
-              className="w-full gap-2 font-bold text-black"
-              onClick={() => setShowCelebration(false)}
+              className="w-full gap-2 font-bold text-base"
+              onClick={advanceBounty}
               style={{
-                background: "linear-gradient(135deg, hsl(120 100% 45%), hsl(120 100% 60%))",
-                boxShadow: "0 0 20px hsl(120 100% 45% / 0.5)",
+                background: "linear-gradient(135deg, hsl(43 100% 52%), hsl(35 100% 50%))",
+                color: "#000",
                 border: "none",
+                boxShadow: "0 0 20px hsl(43 100% 52% / 0.4)",
               }}
             >
-              <Trophy className="w-4 h-4" />
-              EPIC — CLOSE
+              <Gamepad2 className="w-4 h-4" />
+              Next Bounty
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   useGetAdminStats,
   useListTraits,
@@ -375,6 +375,8 @@ export function Admin() {
   const [traitCategory, setTraitCategory] = useState<string>("all");
   const [traitRarity, setTraitRarity] = useState<string>("all");
   const [traitSearch, setTraitSearch] = useState<string>("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   const createTrait = useCreateTrait({
     mutation: {
@@ -440,6 +442,49 @@ export function Admin() {
         theme: data.theme || undefined,
         payoutSplits: data.payoutSplits,
       },
+    });
+  };
+
+  useEffect(() => { setSelectedIds(new Set()); }, [traitView, traitCategory, traitRarity, traitSearch]);
+
+  const filteredTraitsForDisplay = useMemo(() =>
+    (traitsData?.traits ?? []).filter(trait =>
+      (traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive) &&
+      (traitCategory === "all" ? true : trait.category === traitCategory) &&
+      (traitRarity === "all" ? true : (trait.rarity as string) === traitRarity) &&
+      (traitSearch.trim() === "" ? true : trait.name.toLowerCase().includes(traitSearch.trim().toLowerCase()))
+    ),
+    [traitsData, traitView, traitCategory, traitRarity, traitSearch]
+  );
+  const allFilteredSelected = filteredTraitsForDisplay.length > 0 && filteredTraitsForDisplay.every(t => selectedIds.has(t.id));
+  const someFilteredSelected = !allFilteredSelected && filteredTraitsForDisplay.some(t => selectedIds.has(t.id));
+
+  const handleBulkSetActive = async (active: boolean) => {
+    if (selectedIds.size === 0) return;
+    setBulkUpdating(true);
+    try {
+      await Promise.all([...selectedIds].map(id =>
+        fetch(`/api/traits/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: active }),
+        })
+      ));
+      await queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
+      setSelectedIds(new Set());
+      toast({ title: `${selectedIds.size} trait${selectedIds.size !== 1 ? "s" : ""} ${active ? "enabled in store" : "moved to vault"}` });
+    } catch {
+      toast({ title: "Bulk update failed", variant: "destructive" });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const toggleSelectId = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
     });
   };
 
@@ -702,11 +747,70 @@ export function Admin() {
         })()}
       </div>
 
+      {/* Bulk action bar — visible whenever anything is selected */}
+      {(selectedIds.size > 0 || someFilteredSelected || allFilteredSelected) && selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-primary/40 bg-primary/10 shadow-[0_0_16px_rgba(124,58,237,0.15)]">
+          <span className="text-sm font-semibold text-primary flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            {selectedIds.size} of {filteredTraitsForDisplay.length} selected
+          </span>
+          {!allFilteredSelected && (
+            <button
+              onClick={() => setSelectedIds(new Set(filteredTraitsForDisplay.map(t => t.id)))}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+            >
+              Select all {filteredTraitsForDisplay.length}
+            </button>
+          )}
+          <div className="flex-1" />
+          <button
+            onClick={() => handleBulkSetActive(true)}
+            disabled={bulkUpdating}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border bg-emerald-500/15 border-emerald-400/60 text-emerald-300 hover:bg-emerald-500/25 hover:shadow-[0_0_12px_rgba(52,211,153,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {bulkUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />}
+            Enable in Store
+          </button>
+          <button
+            onClick={() => handleBulkSetActive(false)}
+            disabled={bulkUpdating}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border bg-secondary/60 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {bulkUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : <span className="w-2 h-2 rounded-full bg-muted-foreground/40" />}
+            Move to Vault
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            disabled={bulkUpdating}
+            className="ml-1 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+            title="Clear selection"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       <Card className="bg-card border-border/50">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-border/50 hover:bg-transparent">
+                <TableHead className="w-10 pr-0 pl-4">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border border-border/60 bg-secondary/50 accent-primary cursor-pointer"
+                    checked={allFilteredSelected}
+                    ref={el => { if (el) el.indeterminate = someFilteredSelected; }}
+                    onChange={() => {
+                      if (allFilteredSelected) {
+                        setSelectedIds(new Set());
+                      } else {
+                        setSelectedIds(new Set(filteredTraitsForDisplay.map(t => t.id)));
+                      }
+                    }}
+                    title={allFilteredSelected ? "Deselect all" : "Select all visible"}
+                  />
+                </TableHead>
                 <TableHead>Trait</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Price (ETH)</TableHead>
@@ -721,7 +825,7 @@ export function Admin() {
                 if (isLoadingTraits) {
                   return (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10">
+                      <TableCell colSpan={8} className="text-center py-10">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                       </TableCell>
                     </TableRow>
@@ -730,8 +834,26 @@ export function Admin() {
 
                 type TraitItem = NonNullable<typeof traitsData>["traits"][0];
 
-                const renderTraitRow = (trait: TraitItem) => (
-                  <TableRow key={trait.id} className="border-border/50">
+                const renderTraitRow = (trait: TraitItem) => {
+                  const isSelected = selectedIds.has(trait.id);
+                  return (
+                  <TableRow
+                    key={trait.id}
+                    className={`border-border/50 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary/30"}`}
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (target.closest("button") || target.closest("a") || target.closest("[role=dialog]") || target.closest("input[type=checkbox]")) return;
+                      toggleSelectId(trait.id);
+                    }}
+                  >
+                    <TableCell className="w-10 pr-0 pl-4" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectId(trait.id)}
+                        className="w-4 h-4 rounded border border-border/60 bg-secondary/50 accent-primary cursor-pointer"
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         {trait.imageUrl ? (
@@ -829,19 +951,15 @@ export function Admin() {
                       </div>
                     </TableCell>
                   </TableRow>
-                );
+                  );
+                };
 
-                const filteredTraits = (traitsData?.traits ?? []).filter(trait =>
-                  (traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive) &&
-                  (traitCategory === "all" ? true : trait.category === traitCategory) &&
-                  (traitRarity === "all" ? true : (trait.rarity as string) === traitRarity) &&
-                  (traitSearch.trim() === "" ? true : trait.name.toLowerCase().includes(traitSearch.trim().toLowerCase()))
-                );
+                const filteredTraits = filteredTraitsForDisplay;
 
                 if (filteredTraits.length === 0) {
                   return (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10 text-muted-foreground text-sm">
+                      <TableCell colSpan={8} className="text-center py-10 text-muted-foreground text-sm">
                         {traitSearch.trim()
                           ? `No traits matching "${traitSearch.trim()}"`
                           : traitView === "vault" ? "No vaulted traits" : traitView === "in-store" ? "No active traits in store" : "No traits yet"}

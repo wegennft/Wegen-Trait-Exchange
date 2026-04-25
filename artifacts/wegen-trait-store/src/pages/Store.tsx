@@ -18,13 +18,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -41,11 +39,18 @@ import {
   Gem,
   Sparkles,
   Wallet,
+  ShoppingCart,
+  Plus,
+  Check,
+  Trash2,
+  X,
+  Zap,
 } from "lucide-react";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: "0.1em" };
+const BANGERS  = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: "0.1em" };
+const DISPLAY  = { fontFamily: "'Rubik Spray Paint', 'Bebas Neue', Impact, sans-serif", letterSpacing: "0.06em" };
 
 function getRarityColor(rarity: string) {
   switch (rarity) {
@@ -360,8 +365,11 @@ function NftPreviewBanner({
 export function Store() {
   const [selectedTheme, setSelectedTheme] = useState<string | undefined>();
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
-  const [traitToBuy, setTraitToBuy] = useState<Trait | null>(null);
   const [previewTrait, setPreviewTrait] = useState<Trait | null>(null);
+  const [cart, setCart] = useState<Map<number, Trait>>(new Map());
+  const [cartOpen, setCartOpen] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutProgress, setCheckoutProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { walletAddress, isConnected, connect } = useWallet();
   const { toast } = useToast();
@@ -379,47 +387,62 @@ export function Store() {
     },
   );
 
-  const purchaseTrait = usePurchaseTrait({
-    mutation: {
-      onSuccess: () => {
-        toast({
-          title: "Purchase Successful",
-          description: "The trait has been added to your locker.",
-        });
-        setTraitToBuy(null);
-        queryClient.invalidateQueries({
-          queryKey: getListTraitsQueryKey({ category: selectedCategory, theme: selectedTheme }),
-        });
-        queryClient.invalidateQueries({ queryKey: getGetStoreStatsQueryKey() });
-      },
-      onError: () => {
-        toast({
-          title: "Purchase Failed",
-          description: "There was an error processing your transaction.",
-          variant: "destructive",
-        });
-      },
-    },
-  });
+  const purchaseTrait = usePurchaseTrait();
 
-  const handleBuyClick = (trait: Trait) => {
-    if (!isConnected) {
-      connect();
-      return;
-    }
-    setTraitToBuy(trait);
+  // ── Cart helpers ──
+  const cartCount = cart.size;
+  const cartItems = Array.from(cart.values());
+  const cartTotal = cartItems.reduce((sum, t) => sum + parseFloat(t.priceEth || "0"), 0);
+  const isInCart = (id: number) => cart.has(id);
+
+  const toggleCart = (trait: Trait) => {
+    if (!isConnected) { connect(); return; }
+    setCart(prev => {
+      const next = new Map(prev);
+      if (next.has(trait.id)) next.delete(trait.id);
+      else next.set(trait.id, trait);
+      return next;
+    });
   };
 
-  const confirmPurchase = () => {
-    if (!walletAddress || !traitToBuy) return;
-    purchaseTrait.mutate({
-      walletAddress,
-      data: {
-        traitId: traitToBuy.id,
-        quantity: 1,
-        txHash: `0xsimulated${Date.now()}`,
-      },
-    });
+  const removeFromCart = (id: number) => {
+    setCart(prev => { const next = new Map(prev); next.delete(id); return next; });
+  };
+
+  const handleCheckout = async () => {
+    if (!walletAddress || cartItems.length === 0) return;
+    setIsCheckingOut(true);
+    setCheckoutProgress({ done: 0, total: cartItems.length });
+    let succeeded = 0;
+    let failed = 0;
+    for (let i = 0; i < cartItems.length; i++) {
+      const trait = cartItems[i];
+      try {
+        await purchaseTrait.mutateAsync({
+          walletAddress,
+          data: {
+            traitId: trait.id,
+            quantity: 1,
+            txHash: `0xsimulated${Date.now()}`,
+          },
+        });
+        succeeded++;
+      } catch {
+        failed++;
+      }
+      setCheckoutProgress({ done: i + 1, total: cartItems.length });
+    }
+    queryClient.invalidateQueries({ queryKey: getListTraitsQueryKey({ category: selectedCategory, theme: selectedTheme, limit: 9999 }) });
+    queryClient.invalidateQueries({ queryKey: getGetStoreStatsQueryKey() });
+    setCart(new Map());
+    setCartOpen(false);
+    setIsCheckingOut(false);
+    setCheckoutProgress(null);
+    if (failed === 0) {
+      toast({ title: `${succeeded} trait${succeeded > 1 ? "s" : ""} purchased!`, description: "Check your Locker to equip them." });
+    } else {
+      toast({ title: `${succeeded} purchased, ${failed} failed`, description: "Some items could not be completed.", variant: "destructive" });
+    }
   };
 
   const handleThemeSelect = (theme: string | undefined) => {
@@ -437,28 +460,67 @@ export function Store() {
           <h1
             className="text-primary leading-none mb-3"
             style={{
-              fontFamily: "'Bangers', Impact, sans-serif",
+              ...DISPLAY,
               fontSize: 'clamp(4rem, 10vw, 7rem)',
-              letterSpacing: "0.1em",
-              WebkitTextStroke: '3px rgba(0,0,0,0.9)',
+              WebkitTextStroke: '2px rgba(0,0,0,0.9)',
               paintOrder: 'stroke fill',
-              textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 40px rgba(157,0,255,0.6)",
+              textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 50px hsl(272 100% 65% / 0.7), 0 0 100px hsl(272 100% 65% / 0.25)",
             }}
           >
             TRAIT{" "}
             <span
               style={{
-                color: "hsl(43 100% 52%)",
-                textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 40px rgba(255,200,0,0.6)",
+                color: "hsl(43 100% 56%)",
+                textShadow: "5px 5px 0px rgba(0,0,0,1), -2px -2px 0 rgba(0,0,0,1), 0 0 50px hsl(43 100% 56% / 0.9), 0 0 100px hsl(43 100% 40% / 0.35)",
               }}
             >
               STORE
             </span>
           </h1>
-          <p className="text-muted-foreground font-mono text-base max-w-2xl uppercase tracking-widest">
+          <p className="text-muted-foreground text-base max-w-2xl uppercase tracking-widest" style={BANGERS}>
             // Acquire exclusive artifacts for your Wegen NFTs //
           </p>
         </div>
+
+        {/* ── Cart button ── */}
+        <button
+          onClick={() => { if (!isConnected) { connect(); return; } setCartOpen(true); }}
+          className="relative flex items-center gap-3 px-5 py-3 rounded-xl border transition-all group"
+          style={{
+            background: cartCount > 0
+              ? "linear-gradient(135deg, hsl(272 100% 65% / 0.2), hsl(43 100% 56% / 0.1))"
+              : "hsl(268 35% 6%)",
+            border: cartCount > 0
+              ? "1px solid hsl(272 100% 65% / 0.6)"
+              : "1px solid hsl(268 22% 16%)",
+            boxShadow: cartCount > 0 ? "0 0 20px hsl(272 100% 65% / 0.25)" : "none",
+          }}
+        >
+          <div className="relative">
+            <ShoppingCart className={`w-5 h-5 transition-colors ${cartCount > 0 ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+            {cartCount > 0 && (
+              <span
+                className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                style={{ background: "hsl(272 100% 65%)", boxShadow: "0 0 8px hsl(272 100% 65% / 0.8)" }}
+              >
+                {cartCount}
+              </span>
+            )}
+          </div>
+          <div className="text-left">
+            <div className={`text-sm font-bold leading-none mb-0.5 ${cartCount > 0 ? "text-foreground" : "text-muted-foreground"}`} style={BANGERS}>
+              {cartCount > 0 ? `${cartCount} item${cartCount > 1 ? "s" : ""} in cart` : "Cart empty"}
+            </div>
+            {cartCount > 0 && (
+              <div className="text-xs text-accent font-semibold font-mono">
+                {cartTotal.toFixed(4)} ETH total
+              </div>
+            )}
+          </div>
+          {cartCount > 0 && (
+            <Zap className="w-4 h-4 text-accent ml-1" />
+          )}
+        </button>
       </div>
 
       {/* ── Stats ── */}
@@ -698,88 +760,234 @@ export function Store() {
               </CardContent>
 
               <CardFooter className="p-0 border-t border-border/20">
-                <Button
-                  onClick={() => handleBuyClick(trait)}
-                  disabled={!trait.isActive || trait.remainingSupply <= 0}
-                  className="w-full rounded-none h-12 bg-transparent hover:bg-primary hover:text-white transition-colors"
-                  variant="ghost"
-                >
-                  {trait.remainingSupply <= 0 ? "Sold Out" : "Purchase Trait"}
-                </Button>
+                {trait.remainingSupply <= 0 ? (
+                  <div className="w-full h-11 flex items-center justify-center text-sm text-muted-foreground/50 font-semibold" style={BANGERS}>
+                    SOLD OUT
+                  </div>
+                ) : isInCart(trait.id) ? (
+                  <button
+                    onClick={() => toggleCart(trait)}
+                    className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold transition-all"
+                    style={{
+                      background: "linear-gradient(135deg, hsl(272 100% 65% / 0.25), hsl(43 100% 56% / 0.15))",
+                      color: "hsl(43 100% 60%)",
+                      ...BANGERS,
+                    }}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    IN CART — REMOVE
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => toggleCart(trait)}
+                    className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:text-white hover:bg-primary/80 transition-all group/btn"
+                    style={BANGERS}
+                  >
+                    <Plus className="w-3.5 h-3.5 group-hover/btn:rotate-90 transition-transform" />
+                    ADD TO CART
+                  </button>
+                )}
               </CardFooter>
             </Card>
           ))}
         </div>
       )}
 
-      {/* ── Purchase dialog ── */}
-      <Dialog open={!!traitToBuy} onOpenChange={(open) => !open && setTraitToBuy(null)}>
-        <DialogContent className="bg-card border-border/50 sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Purchase</DialogTitle>
-            <DialogDescription>
-              You are about to purchase this trait using your connected wallet.
-            </DialogDescription>
-          </DialogHeader>
-
-          {traitToBuy && (
-            <div className="py-4">
-              <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 border border-border/50 mb-4">
-                <div className="w-16 h-16 rounded-md bg-secondary flex items-center justify-center p-2">
-                  {traitToBuy.imageUrl ? (
-                    <TraitMedia url={traitToBuy.imageUrl} mediaType={(traitToBuy as Record<string, unknown>).mediaType as string} alt={traitToBuy.name} className="w-full h-full" showBadge />
-                  ) : (
-                    <div className="text-xl font-black text-muted-foreground/50">{traitToBuy.category[0]}</div>
-                  )}
-                </div>
-                <div>
-                  <div className="font-bold">{traitToBuy.name}</div>
-                  <div className="text-sm text-muted-foreground capitalize">
-                    {traitToBuy.category} &bull; {traitToBuy.rarity}
-                    {traitToBuy.theme && ` · ${traitToBuy.theme}`}
+      {/* ── Cart Sheet ── */}
+      <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+        <SheetContent
+          className="flex flex-col w-full sm:max-w-md p-0 border-l border-primary/30"
+          style={{
+            background: "hsl(268 40% 4%)",
+            boxShadow: "-10px 0 60px hsl(272 100% 65% / 0.15)",
+          }}
+        >
+          {/* Header */}
+          <SheetHeader className="px-6 py-5 border-b border-primary/20 flex-shrink-0">
+            <SheetTitle asChild>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center"
+                    style={{ background: "hsl(272 100% 65% / 0.2)", border: "1px solid hsl(272 100% 65% / 0.4)" }}
+                  >
+                    <ShoppingCart className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-xl leading-none" style={{ ...BANGERS, color: "hsl(var(--primary))" }}>
+                      SHOPPING CART
+                    </div>
+                    <div className="text-xs text-muted-foreground/60 mt-0.5">
+                      {cartCount} item{cartCount !== 1 ? "s" : ""}
+                    </div>
                   </div>
                 </div>
-                <div className="ml-auto text-right">
-                  <div className="font-bold text-primary">{traitToBuy.priceEth} ETH</div>
+                {cartCount > 0 && (
+                  <button
+                    onClick={() => setCart(new Map())}
+                    className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-destructive transition-colors px-2 py-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Clear all
+                  </button>
+                )}
+              </div>
+            </SheetTitle>
+          </SheetHeader>
+
+          {/* Cart items list */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+            {cartCount === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-20 gap-4 text-center">
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                  style={{ background: "hsl(268 35% 8%)", border: "1px solid hsl(268 22% 15%)" }}
+                >
+                  <ShoppingBag className="w-7 h-7 text-muted-foreground/30" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-muted-foreground/50" style={BANGERS}>YOUR CART IS EMPTY</p>
+                  <p className="text-xs text-muted-foreground/35 mt-1">Browse the store and add traits to get started</p>
+                </div>
+                <Button size="sm" variant="outline" className="border-primary/40 text-primary" onClick={() => setCartOpen(false)}>
+                  Browse Traits
+                </Button>
+              </div>
+            ) : (
+              cartItems.map((trait) => (
+                <div
+                  key={trait.id}
+                  className="flex items-center gap-3 p-3 rounded-xl border transition-all"
+                  style={{
+                    background: "hsl(268 35% 6%)",
+                    border: "1px solid hsl(268 22% 14%)",
+                  }}
+                >
+                  {/* Thumbnail */}
+                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-secondary/40 flex-shrink-0 border border-border/20">
+                    {trait.imageUrl ? (
+                      <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
+                        {trait.category?.[0]}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold truncate text-foreground">{trait.name}</div>
+                    <div className="text-xs text-muted-foreground/60 capitalize">{trait.category} · {trait.rarity}</div>
+                    <div className="flex items-center gap-1 text-accent text-xs font-bold font-mono mt-0.5">
+                      <Coins className="w-3 h-3" />
+                      {trait.priceEth} ETH
+                    </div>
+                  </div>
+
+                  {/* Remove */}
+                  <button
+                    onClick={() => removeFromCart(trait.id)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Footer — summary + checkout */}
+          {cartCount > 0 && (
+            <div
+              className="flex-shrink-0 px-6 py-5 border-t border-primary/20 space-y-4"
+              style={{ background: "hsl(268 40% 3%)" }}
+            >
+              {/* Order summary */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-muted-foreground/60">
+                  <span>{cartCount} trait{cartCount > 1 ? "s" : ""}</span>
+                  <span className="font-mono">{cartTotal.toFixed(4)} ETH</span>
+                </div>
+                {walletAddress && (
+                  <div className="flex justify-between text-muted-foreground/50 text-xs">
+                    <span>Wallet</span>
+                    <span className="font-mono">{walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}</span>
+                  </div>
+                )}
+                <div
+                  className="flex justify-between font-bold pt-2 border-t border-border/30"
+                  style={{ color: "hsl(43 100% 56%)" }}
+                >
+                  <span style={BANGERS}>TOTAL</span>
+                  <span className="font-mono text-base">{cartTotal.toFixed(4)} ETH</span>
                 </div>
               </div>
 
-              <div className="bg-black/20 rounded-md p-3 text-xs text-muted-foreground space-y-2">
-                <div className="flex justify-between">
-                  <span>Wallet:</span>
-                  <span className="font-mono">
-                    {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
-                  </span>
+              {/* Progress bar during checkout */}
+              {checkoutProgress && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-muted-foreground/60">
+                    <span>Processing…</span>
+                    <span>{checkoutProgress.done} / {checkoutProgress.total}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${(checkoutProgress.done / checkoutProgress.total) * 100}%`,
+                        background: "linear-gradient(90deg, hsl(272 100% 65%), hsl(43 100% 56%))",
+                        boxShadow: "0 0 10px hsl(272 100% 65% / 0.6)",
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between text-primary font-bold pt-2 border-t border-border/20">
-                  <span>Total:</span>
-                  <span>{traitToBuy.priceEth} ETH</span>
-                </div>
-              </div>
+              )}
+
+              {/* Connect / Checkout button */}
+              {!isConnected ? (
+                <Button
+                  className="w-full gap-2 font-bold"
+                  style={{ ...BANGERS, background: "linear-gradient(135deg, hsl(272 100% 55%), hsl(272 100% 68%))" }}
+                  onClick={connect}
+                >
+                  <Wallet className="w-4 h-4" />
+                  CONNECT WALLET TO CHECKOUT
+                </Button>
+              ) : (
+                <button
+                  onClick={handleCheckout}
+                  disabled={isCheckingOut}
+                  className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2.5 font-bold text-black transition-all disabled:opacity-60"
+                  style={{
+                    ...BANGERS,
+                    fontSize: "1rem",
+                    background: isCheckingOut
+                      ? "hsl(43 80% 45%)"
+                      : "linear-gradient(135deg, hsl(43 100% 56%), hsl(35 100% 50%))",
+                    boxShadow: isCheckingOut ? "none" : "0 0 24px hsl(43 100% 56% / 0.5), 0 4px 16px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  {isCheckingOut ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      PROCESSING…
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      CHECKOUT — {cartTotal.toFixed(4)} ETH
+                    </>
+                  )}
+                </button>
+              )}
+
+              <p className="text-center text-[10px] text-muted-foreground/35">
+                One of each trait per transaction · Added to your Locker on success
+              </p>
             </div>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTraitToBuy(null)} disabled={purchaseTrait.isPending}>
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmPurchase}
-              disabled={purchaseTrait.isPending}
-              className="bg-primary text-white hover:bg-primary/90 shadow-[0_0_15px_rgba(157,0,255,0.4)]"
-            >
-              {purchaseTrait.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Confirming...
-                </>
-              ) : (
-                "Confirm Purchase"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

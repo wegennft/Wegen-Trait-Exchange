@@ -584,16 +584,20 @@ export function Admin() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingTraits ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                (traitsData?.traits ?? []).filter(trait =>
-                  traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive
-                ).map((trait) => (
+              {(() => {
+                if (isLoadingTraits) {
+                  return (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-10">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                type TraitItem = NonNullable<typeof traitsData>["traits"][0];
+
+                const renderTraitRow = (trait: TraitItem) => (
                   <TableRow key={trait.id} className="border-border/50">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
@@ -606,20 +610,14 @@ export function Admin() {
                             {trait.name[0]}
                           </div>
                         )}
-                        <div>
-                          {trait.name}
-                        </div>
+                        <div>{trait.name}</div>
                       </div>
                     </TableCell>
                     <TableCell className="capitalize">{trait.category}</TableCell>
                     <TableCell className="font-mono text-sm">{trait.priceEth}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <span
-                          className={
-                            trait.remainingSupply === 0 ? "text-destructive font-bold" : ""
-                          }
-                        >
+                        <span className={trait.remainingSupply === 0 ? "text-destructive font-bold" : ""}>
                           {trait.remainingSupply}
                         </span>
                         <span className="text-muted-foreground"> / {trait.totalSupply}</span>
@@ -675,7 +673,6 @@ export function Admin() {
                             )}
                           </DialogContent>
                         </Dialog>
-
                         <Button
                           variant="ghost"
                           size="icon"
@@ -692,8 +689,57 @@ export function Admin() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+                );
+
+                const filteredTraits = (traitsData?.traits ?? []).filter(trait =>
+                  traitView === "all" ? true : traitView === "in-store" ? trait.isActive : !trait.isActive
+                );
+
+                if (filteredTraits.length === 0) {
+                  return (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-10 text-muted-foreground text-sm">
+                        {traitView === "vault" ? "No vaulted traits" : traitView === "in-store" ? "No active traits in store" : "No traits yet"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                // For All / In Store — plain flat list
+                if (traitView !== "vault") {
+                  return <>{filteredTraits.map(renderTraitRow)}</>;
+                }
+
+                // Vault — group by category
+                const grouped: Record<string, TraitItem[]> = {};
+                for (const t of filteredTraits) {
+                  const cat = (t.category as string) || "Other";
+                  if (!grouped[cat]) grouped[cat] = [];
+                  grouped[cat].push(t);
+                }
+                const sortedCats = CATEGORIES.filter(c => grouped[c])
+                  .concat(Object.keys(grouped).filter(c => !CATEGORIES.includes(c)).sort());
+
+                return (
+                  <>
+                    {sortedCats.flatMap(cat => [
+                      <TableRow key={`vault-cat-${cat}`} className="border-0 bg-primary/5 hover:bg-primary/5">
+                        <TableCell colSpan={7} className="py-2 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base leading-none select-none">{LAYER_ICONS[cat] ?? "📦"}</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-primary/80">{cat}</span>
+                            <span className="text-xs text-muted-foreground/50 font-normal">
+                              — {grouped[cat].length} trait{grouped[cat].length !== 1 ? "s" : ""}
+                            </span>
+                            <div className="flex-1 h-px bg-border/30 ml-1" />
+                          </div>
+                        </TableCell>
+                      </TableRow>,
+                      ...grouped[cat].map(renderTraitRow),
+                    ])}
+                  </>
+                );
+              })()}
             </TableBody>
           </Table>
         </div>

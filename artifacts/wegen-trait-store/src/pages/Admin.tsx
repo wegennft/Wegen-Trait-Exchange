@@ -4262,7 +4262,7 @@ function AirdropTab() {
 
           {/* Category filter */}
           <div className="space-y-2">
-            <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest">Category</p>
+            <p className="text-[10px] font-mono text-foreground/40 uppercase tracking-widest">Category</p>
             <div className="flex gap-1.5 flex-wrap">
               {AIRDROP_CATEGORIES.map((cat) => (
                 <button
@@ -4271,7 +4271,7 @@ function AirdropTab() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                     catFilter === cat
                       ? "border-primary/70 text-primary"
-                      : "border-border/30 text-muted-foreground hover:border-primary/40"
+                      : "border-white/20 text-foreground/70 hover:border-primary/50 hover:text-foreground"
                   }`}
                   style={catFilter === cat ? { background: "hsl(272 100% 62% / 0.12)" } : {}}
                 >
@@ -4284,36 +4284,34 @@ function AirdropTab() {
           {/* Rarity filter */}
           {rarityOptions.length > 1 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest">Rarity</p>
+              <p className="text-[10px] font-mono text-foreground/40 uppercase tracking-widest">Rarity</p>
               <div className="flex gap-1.5 flex-wrap">
                 {rarityOptions.map((rar) => {
                   const count = rar === "All" ? allTraits.length : allTraits.filter((t) => t.rarity === rar).length;
-                  const RARITY_COLORS: Record<string, string> = {
-                    Common: "hsl(220 13% 55%)",
-                    Uncommon: "hsl(152 60% 52%)",
-                    Rare: "hsl(210 100% 62%)",
-                    Legendary: "hsl(43 100% 55%)",
-                    Mythic: "hsl(272 100% 68%)",
-                    Divine: "hsl(340 100% 68%)",
+                  const RARITY_HEX: Record<string, string> = {
+                    Common:    "#8896a8",
+                    Uncommon:  "#40d080",
+                    Rare:      "#3b9eff",
+                    Legendary: "#ffb020",
+                    Mythic:    "#b060ff",
+                    Divine:    "#ff4488",
                   };
-                  const color = RARITY_COLORS[rar] ?? "hsl(272 100% 62%)";
+                  const hex = RARITY_HEX[rar] ?? "#9b5cf6";
                   const active = rarityFilter === rar;
                   return (
                     <button
                       key={rar}
                       onClick={() => setRarityFilter(rar)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
-                        active ? "border-opacity-70" : "border-border/30 text-muted-foreground hover:border-primary/40"
-                      }`}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5"
                       style={active
-                        ? { borderColor: `${color}80`, color, background: `${color}18` }
-                        : {}}
+                        ? { borderColor: hex, color: hex, background: `${hex}22` }
+                        : { borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.65)" }}
                     >
                       {rar !== "All" && (
-                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: hex }} />
                       )}
                       {rar}
-                      <span className="text-[9px] opacity-50 font-mono">{count}</span>
+                      <span className="text-[9px] opacity-50 font-mono ml-0.5">{count}</span>
                     </button>
                   );
                 })}

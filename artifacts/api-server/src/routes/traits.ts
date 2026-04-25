@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and, isNotNull } from "drizzle-orm";
-import { db, traitsTable } from "@workspace/db";
+import { db, traitsTable, storeSettingsTable } from "@workspace/db";
 import {
   ListTraitsQueryParams,
   ListTraitsResponse,
@@ -133,6 +133,18 @@ router.get("/store/stats", async (_req, res): Promise<void> => {
       recentPurchases,
     }),
   );
+});
+
+// ── GET /store/config — public config for frontend (maintenance gate etc.) ────
+router.get("/store/config", async (_req, res): Promise<void> => {
+  const [settings] = await db.select().from(storeSettingsTable).limit(1);
+  res.json({
+    storeOpen: settings?.storeOpen ?? true,
+    maintenanceMode: settings?.maintenanceMode ?? false,
+    maintenanceWhitelist: JSON.parse(settings?.maintenanceWhitelist ?? "[]") as string[],
+    storeName: settings?.storeName ?? "Wegen Trait Store",
+    announcementBanner: settings?.announcementBanner ?? null,
+  });
 });
 
 export default router;

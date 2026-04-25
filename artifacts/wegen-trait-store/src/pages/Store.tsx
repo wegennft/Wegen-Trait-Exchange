@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
 import {
@@ -375,6 +375,26 @@ export function Store() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // ── Maintenance mode gate ──
+  const [storeConfig, setStoreConfig] = useState<{
+    storeOpen: boolean;
+    maintenanceMode: boolean;
+    maintenanceWhitelist: string[];
+    storeName: string;
+    announcementBanner: string | null;
+  } | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+
+  const fetchConfig = useCallback(() => {
+    setConfigLoading(true);
+    fetch("/api/store/config")
+      .then(r => r.json())
+      .then(data => { setStoreConfig(data); setConfigLoading(false); })
+      .catch(() => setConfigLoading(false));
+  }, []);
+
+  useEffect(() => { fetchConfig(); }, [fetchConfig]);
+
   const { data: storeStats } = useGetStoreStats();
   const { data: themesData } = useListStoreThemes();
   const { data: categoriesData, isLoading: isLoadingCategories } = useListTraitCategories();
@@ -451,6 +471,93 @@ export function Store() {
   };
 
   const themes = themesData?.themes ?? [];
+
+  // ── Maintenance gate check ──
+  const isBlocked = storeConfig?.maintenanceMode === true &&
+    !storeConfig.maintenanceWhitelist.includes((walletAddress ?? "").toLowerCase());
+
+  if (configLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4 text-muted-foreground">
+          <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <span className="text-sm uppercase tracking-widest" style={{ fontFamily: "'Bangers', cursive" }}>Loading Store...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isBlocked) {
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <div className="flex flex-col items-center gap-8 text-center max-w-md">
+          {/* Icon */}
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.2)]">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                <path d="M12 8v4" />
+                <path d="M12 16h.01" />
+              </svg>
+            </div>
+            <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-amber-500 border-2 border-background flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-black" viewBox="0 0 24 24" fill="currentColor">
+                <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3A5.25 5.25 0 0012 1.5zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Text */}
+          <div className="space-y-3">
+            <h2
+              className="text-4xl text-amber-400 leading-none"
+              style={{ fontFamily: "'Bangers', cursive", letterSpacing: "0.05em", textShadow: "3px 3px 0 rgba(0,0,0,0.8), 0 0 30px rgba(245,158,11,0.5)" }}
+            >
+              MAINTENANCE MODE
+            </h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              The Wegen Trait Store is currently undergoing maintenance. We'll be back shortly with something amazing.
+            </p>
+            {!isConnected && (
+              <p className="text-xs text-muted-foreground/60 italic">
+                Connect your wallet — if you're whitelisted, you'll get instant access.
+              </p>
+            )}
+          </div>
+
+          {/* Action */}
+          {!isConnected ? (
+            <button
+              onClick={connect}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold hover:bg-amber-500/25 transition-all text-sm uppercase tracking-widest"
+              style={{ fontFamily: "'Bangers', cursive", letterSpacing: "0.1em" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path d="M16 12h.01" />
+              </svg>
+              Connect Wallet
+            </button>
+          ) : (
+            <button
+              onClick={fetchConfig}
+              className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors uppercase tracking-widest"
+              style={{ fontFamily: "'Bangers', cursive" }}
+            >
+              Refresh Status
+            </button>
+          )}
+
+          {/* Decorative */}
+          <div className="flex items-center gap-2 text-muted-foreground/20">
+            <div className="h-px w-16 bg-current" />
+            <span className="text-xs uppercase tracking-widest font-mono">Wegen NFT</span>
+            <div className="h-px w-16 bg-current" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

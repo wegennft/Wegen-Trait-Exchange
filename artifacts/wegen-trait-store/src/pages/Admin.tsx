@@ -1065,6 +1065,8 @@ type StoreSettingsData = {
   discordUrl: string | null;
   websiteUrl: string | null;
   contactEmail: string | null;
+  maintenanceMode: boolean;
+  maintenanceWhitelist: string[];
 };
 
 const NETWORKS = [
@@ -1091,14 +1093,22 @@ function StoreSettingsTab() {
     discordUrl: null,
     websiteUrl: null,
     contactEmail: null,
+    maintenanceMode: false,
+    maintenanceWhitelist: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [newWalletInput, setNewWalletInput] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/store-settings")
       .then(r => r.json())
       .then((data: StoreSettingsData) => {
-        setForm(data);
+        setForm(prev => ({
+          ...prev,
+          ...data,
+          maintenanceWhitelist: Array.isArray(data.maintenanceWhitelist) ? data.maintenanceWhitelist : [],
+          maintenanceMode: data.maintenanceMode ?? false,
+        }));
         setIsLoading(false);
       })
       .catch(() => setIsLoading(false));
@@ -1260,6 +1270,124 @@ function StoreSettingsTab() {
             Store is currently closed. Shoppers will see a maintenance page.
           </div>
         )}
+      </div>
+
+      {/* ── Maintenance Mode ─────────────────────────────────────────── */}
+      <div className={`rounded-xl border p-6 space-y-5 ${form.maintenanceMode ? "border-amber-500/40 bg-amber-500/5" : "border-border/50 bg-card"}`}>
+        <SectionHeader
+          icon={<AlertTriangle className="w-4 h-4" />}
+          title="Maintenance Mode"
+          description="When enabled, only whitelisted wallets can access the store. Everyone else sees a maintenance screen."
+        />
+
+        {/* Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-lg border border-border/40 bg-secondary/30">
+          <div>
+            <div className="font-semibold text-sm flex items-center gap-2">
+              Maintenance Mode
+              {form.maintenanceMode && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  Active
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {form.maintenanceMode
+                ? `Store is in maintenance — only ${form.maintenanceWhitelist.length} whitelisted wallet${form.maintenanceWhitelist.length !== 1 ? "s" : ""} can access`
+                : "Store is fully accessible to all visitors."}
+            </div>
+          </div>
+          <button
+            onClick={() => set("maintenanceMode", !form.maintenanceMode)}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full border-2 transition-all duration-200 focus:outline-none ${
+              form.maintenanceMode
+                ? "bg-amber-500 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                : "bg-secondary/60 border-border"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${
+                form.maintenanceMode ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Whitelist manager */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-foreground/80">
+              Whitelisted Wallets
+              <span className="ml-2 text-xs font-normal text-muted-foreground/60">
+                ({form.maintenanceWhitelist.length} address{form.maintenanceWhitelist.length !== 1 ? "es" : ""})
+              </span>
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground/60">
+            These wallets can access the store even when maintenance mode is on. Addresses are case-insensitive.
+          </p>
+
+          {/* Add wallet input */}
+          <div className="flex gap-2">
+            <Input
+              value={newWalletInput}
+              onChange={e => setNewWalletInput(e.target.value)}
+              placeholder="0x... wallet address"
+              className="font-mono text-sm bg-secondary/50 border-border/50 flex-1"
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const addr = newWalletInput.trim().toLowerCase();
+                  if (!addr) return;
+                  if (form.maintenanceWhitelist.includes(addr)) {
+                    toast({ title: "Address already in whitelist", variant: "destructive" });
+                    return;
+                  }
+                  set("maintenanceWhitelist", [...form.maintenanceWhitelist, addr]);
+                  setNewWalletInput("");
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                const addr = newWalletInput.trim().toLowerCase();
+                if (!addr) return;
+                if (form.maintenanceWhitelist.includes(addr)) {
+                  toast({ title: "Address already in whitelist", variant: "destructive" });
+                  return;
+                }
+                set("maintenanceWhitelist", [...form.maintenanceWhitelist, addr]);
+                setNewWalletInput("");
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary/15 border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/25 transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
+
+          {/* Wallet list */}
+          {form.maintenanceWhitelist.length > 0 ? (
+            <div className="space-y-1.5 max-h-52 overflow-y-auto rounded-lg border border-border/40 bg-secondary/20 p-2">
+              {form.maintenanceWhitelist.map((addr, i) => (
+                <div key={addr} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-secondary/40 border border-border/30 group">
+                  <span className="font-mono text-xs text-foreground/80 truncate flex-1">{addr}</span>
+                  <span className="text-[10px] text-muted-foreground/40 font-mono flex-shrink-0">#{i + 1}</span>
+                  <button
+                    onClick={() => set("maintenanceWhitelist", form.maintenanceWhitelist.filter(w => w !== addr))}
+                    className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                    title="Remove"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 rounded-lg border border-dashed border-border/40 text-sm text-muted-foreground/50">
+              No wallets whitelisted yet. Add addresses above.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Purchase Limits ───────────────────────────────────────────── */}

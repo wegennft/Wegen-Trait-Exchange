@@ -25,6 +25,8 @@ export const storeSettingsTable = pgTable("store_settings", {
   discordUrl: text("discord_url"),
   websiteUrl: text("website_url"),
   contactEmail: text("contact_email"),
+  maintenanceMode: boolean("maintenance_mode").default(false),
+  maintenanceWhitelist: text("maintenance_whitelist").default("[]"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

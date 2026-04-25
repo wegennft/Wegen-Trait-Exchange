@@ -415,6 +415,8 @@ const UpdateStoreSettingsBody = z.object({
   discordUrl: z.string().url().nullable().optional().or(z.literal("")),
   websiteUrl: z.string().url().nullable().optional().or(z.literal("")),
   contactEmail: z.string().email().nullable().optional().or(z.literal("")),
+  maintenanceMode: z.boolean().optional(),
+  maintenanceWhitelist: z.array(z.string()).optional(),
 });
 
 const DEFAULT_STORE_SETTINGS = {
@@ -424,12 +426,8 @@ const DEFAULT_STORE_SETTINGS = {
   sellingFeeWallet: null as null | string,
 };
 
-router.get("/admin/store-settings", async (_req, res): Promise<void> => {
-  let [settings] = await db.select().from(storeSettingsTable).limit(1);
-  if (!settings) {
-    [settings] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
-  }
-  res.json({
+function serializeStoreSettings(settings: typeof storeSettingsTable.$inferSelect) {
+  return {
     storeName: settings.storeName ?? "Wegen Trait Store",
     storeTagline: settings.storeTagline ?? "",
     storeOpen: settings.storeOpen ?? true,
@@ -441,7 +439,17 @@ router.get("/admin/store-settings", async (_req, res): Promise<void> => {
     discordUrl: settings.discordUrl ?? null,
     websiteUrl: settings.websiteUrl ?? null,
     contactEmail: settings.contactEmail ?? null,
-  });
+    maintenanceMode: settings.maintenanceMode ?? false,
+    maintenanceWhitelist: JSON.parse(settings.maintenanceWhitelist ?? "[]") as string[],
+  };
+}
+
+router.get("/admin/store-settings", async (_req, res): Promise<void> => {
+  let [settings] = await db.select().from(storeSettingsTable).limit(1);
+  if (!settings) {
+    [settings] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
+  }
+  res.json(serializeStoreSettings(settings));
 });
 
 router.put("/admin/store-settings", async (req, res): Promise<void> => {
@@ -469,6 +477,11 @@ router.put("/admin/store-settings", async (req, res): Promise<void> => {
   if (d.discordUrl !== undefined) toUpdate.discordUrl = d.discordUrl || null;
   if (d.websiteUrl !== undefined) toUpdate.websiteUrl = d.websiteUrl || null;
   if (d.contactEmail !== undefined) toUpdate.contactEmail = d.contactEmail || null;
+  if (d.maintenanceMode !== undefined) toUpdate.maintenanceMode = d.maintenanceMode;
+  if (d.maintenanceWhitelist !== undefined) {
+    const normalized = d.maintenanceWhitelist.map((w: string) => w.trim().toLowerCase());
+    toUpdate.maintenanceWhitelist = JSON.stringify(normalized);
+  }
 
   const [updated] = await db
     .update(storeSettingsTable)
@@ -476,19 +489,7 @@ router.put("/admin/store-settings", async (req, res): Promise<void> => {
     .where(eq(storeSettingsTable.id, existing.id))
     .returning();
 
-  res.json({
-    storeName: updated.storeName ?? "Wegen Trait Store",
-    storeTagline: updated.storeTagline ?? "",
-    storeOpen: updated.storeOpen ?? true,
-    announcementBanner: updated.announcementBanner ?? null,
-    maxTraitsPerOrder: updated.maxTraitsPerOrder ?? 10,
-    contractAddress: updated.contractAddress ?? null,
-    networkName: updated.networkName ?? "mainnet",
-    twitterUrl: updated.twitterUrl ?? null,
-    discordUrl: updated.discordUrl ?? null,
-    websiteUrl: updated.websiteUrl ?? null,
-    contactEmail: updated.contactEmail ?? null,
-  });
+  res.json(serializeStoreSettings(updated));
 });
 
 // ── Rarity Tiers ─────────────────────────────────────────────────────────────

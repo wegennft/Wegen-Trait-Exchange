@@ -90,7 +90,6 @@ import {
   Power,
   Gamepad2,
   Trophy,
-  Calendar,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -103,12 +102,6 @@ import { useSiteSettings, DEFAULT_COLORS } from "@/contexts/SiteSettingsContext"
 const CATEGORIES = ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
 const RARITIES = ["common", "uncommon", "rare", "legendary"] as const;
 
-/* Seeded random for daily game picks — same algorithm as Sandbox.tsx */
-function seededRandAdmin(s: string): number {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(h ^ s.charCodeAt(i), 16777619)) >>> 0;
-  return h / 0xFFFFFFFF;
-}
 type Rarity = (typeof RARITIES)[number];
 
 const payoutSplitSchema = z.object({
@@ -3897,8 +3890,6 @@ function GamesTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
-
   const { data: gameSettings, isLoading } = useQuery<GameSettings>({
     queryKey: ["admin-game-settings"],
     queryFn: async () => {
@@ -3908,85 +3899,44 @@ function GamesTab() {
     },
   });
 
-  const { data: traitsData } = useListTraits({ limit: 9999 });
-  const allTraits = useMemo(
-    () => ((traitsData?.traits ?? []) as GameTrait[]).filter((t) => t.isActive),
-    [traitsData],
-  );
-  const byCategory = useMemo(() => {
-    const map: Record<string, GameTrait[]> = {};
-    for (const t of allTraits) {
-      if (!map[t.category]) map[t.category] = [];
-      map[t.category].push(t);
+  const { data: traitsData } = useListTraits({ limit: 9999, includeAll: true });
+  const traitCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of (traitsData?.traits ?? []) as GameTrait[]) {
+      counts[t.category] = (counts[t.category] ?? 0) + 1;
     }
-    return map;
-  }, [allTraits]);
+    return counts;
+  }, [traitsData]);
 
   const [enabled, setEnabled] = useState(true);
   const [gifUrl, setGifUrl] = useState("");
-  const [allOverrides, setAllOverrides] = useState<Record<string, Record<string, number | null>>>({});
-  const [todayDraft, setTodayDraft] = useState<Record<string, number | null>>({});
   const [inited, setInited] = useState(false);
 
   useEffect(() => {
     if (gameSettings && !inited) {
       setEnabled(gameSettings.dailyGameEnabled);
       setGifUrl(gameSettings.celebrationGifUrl ?? "");
-      setAllOverrides(gameSettings.dailyGameOverrides ?? {});
-      setTodayDraft(gameSettings.dailyGameOverrides?.[todayKey] ?? {});
       setInited(true);
     }
-  }, [gameSettings, inited, todayKey]);
-
-  function seededPick(dateStr: string, cat: string): GameTrait | null {
-    const pool = byCategory[cat] ?? [];
-    if (!pool.length) return null;
-    const idx = Math.floor(seededRandAdmin(dateStr + "|" + cat) * pool.length);
-    return pool[Math.min(idx, pool.length - 1)];
-  }
-
-  function effectivePick(dateStr: string, cat: string): GameTrait | null {
-    const ov = dateStr === todayKey ? todayDraft : (allOverrides[dateStr] ?? {});
-    const oid = ov[cat];
-    if (oid !== undefined && oid !== null) return allTraits.find((t) => t.id === oid) ?? null;
-    return seededPick(dateStr, cat);
-  }
-
-  const next7 = useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() + i);
-        return d.toISOString().slice(0, 10);
-      }),
-    [],
-  );
-
-  function setTodayOverride(cat: string, traitId: number | null) {
-    setTodayDraft((prev) => {
-      const next = { ...prev };
-      if (traitId === null) delete next[cat];
-      else next[cat] = traitId;
-      return next;
-    });
-  }
+  }, [gameSettings, inited]);
 
   const { mutate: save, isPending: saving } = useMutation({
     mutationFn: async () => {
-      const merged = { ...allOverrides };
-      if (Object.keys(todayDraft).length > 0) merged[todayKey] = todayDraft;
-      else delete merged[todayKey];
       const res = await fetch("/api/admin/game-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dailyGameEnabled: enabled, celebrationGifUrl: gifUrl || null, dailyGameOverrides: merged }),
+        body: JSON.stringify({
+          dailyGameEnabled: enabled,
+          celebrationGifUrl: gifUrl || null,
+          dailyGameOverrides: gameSettings?.dailyGameOverrides ?? {},
+        }),
       });
       if (!res.ok) throw new Error("Failed to save");
       return res.json() as Promise<GameSettings>;
     },
-    onSuccess: (data) => {
-      setAllOverrides(data.dailyGameOverrides ?? {});
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-game-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["game-settings"] });
       toast({ title: "Game settings saved ✓" });
     },
     onError: () => toast({ title: "Failed to save game settings", variant: "destructive" }),
@@ -4001,6 +3951,7 @@ function GamesTab() {
   }
 
   const BANGERS_ADMIN = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
+  const totalTraits = Object.values(traitCounts).reduce((a, b) => a + b, 0);
 
   return (
     <div className="space-y-6">
@@ -4010,10 +3961,37 @@ function GamesTab() {
           <Gamepad2 className="w-4 h-4" />
         </div>
         <div>
-          <div className="font-bold text-base">Daily Wegen Mini-Game</div>
+          <div className="font-bold text-base" style={BANGERS_ADMIN}>Wegen Bounty Game</div>
           <div className="text-sm text-muted-foreground">
-            Control the daily challenge shown in the Trait Sandbox — enable/disable, override picks, and customise the win screen.
+            An endless discovery game in the Trait Sandbox — each session generates a new random target Wegen for players to hunt and build.
           </div>
+        </div>
+      </div>
+
+      {/* ── How it works ── */}
+      <div
+        className="rounded-xl p-5 space-y-3"
+        style={{ background: "hsl(272 20% 7%)", border: "1px solid hsl(272 100% 62% / 0.2)" }}
+      >
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "hsl(43 100% 55%)" }}>
+          How it works
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { icon: "🎲", title: "Random Target", body: "Every session a fresh 6-trait Wegen is seeded at random — one trait drawn from every layer category." },
+            { icon: "🔍", title: "Hunt & Discover", body: "Traits are hidden as ??? until the player finds each one by browsing and selecting. No hints in the grid." },
+            { icon: "🏆", title: "Complete & Loop", body: "Matching all 6 traits triggers a celebration overlay with confetti + GIF. A brand-new bounty then auto-generates." },
+          ].map(({ icon, title, body }) => (
+            <div
+              key={title}
+              className="flex flex-col gap-2 p-4 rounded-xl"
+              style={{ background: "hsl(272 30% 9%)", border: "1px solid hsl(272 100% 62% / 0.12)" }}
+            >
+              <span className="text-2xl">{icon}</span>
+              <p className="text-sm font-bold">{title}</p>
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">{body}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -4022,9 +4000,9 @@ function GamesTab() {
         {/* Enable / Disable */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold text-sm">Enable Daily Game</p>
+            <p className="font-semibold text-sm">Enable Bounty Game</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Show the daily challenge banner in the Trait Sandbox for all visitors.
+              Show the Wegen Bounty banner in the Trait Sandbox for all visitors.
             </p>
           </div>
           <Switch checked={enabled} onCheckedChange={setEnabled} />
@@ -4041,7 +4019,7 @@ function GamesTab() {
             onChange={(e) => setGifUrl(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Shown in the win overlay when a player completes the daily combo. Leave blank to use the default.
+            Shown in the win overlay when a player completes a bounty. Leave blank for the default.
           </p>
           {gifUrl && (
             <div className="mt-2 rounded-lg overflow-hidden border border-border/40 inline-block">
@@ -4051,104 +4029,49 @@ function GamesTab() {
         </div>
       </div>
 
-      {/* ── Today's Picks + Override ── */}
+      {/* ── Trait pool stats ── */}
       <div className="rounded-xl border border-border/50 bg-card p-6 space-y-4">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
             <Trophy className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-bold text-base flex items-center gap-2">
-              Today's Picks
-              <span
-                className="text-xs px-2 py-0.5 rounded font-mono"
-                style={{ background: "hsl(272 100% 62% / 0.12)", border: "1px solid hsl(272 100% 62% / 0.3)", color: "hsl(272 100% 72%)" }}
-              >
-                {todayKey}
-              </span>
-            </div>
+            <div className="font-bold text-sm">Bounty Trait Pool</div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Override any layer's daily pick. Set to "Auto" to use the seeded random pick.
+              All traits (including vaulted) are eligible bounty targets — the larger the pool, the harder the hunt.
             </p>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {CATEGORIES.map((cat) => {
-            const seeded = seededPick(todayKey, cat);
-            const overrideId = todayDraft[cat];
-            const isOverridden = overrideId !== undefined;
-            const displayTrait = isOverridden && overrideId !== null
-              ? allTraits.find((t) => t.id === overrideId) ?? null
-              : seeded;
-
+            const count = traitCounts[cat] ?? 0;
             return (
               <div
                 key={cat}
-                className="flex items-center gap-3 p-3 rounded-lg border transition-colors"
-                style={{
-                  background: isOverridden ? "hsl(43 100% 52% / 0.05)" : "hsl(272 20% 7%)",
-                  borderColor: isOverridden ? "hsl(43 100% 52% / 0.4)" : "hsl(272 100% 62% / 0.15)",
-                }}
+                className="flex items-center justify-between px-3 py-2.5 rounded-lg"
+                style={{ background: "hsl(272 20% 7%)", border: "1px solid hsl(272 100% 62% / 0.12)" }}
               >
-                {/* Thumb */}
-                <div className="w-10 h-10 rounded-lg overflow-hidden bg-secondary/30 border border-border/30 flex-shrink-0 flex items-center justify-center">
-                  {displayTrait?.imageUrl ? (
-                    <img src={displayTrait.imageUrl} alt={displayTrait.name} className="w-full h-full object-contain" />
-                  ) : (
-                    <span className="text-muted-foreground/30 text-lg">?</span>
-                  )}
-                </div>
-
-                {/* Category */}
-                <span className="w-20 flex-shrink-0 text-xs font-mono text-muted-foreground/60 uppercase tracking-widest">
-                  {cat}
+                <span className="text-xs font-mono text-muted-foreground/60 uppercase tracking-widest">{cat}</span>
+                <span
+                  className="text-sm font-bold tabular-nums"
+                  style={{ color: count > 0 ? "hsl(272 100% 72%)" : "hsl(0 0% 40%)" }}
+                >
+                  {count}
                 </span>
-
-                {/* Current */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {displayTrait?.name ?? <span className="text-muted-foreground/40 italic">No active traits</span>}
-                  </p>
-                  <p className="text-[10px] font-mono text-muted-foreground/40">
-                    {isOverridden ? "🔧 Override" : "🎲 Auto (seeded)"}
-                  </p>
-                </div>
-
-                {/* Select */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <Select
-                    value={isOverridden ? String(overrideId ?? "") : "auto"}
-                    onValueChange={(val) => {
-                      if (val === "auto") setTodayOverride(cat, null);
-                      else setTodayOverride(cat, Number(val));
-                    }}
-                  >
-                    <SelectTrigger className="h-8 text-xs w-48 border-border/40">
-                      <SelectValue placeholder="Auto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">🎲 Auto — {seeded?.name ?? "none"}</SelectItem>
-                      {(byCategory[cat] ?? []).map((t) => (
-                        <SelectItem key={t.id} value={String(t.id)}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {isOverridden && (
-                    <button
-                      onClick={() => setTodayOverride(cat, null)}
-                      className="text-muted-foreground/40 hover:text-destructive transition-colors"
-                      title="Clear override"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
               </div>
             );
           })}
+        </div>
+
+        <div
+          className="flex items-center justify-between px-4 py-3 rounded-xl"
+          style={{ background: "hsl(272 100% 62% / 0.08)", border: "1px solid hsl(272 100% 62% / 0.25)" }}
+        >
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Total trait pool</span>
+          <span className="text-lg font-bold" style={{ color: "hsl(272 100% 75%)", ...BANGERS_ADMIN }}>
+            {totalTraits.toLocaleString()}
+          </span>
         </div>
       </div>
 
@@ -4166,88 +4089,6 @@ function GamesTab() {
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         Save Game Settings
       </Button>
-
-      {/* ── Upcoming 7-Day Preview ── */}
-      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
-            <Calendar className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="font-bold text-base">Upcoming Daily Picks — Next 7 Days</div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Read-only preview. Overrides you save for today show in amber.
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border/30">
-                <th className="text-left py-2.5 pr-4 text-muted-foreground/60 font-mono uppercase tracking-widest whitespace-nowrap">Date</th>
-                {CATEGORIES.map((c) => (
-                  <th key={c} className="text-left py-2.5 pr-3 text-muted-foreground/60 font-mono uppercase tracking-widest whitespace-nowrap">
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {next7.map((date, idx) => (
-                <tr
-                  key={date}
-                  className="border-b border-border/20 transition-colors hover:bg-secondary/20"
-                  style={idx === 0 ? { background: "hsl(272 100% 62% / 0.04)" } : {}}
-                >
-                  <td className="py-2.5 pr-4 whitespace-nowrap">
-                    <span
-                      className="font-mono font-bold"
-                      style={idx === 0 ? BANGERS_ADMIN : {}}
-                    >
-                      {idx === 0 ? (
-                        <span style={{ color: "hsl(272 100% 72%)" }}>TODAY</span>
-                      ) : (
-                        <span className="text-muted-foreground/60">{date}</span>
-                      )}
-                    </span>
-                  </td>
-                  {CATEGORIES.map((cat) => {
-                    const t = effectivePick(date, cat);
-                    const hasOverride =
-                      date === todayKey
-                        ? todayDraft[cat] !== undefined
-                        : allOverrides[date]?.[cat] !== undefined;
-                    return (
-                      <td key={cat} className="py-2.5 pr-3">
-                        <div className="flex items-center gap-1.5">
-                          {t?.imageUrl && (
-                            <img
-                              src={t.imageUrl}
-                              alt={t.name}
-                              className="w-5 h-5 object-contain rounded flex-shrink-0"
-                            />
-                          )}
-                          <span
-                            className="truncate max-w-[80px]"
-                            style={hasOverride ? { color: "hsl(43 100% 55%)" } : { color: "hsl(var(--foreground) / 0.7)" }}
-                          >
-                            {t?.name ?? <span className="italic text-muted-foreground/30">—</span>}
-                          </span>
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <p className="text-[10px] text-muted-foreground/30 font-mono">
-          🎲 seeded random · 🔧 admin override (amber) · picks refresh each UTC midnight
-        </p>
-      </div>
     </div>
   );
 }

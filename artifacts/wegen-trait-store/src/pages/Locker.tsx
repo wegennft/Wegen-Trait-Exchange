@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectGuard } from "@/components/shared/WalletConnectGuard";
@@ -67,6 +67,90 @@ const SAMPLE_LOCKER_ITEMS = [
   },
 ] as const;
 
+const SAMPLE_NFTS = [
+  {
+    tokenId: 420,
+    name: "Wegen #420",
+    imageUrl: null as string | null,
+    equippedTraits: [
+      {
+        category: "Background",
+        trait: {
+          id: 266, name: "420 Black And Green",
+          imageUrl: "/api/storage/objects/uploads/86f560bd-abc4-4307-8e2b-960a44c3cee1",
+          mediaType: "image",
+        },
+      },
+    ],
+  },
+  {
+    tokenId: 69,
+    name: "Wegen #69",
+    imageUrl: null as string | null,
+    equippedTraits: [
+      {
+        category: "Body",
+        trait: {
+          id: 362, name: "Azure",
+          imageUrl: "/api/storage/objects/uploads/34f5dc22-fb4c-4fed-9434-9efdf23da646",
+          mediaType: "image",
+        },
+      },
+    ],
+  },
+  {
+    tokenId: 7,
+    name: "Wegen #7",
+    imageUrl: null as string | null,
+    equippedTraits: [],
+  },
+];
+
+const DEMO_LOCKER_ITEMS = [
+  {
+    id: -1, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+    equippedToTokenId: 420,
+    trait: { id: 266, name: "420 Black And Green", category: "Background", rarity: "rare",
+      imageUrl: "/api/storage/objects/uploads/86f560bd-abc4-4307-8e2b-960a44c3cee1", mediaType: "image" },
+  },
+  {
+    id: -2, quantity: 2,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 369, name: "Gold Body", category: "Body", rarity: "legendary",
+      imageUrl: "/api/storage/objects/uploads/4858e6ce-c4f2-48d2-8c4b-e5ef9d39f5b5", mediaType: "image" },
+  },
+  {
+    id: -3, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 272, name: "Arcade Spot", category: "Background", rarity: "uncommon",
+      imageUrl: "/api/storage/objects/uploads/35ac29b2-f60b-4209-86fc-baaabac561a3", mediaType: "image" },
+  },
+  {
+    id: -4, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 365, name: "Crimson", category: "Body", rarity: "rare",
+      imageUrl: "/api/storage/objects/uploads/d7bb5b5b-b090-4de6-a305-9ea96d875308", mediaType: "image" },
+  },
+  {
+    id: -5, quantity: 3,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 270, name: "Alchemical Mixdown", category: "Background", rarity: "uncommon",
+      imageUrl: "/api/storage/objects/uploads/c1f47943-e8dd-4efc-9ea4-37dc54f17a90", mediaType: "image" },
+  },
+  {
+    id: -6, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+    equippedToTokenId: 69,
+    trait: { id: 362, name: "Azure", category: "Body", rarity: "common",
+      imageUrl: "/api/storage/objects/uploads/34f5dc22-fb4c-4fed-9434-9efdf23da646", mediaType: "image" },
+  },
+];
+
 function getRarityColor(rarity: string) {
   switch (rarity) {
     case "legendary": return "text-yellow-400 border-yellow-500/60 bg-yellow-500/10";
@@ -77,6 +161,8 @@ function getRarityColor(rarity: string) {
 }
 
 export function Locker() {
+  const isDemo = useMemo(() => new URLSearchParams(window.location.search).has("demo"), []);
+  if (isDemo) return <LockerContent demo />;
   return (
     <WalletConnectGuard message="Connect your wallet to open your Trait Locker.">
       <LockerContent />
@@ -84,20 +170,20 @@ export function Locker() {
   );
 }
 
-function LockerContent() {
+function LockerContent({ demo = false }: { demo?: boolean }) {
   const { walletAddress } = useWallet();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedTokenId, setSelectedTokenId] = useState<number | null>(null);
+  const [isOpen, setIsOpen] = useState(demo);
+  const [selectedTokenId, setSelectedTokenId] = useState<number | null>(demo ? 420 : null);
   const [hoverTrait, setHoverTrait] = useState<{ imageUrl: string; name: string; category: string } | null>(null);
 
   const { data: lockerData, isLoading: isLoadingLocker } = useGetLocker(walletAddress || "", {
-    query: { enabled: !!walletAddress, queryKey: getGetLockerQueryKey(walletAddress || "") },
+    query: { enabled: !!walletAddress && !demo, queryKey: getGetLockerQueryKey(walletAddress || "") },
   });
   const { data: nftsData, isLoading: isLoadingNfts } = useGetUserNfts(walletAddress || "", {
-    query: { enabled: !!walletAddress, queryKey: getGetUserNftsQueryKey(walletAddress || "") },
+    query: { enabled: !!walletAddress && !demo, queryKey: getGetUserNftsQueryKey(walletAddress || "") },
   });
 
   const applyTrait = useApplyTrait({
@@ -124,23 +210,42 @@ function LockerContent() {
     },
   });
 
-  const nfts = nftsData?.nfts ?? [];
-  const lockerItems = lockerData?.items ?? [];
+  const nfts = demo ? SAMPLE_NFTS : (nftsData?.nfts ?? []);
+  const lockerItems = demo ? DEMO_LOCKER_ITEMS : (lockerData?.items ?? []);
   const activeNft = selectedTokenId != null ? nfts.find(n => n.tokenId === selectedTokenId) : nfts[0] ?? null;
-  const availableItems = lockerItems.filter(i => i.equippedToTokenId === null);
 
   const handleEquip = (lockerItemId: number) => {
+    if (demo) { toast({ title: "Demo Mode", description: "Connect your wallet to equip traits." }); return; }
     if (!activeNft || !walletAddress) return;
     applyTrait.mutate({ tokenId: activeNft.tokenId, data: { lockerItemId, walletAddress } });
   };
 
   const handleRemove = (category: string) => {
+    if (demo) { toast({ title: "Demo Mode", description: "Connect your wallet to remove traits." }); return; }
     if (!activeNft || !walletAddress) return;
     removeTrait.mutate({ tokenId: activeNft.tokenId, data: { category, walletAddress } });
   };
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
+
+      {/* ── Demo Banner ── */}
+      {demo && (
+        <div
+          className="flex items-center justify-center gap-3 px-5 py-2.5 text-sm font-mono"
+          style={{
+            background: 'linear-gradient(90deg, rgba(255,200,0,0.12), rgba(255,200,0,0.06))',
+            border: '1px solid rgba(255,200,0,0.35)',
+            borderLeft: '3px solid hsl(43 100% 52%)',
+          }}
+        >
+          <Eye className="w-4 h-4 text-accent flex-shrink-0" />
+          <span className="text-accent/90 uppercase tracking-widest text-xs">
+            DEMO PREVIEW — showing sample locker with 6 traits &amp; 3 Wegens.
+            Connect your wallet to use your real data.
+          </span>
+        </div>
+      )}
 
       {/* ── Hero Header ── */}
       <div className="relative text-center py-6 overflow-hidden">

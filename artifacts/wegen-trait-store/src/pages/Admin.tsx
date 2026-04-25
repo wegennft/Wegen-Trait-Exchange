@@ -186,7 +186,6 @@ function LayerOrderSettings() {
 
   function handleDragEnter(index: number) {
     if (dragIndex === null || dragIndex === index) return;
-    setHoverIndex(index);
     const next = [...layers];
     const [moved] = next.splice(dragIndex, 1);
     next.splice(index, 0, moved);
@@ -197,7 +196,6 @@ function LayerOrderSettings() {
 
   function handleDragEnd() {
     setDragIndex(null);
-    setHoverIndex(null);
   }
 
   function moveLayer(index: number, direction: "up" | "down") {

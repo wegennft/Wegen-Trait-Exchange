@@ -192,114 +192,111 @@ export function Layout({ children }: { children: ReactNode }) {
           }}
         />
 
-        <div className="container mx-auto px-4 h-[70px] flex items-center justify-between">
-          {/* ── Logo ── */}
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-85 group">
-              {settings.logoUrl ? (
-                <img
-                  src={settings.logoUrl}
-                  alt="Site Logo"
-                  className="w-11 h-11 object-contain"
+        <div className="w-full px-5 h-[70px] flex items-center gap-4">
+          {/* ── Logo (fixed left) ── */}
+          <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-85 group flex-shrink-0">
+            {settings.logoUrl ? (
+              <img
+                src={settings.logoUrl}
+                alt="Site Logo"
+                className="w-9 h-9 object-contain"
+              />
+            ) : (
+              <div className="relative w-9 h-9 flex items-center justify-center flex-shrink-0">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'radial-gradient(ellipse at center, hsl(272 100% 62% / 0.35) 0%, transparent 75%)',
+                    filter: 'blur(4px)',
+                    transform: 'scale(1.6)',
+                  }}
                 />
-              ) : (
-                <div className="relative w-11 h-11 flex items-center justify-center flex-shrink-0">
-                  {/* Spray bloom behind icon */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background: 'radial-gradient(ellipse at center, hsl(272 100% 62% / 0.35) 0%, transparent 75%)',
-                      filter: 'blur(4px)',
-                      transform: 'scale(1.6)',
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0 bg-primary group-hover:rotate-6 transition-transform"
-                    style={{ boxShadow: '0 0 16px hsl(272 100% 62% / 0.8), inset 0 0 8px rgba(255,255,255,0.1)' }}
-                  />
-                  <Zap className="relative z-10 w-5 h-5 text-white" />
-                </div>
-              )}
-
-              <span
-                className="hidden sm:inline-block leading-none select-none"
-                style={{
-                  ...BANGERS,
-                  fontSize: '2.55rem',
-                  color: '#9900ff',
-                  textShadow: [
-                    '0 0 8px #9900ff',
-                    '0 0 18px #6600cc',
-                    '2px 2px 0px #000',
-                    '4px 4px 0px rgba(0,0,0,0.6)',
-                  ].join(', '),
-                }}
-              >
-                TRAIT<span style={{
-                  color: '#c8920a',
-                  textShadow: [
-                    '0 0 8px #c8920a',
-                    '0 0 18px #8a5c00',
-                    '2px 2px 0px #000',
-                    '4px 4px 0px rgba(0,0,0,0.6)',
-                  ].join(', '),
-                }}>STORE</span>
-              </span>
-            </Link>
-
-            {/* ── Nav ── */}
-            {!isAdminPage && (
-              <nav className="hidden md:flex items-center gap-0">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`relative flex items-center gap-2 px-4 py-2 transition-all group ${
-                        isActive
-                          ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      style={{ ...BANGERS, fontSize: '1.15rem', letterSpacing: '0.12em' }}
-                    >
-                      <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
-                      {item.label}
-
-                      {/* Paint-drip active indicator */}
-                      {isActive ? (
-                        <span
-                          className="absolute bottom-0 left-2 right-2"
-                          style={{
-                            height: '3px',
-                            background: 'linear-gradient(90deg, transparent, hsl(272 100% 62%), transparent)',
-                            boxShadow: '0 0 8px hsl(272 100% 62% / 0.9), 0 2px 12px hsl(272 100% 62% / 0.5)',
-                            filter: 'blur(0.3px)',
-                          }}
-                        />
-                      ) : (
-                        <span
-                          className="absolute bottom-0 left-2 right-2 opacity-0 group-hover:opacity-40 transition-opacity"
-                          style={{
-                            height: '2px',
-                            background: 'linear-gradient(90deg, transparent, hsl(272 100% 62%), transparent)',
-                          }}
-                        />
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
+                <div
+                  className="absolute inset-0 bg-primary group-hover:rotate-6 transition-transform"
+                  style={{ boxShadow: '0 0 16px hsl(272 100% 62% / 0.8), inset 0 0 8px rgba(255,255,255,0.1)' }}
+                />
+                <Zap className="relative z-10 w-5 h-5 text-white" />
+              </div>
             )}
-          </div>
+            <span
+              className="hidden sm:inline-block leading-none select-none"
+              style={{
+                ...BANGERS,
+                fontSize: 'clamp(1.75rem, 2.8vw, 2.55rem)',
+                color: '#9900ff',
+                textShadow: [
+                  '0 0 8px #9900ff',
+                  '0 0 18px #6600cc',
+                  '2px 2px 0px #000',
+                  '4px 4px 0px rgba(0,0,0,0.6)',
+                ].join(', '),
+              }}
+            >
+              TRAIT<span style={{
+                color: '#c8920a',
+                textShadow: [
+                  '0 0 8px #c8920a',
+                  '0 0 18px #8a5c00',
+                  '2px 2px 0px #000',
+                  '4px 4px 0px rgba(0,0,0,0.6)',
+                ].join(', '),
+              }}>STORE</span>
+            </span>
+          </Link>
 
-          {/* ── Right side ── */}
-          <div className="flex items-center gap-3">
+          {/* ── Nav (flexible middle) ── */}
+          {!isAdminPage && (
+            <nav className="hidden md:flex items-center flex-1 min-w-0 overflow-hidden">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`relative flex items-center gap-1.5 px-2 py-2 transition-all group whitespace-nowrap flex-shrink-0 ${
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    style={{ ...BANGERS, fontSize: 'clamp(0.82rem, 1vw, 1.05rem)', letterSpacing: '0.1em' }}
+                  >
+                    <Icon className={`w-3 h-3 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                    {item.label}
+
+                    {/* Paint-drip active indicator */}
+                    {isActive ? (
+                      <span
+                        className="absolute bottom-0 left-1 right-1"
+                        style={{
+                          height: '3px',
+                          background: 'linear-gradient(90deg, transparent, hsl(272 100% 62%), transparent)',
+                          boxShadow: '0 0 8px hsl(272 100% 62% / 0.9), 0 2px 12px hsl(272 100% 62% / 0.5)',
+                          filter: 'blur(0.3px)',
+                        }}
+                      />
+                    ) : (
+                      <span
+                        className="absolute bottom-0 left-1 right-1 opacity-0 group-hover:opacity-40 transition-opacity"
+                        style={{
+                          height: '2px',
+                          background: 'linear-gradient(90deg, transparent, hsl(272 100% 62%), transparent)',
+                        }}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+          {isAdminPage && <div className="flex-1" />}
+
+          {/* ── Right side (fixed right) ── */}
+          <div className="flex items-center gap-2 flex-shrink-0">
 
             {/* ── ETH Price Ticker ── */}
             <div
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full select-none flex-shrink-0"
+              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full select-none flex-shrink-0"
               style={{
                 background: "linear-gradient(135deg, hsl(272 60% 8%), hsl(272 40% 5%))",
                 border: "1px solid hsl(272 100% 62% / 0.25)",
@@ -332,10 +329,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
             <Link
               href="/admin"
-              className="text-muted-foreground/60 hover:text-primary transition-colors p-2"
+              className="text-muted-foreground/60 hover:text-primary transition-colors p-1"
               title="Admin"
             >
-              <ShieldAlert className="w-4.5 h-4.5" />
+              <ShieldAlert className="w-4 h-4" />
             </Link>
 
             {isConnected && walletAddress ? (

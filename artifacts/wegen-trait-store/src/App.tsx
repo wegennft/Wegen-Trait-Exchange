@@ -11,6 +11,7 @@ import { Locker } from "@/pages/Locker";
 import { Nfts } from "@/pages/Nfts";
 import { Admin } from "@/pages/Admin";
 import { Swap } from "@/pages/Swap";
+import { Sandbox } from "@/pages/Sandbox";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ function Router() {
         <Route path="/locker" component={Locker} />
         <Route path="/nfts" component={Nfts} />
         <Route path="/swap" component={Swap} />
+        <Route path="/sandbox" component={Sandbox} />
         <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>

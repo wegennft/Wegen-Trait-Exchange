@@ -27,6 +27,7 @@ export const storeSettingsTable = pgTable("store_settings", {
   contactEmail: text("contact_email"),
   maintenanceMode: boolean("maintenance_mode").default(false),
   maintenanceWhitelist: text("maintenance_whitelist").default("[]"),
+  ineligibleNfts: text("ineligible_nfts").default("[]"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

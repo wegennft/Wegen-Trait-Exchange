@@ -142,6 +142,7 @@ router.get("/store/config", async (_req, res): Promise<void> => {
     storeOpen: settings?.storeOpen ?? true,
     maintenanceMode: settings?.maintenanceMode ?? false,
     maintenanceWhitelist: JSON.parse(settings?.maintenanceWhitelist ?? "[]") as string[],
+    ineligibleNfts: JSON.parse(settings?.ineligibleNfts ?? "[]") as string[],
     storeName: settings?.storeName ?? "Wegen Trait Store",
     announcementBanner: settings?.announcementBanner ?? null,
   });

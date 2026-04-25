@@ -1067,6 +1067,7 @@ type StoreSettingsData = {
   contactEmail: string | null;
   maintenanceMode: boolean;
   maintenanceWhitelist: string[];
+  ineligibleNfts: string[];
 };
 
 const NETWORKS = [
@@ -1095,9 +1096,11 @@ function StoreSettingsTab() {
     contactEmail: null,
     maintenanceMode: false,
     maintenanceWhitelist: [],
+    ineligibleNfts: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [newWalletInput, setNewWalletInput] = useState("");
+  const [newNftInput, setNewNftInput] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/store-settings")
@@ -1108,6 +1111,7 @@ function StoreSettingsTab() {
           ...data,
           maintenanceWhitelist: Array.isArray(data.maintenanceWhitelist) ? data.maintenanceWhitelist : [],
           maintenanceMode: data.maintenanceMode ?? false,
+          ineligibleNfts: Array.isArray(data.ineligibleNfts) ? data.ineligibleNfts : [],
         }));
         setIsLoading(false);
       })
@@ -1440,6 +1444,85 @@ function StoreSettingsTab() {
             </select>
           </Field>
         </div>
+      </div>
+
+      {/* ── Ineligible NFTs ─────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+        <SectionHeader
+          icon={<ShieldCheck className="w-4 h-4" />}
+          title="Ineligible NFTs"
+          description="NFTs added here cannot be previewed or upgraded in the trait store. Enter each token ID (e.g. 42) or mint address."
+        />
+
+        {/* Add NFT input */}
+        <div className="flex gap-2">
+          <Input
+            value={newNftInput}
+            onChange={e => setNewNftInput(e.target.value)}
+            placeholder="Token ID or mint address (e.g. 42 or 0x…)"
+            className="font-mono text-sm bg-secondary/50 border-border/50 flex-1"
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const val = newNftInput.trim().toLowerCase();
+                if (!val) return;
+                if (form.ineligibleNfts.includes(val)) {
+                  toast({ title: "Already in ineligible list", variant: "destructive" });
+                  return;
+                }
+                set("ineligibleNfts", [...form.ineligibleNfts, val]);
+                setNewNftInput("");
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              const val = newNftInput.trim().toLowerCase();
+              if (!val) return;
+              if (form.ineligibleNfts.includes(val)) {
+                toast({ title: "Already in ineligible list", variant: "destructive" });
+                return;
+              }
+              set("ineligibleNfts", [...form.ineligibleNfts, val]);
+              setNewNftInput("");
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary/15 border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/25 transition-all"
+          >
+            <Plus className="w-4 h-4" /> Add
+          </button>
+        </div>
+
+        {/* Ineligible list */}
+        {form.ineligibleNfts.length > 0 ? (
+          <div className="space-y-1.5 max-h-52 overflow-y-auto rounded-lg border border-border/40 bg-secondary/20 p-2">
+            {form.ineligibleNfts.map((id, i) => (
+              <div key={id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-secondary/40 border border-border/30 group">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] text-muted-foreground/40 font-mono flex-shrink-0">#{i + 1}</span>
+                  <span className="font-mono text-xs text-foreground/80 truncate">{id}</span>
+                </div>
+                <button
+                  onClick={() => set("ineligibleNfts", form.ineligibleNfts.filter(n => n !== id))}
+                  className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                  title="Remove"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 rounded-lg border border-dashed border-border/40 text-sm text-muted-foreground/50">
+            No ineligible NFTs configured. All NFTs can be previewed and upgraded.
+          </div>
+        )}
+
+        {form.ineligibleNfts.length > 0 && (
+          <p className="text-xs text-amber-400/70 flex items-center gap-1.5">
+            <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+            {form.ineligibleNfts.length} NFT{form.ineligibleNfts.length !== 1 ? "s" : ""} blocked from preview and upgrade. Save settings to apply.
+          </p>
+        )}
       </div>
 
       {/* ── Social Links ─────────────────────────────────────────────── */}

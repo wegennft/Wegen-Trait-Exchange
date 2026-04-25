@@ -417,6 +417,7 @@ const UpdateStoreSettingsBody = z.object({
   contactEmail: z.string().email().nullable().optional().or(z.literal("")),
   maintenanceMode: z.boolean().optional(),
   maintenanceWhitelist: z.array(z.string()).optional(),
+  ineligibleNfts: z.array(z.string()).optional(),
 });
 
 const DEFAULT_STORE_SETTINGS = {
@@ -441,6 +442,7 @@ function serializeStoreSettings(settings: typeof storeSettingsTable.$inferSelect
     contactEmail: settings.contactEmail ?? null,
     maintenanceMode: settings.maintenanceMode ?? false,
     maintenanceWhitelist: JSON.parse(settings.maintenanceWhitelist ?? "[]") as string[],
+    ineligibleNfts: JSON.parse(settings.ineligibleNfts ?? "[]") as string[],
   };
 }
 
@@ -481,6 +483,10 @@ router.put("/admin/store-settings", async (req, res): Promise<void> => {
   if (d.maintenanceWhitelist !== undefined) {
     const normalized = d.maintenanceWhitelist.map((w: string) => w.trim().toLowerCase());
     toUpdate.maintenanceWhitelist = JSON.stringify(normalized);
+  }
+  if (d.ineligibleNfts !== undefined) {
+    const normalized = d.ineligibleNfts.map((id: string) => id.trim().toLowerCase());
+    toUpdate.ineligibleNfts = JSON.stringify(normalized);
   }
 
   const [updated] = await db

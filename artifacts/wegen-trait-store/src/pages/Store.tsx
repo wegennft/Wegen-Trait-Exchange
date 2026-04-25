@@ -81,14 +81,22 @@ function NftPreviewBanner({
   isConnected,
   connect,
   previewTrait,
+  ineligibleNfts = [],
 }: {
   walletAddress: string | null;
   isConnected: boolean;
   connect: () => void;
   previewTrait: Trait | null;
+  ineligibleNfts?: string[];
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+
+  const isNftIneligible = (nft: WegenNft) =>
+    ineligibleNfts.includes(String(nft.tokenId).toLowerCase()) ||
+    ineligibleNfts.includes((nft.name ?? "").toLowerCase());
+  const previewNftBlocked = previewNft ? isNftIneligible(previewNft) : false;
+  const effectivePreviewTrait = previewNftBlocked ? null : previewTrait;
 
   const { data: nftsData, isLoading } = useGetUserNfts(walletAddress ?? "", {
     query: {
@@ -164,8 +172,10 @@ function NftPreviewBanner({
                 {/* Main preview */}
                 <div
                   className={`relative w-52 h-52 sm:w-60 sm:h-60 rounded-xl overflow-hidden bg-secondary/40 border-2 transition-all duration-300 ${
-                    previewTrait
-                      ? `border-primary ${getRarityGlow(previewTrait.rarity)}`
+                    previewNftBlocked
+                      ? "border-red-500/50 shadow-[0_0_18px_rgba(239,68,68,0.2)]"
+                      : effectivePreviewTrait
+                      ? `border-primary ${getRarityGlow(effectivePreviewTrait.rarity)}`
                       : "border-border/40"
                   }`}
                 >
@@ -174,7 +184,7 @@ function NftPreviewBanner({
                     <img
                       src={previewNft.imageUrl}
                       alt={previewNft.name}
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className={`absolute inset-0 w-full h-full object-cover transition-all duration-200 ${previewNftBlocked ? "opacity-40 grayscale" : ""}`}
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -183,7 +193,7 @@ function NftPreviewBanner({
                   )}
 
                   {/* Currently equipped trait overlays (shown when nothing is being previewed) */}
-                  {previewNft && !previewTrait &&
+                  {previewNft && !effectivePreviewTrait && !previewNftBlocked &&
                     previewNft.equippedTraits.map(et =>
                       et.trait.imageUrl ? (
                         <img
@@ -196,10 +206,10 @@ function NftPreviewBanner({
                     )}
 
                   {/* Previewed trait overlay */}
-                  {previewTrait?.imageUrl && (
+                  {effectivePreviewTrait?.imageUrl && (
                     <img
-                      src={previewTrait.imageUrl}
-                      alt={previewTrait.name}
+                      src={effectivePreviewTrait.imageUrl}
+                      alt={effectivePreviewTrait.name}
                       className="absolute inset-0 w-full h-full object-cover animate-in fade-in duration-150"
                     />
                   )}
@@ -211,12 +221,25 @@ function NftPreviewBanner({
                     </div>
                   )}
 
+                  {/* Ineligible overlay */}
+                  {previewNftBlocked && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-[2px]">
+                      <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/50 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                        </svg>
+                      </div>
+                      <span className="text-xs text-red-300 font-semibold text-center px-2 leading-tight">Ineligible NFT</span>
+                    </div>
+                  )}
+
                   {/* Preview label */}
-                  {previewTrait && (
+                  {effectivePreviewTrait && !previewNftBlocked && (
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 py-2.5">
                       <div className="flex items-center gap-1.5">
                         <Sparkles className="w-3 h-3 text-primary flex-shrink-0" />
-                        <span className="text-[11px] text-white font-semibold truncate">{previewTrait.name}</span>
+                        <span className="text-[11px] text-white font-semibold truncate">{effectivePreviewTrait.name}</span>
                       </div>
                     </div>
                   )}
@@ -225,27 +248,42 @@ function NftPreviewBanner({
                 {/* NFT selector (multiple NFTs) */}
                 {nfts.length > 1 && (
                   <div className="flex gap-1.5 flex-wrap justify-center max-w-[240px]">
-                    {nfts.map(nft => (
-                      <button
-                        key={nft.tokenId}
-                        type="button"
-                        onClick={() => setPreviewNft(nft)}
-                        title={nft.name}
-                        className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                          previewNft?.tokenId === nft.tokenId
-                            ? "border-primary shadow-[0_0_8px_rgba(157,0,255,0.5)]"
-                            : "border-border/30 opacity-50 hover:opacity-90 hover:border-border"
-                        }`}
-                      >
-                        {nft.imageUrl ? (
-                          <img src={nft.imageUrl} alt={nft.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-secondary/50 flex items-center justify-center">
-                            <span className="text-[8px] font-bold text-muted-foreground">#{nft.tokenId}</span>
-                          </div>
-                        )}
-                      </button>
-                    ))}
+                    {nfts.map(nft => {
+                      const blocked = isNftIneligible(nft);
+                      return (
+                        <button
+                          key={nft.tokenId}
+                          type="button"
+                          onClick={() => setPreviewNft(nft)}
+                          title={blocked ? `#${nft.tokenId} — Ineligible NFT` : nft.name}
+                          className={`relative w-10 h-10 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                            previewNft?.tokenId === nft.tokenId
+                              ? blocked
+                                ? "border-red-500/70 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+                                : "border-primary shadow-[0_0_8px_rgba(157,0,255,0.5)]"
+                              : blocked
+                              ? "border-red-500/30 opacity-60"
+                              : "border-border/30 opacity-50 hover:opacity-90 hover:border-border"
+                          }`}
+                        >
+                          {nft.imageUrl ? (
+                            <img src={nft.imageUrl} alt={nft.name} className={`w-full h-full object-cover ${blocked ? "grayscale opacity-50" : ""}`} />
+                          ) : (
+                            <div className="w-full h-full bg-secondary/50 flex items-center justify-center">
+                              <span className="text-[8px] font-bold text-muted-foreground">#{nft.tokenId}</span>
+                            </div>
+                          )}
+                          {blocked && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -257,13 +295,28 @@ function NftPreviewBanner({
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold mb-0.5">
                     Selected NFT
                   </div>
-                  <div style={BANGERS} className="text-2xl text-foreground leading-tight">
+                  <div style={BANGERS} className={`text-2xl leading-tight ${previewNftBlocked ? "text-red-400/80" : "text-foreground"}`}>
                     {previewNft?.name ?? "Select a Wegen"}
                   </div>
                 </div>
 
+                {/* Ineligible NFT warning */}
+                {previewNftBlocked && (
+                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                    </svg>
+                    <div>
+                      <div className="text-xs font-semibold text-red-300 mb-0.5">Ineligible NFT</div>
+                      <p className="text-[11px] text-red-300/70 leading-relaxed">
+                        This NFT is not eligible for trait preview or upgrade in this store. Select a different Wegen to continue.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Equipped traits */}
-                {previewNft && previewNft.equippedTraits.length > 0 && (
+                {previewNft && !previewNftBlocked && previewNft.equippedTraits.length > 0 && (
                   <div>
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold mb-2">
                       Equipped Traits
@@ -273,7 +326,7 @@ function NftPreviewBanner({
                         <div
                           key={et.category}
                           className={`flex items-center gap-1.5 rounded px-2 py-1 border text-[11px] transition-all duration-200 ${
-                            previewTrait?.category === et.category
+                            effectivePreviewTrait?.category === et.category
                               ? "bg-orange-500/15 border-orange-400/40 text-orange-300"
                               : "bg-secondary/40 border-border/40"
                           }`}
@@ -288,7 +341,7 @@ function NftPreviewBanner({
                             <Package className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0" />
                           )}
                           <span className="font-medium truncate max-w-[100px]">{et.trait.name}</span>
-                          {previewTrait?.category === et.category && (
+                          {effectivePreviewTrait?.category === et.category && (
                             <span className="text-orange-400/80 text-[9px] font-bold ml-0.5 flex-shrink-0">→ replace</span>
                           )}
                         </div>
@@ -298,16 +351,16 @@ function NftPreviewBanner({
                 )}
 
                 {/* Previewed trait detail / empty state */}
-                {previewTrait ? (
+                {effectivePreviewTrait ? (
                   <div className="p-4 rounded-lg bg-primary/5 border border-primary/25 space-y-3 animate-in fade-in duration-150">
                     <div className="text-[10px] uppercase tracking-widest text-primary/70 font-semibold flex items-center gap-1.5">
                       <Eye className="w-3 h-3" /> Previewing
                     </div>
                     <div className="flex items-start gap-3">
-                      {previewTrait.imageUrl ? (
+                      {effectivePreviewTrait.imageUrl ? (
                         <img
-                          src={previewTrait.imageUrl}
-                          alt={previewTrait.name}
+                          src={effectivePreviewTrait.imageUrl}
+                          alt={effectivePreviewTrait.name}
                           className="w-14 h-14 rounded-lg object-contain bg-secondary/40 p-1 border border-border/30 flex-shrink-0"
                         />
                       ) : (
@@ -316,41 +369,41 @@ function NftPreviewBanner({
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="font-bold text-base leading-tight mb-1.5">{previewTrait.name}</div>
+                        <div className="font-bold text-base leading-tight mb-1.5">{effectivePreviewTrait.name}</div>
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           <Badge
                             variant="outline"
-                            className={`text-[9px] px-1.5 py-0 uppercase tracking-wide ${getRarityColor(previewTrait.rarity)}`}
+                            className={`text-[9px] px-1.5 py-0 uppercase tracking-wide ${getRarityColor(effectivePreviewTrait.rarity)}`}
                           >
-                            {previewTrait.rarity}
+                            {effectivePreviewTrait.rarity}
                           </Badge>
                           <Badge variant="secondary" className="text-[9px] px-1.5 py-0 uppercase tracking-wide">
-                            {previewTrait.category}
+                            {effectivePreviewTrait.category}
                           </Badge>
-                          {previewTrait.theme && (
+                          {effectivePreviewTrait.theme && (
                             <Badge className="text-[9px] px-1.5 py-0 bg-primary/20 text-primary border-primary/30 uppercase tracking-wide">
-                              {previewTrait.theme}
+                              {effectivePreviewTrait.theme}
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-1 text-primary font-bold text-sm">
                           <Coins className="w-3.5 h-3.5" />
-                          {previewTrait.priceEth} ETH
+                          {effectivePreviewTrait.priceEth} ETH
                         </div>
                       </div>
                     </div>
-                    {previewTrait.description && (
-                      <p className="text-xs text-muted-foreground/80 line-clamp-2 italic">{previewTrait.description}</p>
+                    {effectivePreviewTrait.description && (
+                      <p className="text-xs text-muted-foreground/80 line-clamp-2 italic">{effectivePreviewTrait.description}</p>
                     )}
                   </div>
-                ) : (
+                ) : !previewNftBlocked ? (
                   <div className="flex-1 flex flex-col items-center justify-center py-5 gap-2 text-muted-foreground/35 border border-dashed border-border/25 rounded-lg">
                     <Eye className="w-8 h-8" />
                     <p className="text-xs text-center leading-relaxed">
                       Hover any trait below<br />to see it on your Wegen
                     </p>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -380,6 +433,7 @@ export function Store() {
     storeOpen: boolean;
     maintenanceMode: boolean;
     maintenanceWhitelist: string[];
+    ineligibleNfts: string[];
     storeName: string;
     announcementBanner: string | null;
   } | null>(null);
@@ -684,6 +738,7 @@ export function Store() {
         isConnected={isConnected}
         connect={connect}
         previewTrait={previewTrait}
+        ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
       />
 
       {/* ── Theme tabs ── */}

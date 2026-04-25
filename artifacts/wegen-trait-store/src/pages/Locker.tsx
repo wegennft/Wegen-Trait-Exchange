@@ -13,9 +13,54 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Fingerprint, Lock, Unlock, Gem, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
-const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.1em' };
+const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 
 /* Purple: rgba(157,0,255,...)  Gold: rgba(255,200,0,...) */
+
+const SAMPLE_LOCKER_ITEMS = [
+  {
+    id: -1, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+    equippedToTokenId: 42,
+    trait: { id: 266, name: "420 Black And Green", category: "Background", rarity: "rare",
+      imageUrl: "/api/storage/objects/uploads/86f560bd-abc4-4307-8e2b-960a44c3cee1", mediaType: "image" },
+  },
+  {
+    id: -2, quantity: 2,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 369, name: "Gold Body", category: "Body", rarity: "legendary",
+      imageUrl: "/api/storage/objects/uploads/4858e6ce-c4f2-48d2-8c4b-e5ef9d39f5b5", mediaType: "image" },
+  },
+  {
+    id: -3, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 272, name: "Arcade Spot", category: "Background", rarity: "uncommon",
+      imageUrl: "/api/storage/objects/uploads/35ac29b2-f60b-4209-86fc-baaabac561a3", mediaType: "image" },
+  },
+  {
+    id: -4, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 365, name: "Crimson", category: "Body", rarity: "rare",
+      imageUrl: "/api/storage/objects/uploads/d7bb5b5b-b090-4de6-a305-9ea96d875308", mediaType: "image" },
+  },
+  {
+    id: -5, quantity: 3,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 270, name: "Alchemical Mixdown", category: "Background", rarity: "uncommon",
+      imageUrl: "/api/storage/objects/uploads/c1f47943-e8dd-4efc-9ea4-37dc54f17a90", mediaType: "image" },
+  },
+  {
+    id: -6, quantity: 1,
+    purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+    equippedToTokenId: null,
+    trait: { id: 362, name: "Azure", category: "Body", rarity: "common",
+      imageUrl: "/api/storage/objects/uploads/34f5dc22-fb4c-4fed-9434-9efdf23da646", mediaType: "image" },
+  },
+] as const;
 
 export function Locker() {
   return (
@@ -433,13 +478,91 @@ function LockerContent() {
                 {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-52" />)}
               </div>
             ) : lockerItems.length === 0 ? (
-              <div
-                className="text-center py-16 border-2 border-dashed border-primary/20 bg-card/88"
-              >
-                <Package className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
-                  // locker empty — hit the store to cop some traits //
-                </p>
+              <div className="space-y-4">
+                {/* Sample preview notice */}
+                <div className="flex items-center gap-3 px-4 py-3 border border-primary/25 bg-primary/5"
+                  style={{ borderLeft: '3px solid hsl(272 100% 60%)' }}>
+                  <Package className="w-4 h-4 text-primary/60 flex-shrink-0" />
+                  <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
+                    // sample preview — purchase traits from the store to fill your locker //
+                  </p>
+                </div>
+
+                {/* Faded sample grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 opacity-[0.62] pointer-events-none select-none">
+                  {SAMPLE_LOCKER_ITEMS.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="group relative overflow-hidden transition-all"
+                      style={{
+                        background: 'linear-gradient(160deg, #1e1428 0%, #100b18 100%)',
+                        border: '1px solid rgba(157,0,255,0.2)',
+                        animationDelay: `${index * 40}ms`,
+                      }}
+                    >
+                      {/* Equipped ribbon */}
+                      {item.equippedToTokenId !== null && (
+                        <div className="absolute top-0 right-0 z-10 overflow-hidden w-16 h-16">
+                          <div
+                            className="text-[9px] font-bold uppercase tracking-wider py-0.5 text-center w-24 transform rotate-45 absolute top-4 -right-6"
+                            style={{ background: 'hsl(43 100% 52%)', color: '#000' }}
+                          >
+                            Equipped
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Image area */}
+                      <div className="relative aspect-square bg-secondary/20 flex items-center justify-center p-6 overflow-hidden">
+                        <div
+                          className="absolute inset-0 opacity-10"
+                          style={{
+                            background: `radial-gradient(circle at 50% 50%, ${
+                              item.trait.rarity === 'legendary' ? '#f59e0b' :
+                              item.trait.rarity === 'rare' ? '#3b82f6' :
+                              item.trait.rarity === 'uncommon' ? '#22c55e' : '#9d00ff'
+                            } 0%, transparent 70%)`,
+                          }}
+                        />
+                        <TraitMedia
+                          url={item.trait.imageUrl}
+                          mediaType={item.trait.mediaType}
+                          alt={item.trait.name}
+                          className="w-full h-full drop-shadow-2xl"
+                          showBadge
+                        />
+                        {/* Rarity badge */}
+                        <div className="absolute bottom-2 left-2">
+                          <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 border ${getRarityColor(item.trait.rarity)}`} style={BANGERS}>
+                            {item.trait.rarity}
+                          </span>
+                        </div>
+                        {/* Qty badge */}
+                        <div className="absolute top-2 left-2">
+                          <span className="text-xs font-mono bg-black/70 px-2 py-0.5 text-foreground border border-primary/20">
+                            x{item.quantity}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Info */}
+                      <div className="p-3" style={{ borderTop: '1px solid rgba(157,0,255,0.15)' }}>
+                        <h3 className="font-bold text-sm leading-tight line-clamp-1">{item.trait.name}</h3>
+                        <div className="text-[10px] font-mono text-primary/70 uppercase tracking-widest mt-0.5 mb-2">
+                          {item.trait.category}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono flex justify-between items-center">
+                          <span>Acquired {format(new Date(item.purchasedAt), "MMM d, yy")}</span>
+                          {item.equippedToTokenId && (
+                            <span className="text-accent flex items-center gap-1">
+                              <Fingerprint className="w-3 h-3" />#{item.equippedToTokenId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

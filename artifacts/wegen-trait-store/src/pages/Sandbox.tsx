@@ -344,10 +344,10 @@ export function Sandbox() {
           </div>
 
           <p className="text-[11px] text-muted-foreground/50 font-mono">
-            // match the target Wegen — select each highlighted trait to complete the bounty //
+            // hunt through each layer — find and select the right trait to unlock it //
           </p>
 
-          {/* Bounty target chips */}
+          {/* Bounty target chips — hidden until matched */}
           <div className="flex flex-wrap gap-2">
             {bountyCats.map((cat) => {
               const t = bountyTraits[cat];
@@ -363,21 +363,25 @@ export function Sandbox() {
                     boxShadow: matched ? "0 0 10px hsl(120 100% 45% / 0.2)" : undefined,
                   }}
                 >
-                  {t?.imageUrl ? (
-                    <img
-                      src={t.imageUrl}
-                      alt={t.name}
-                      className="w-5 h-5 object-contain rounded flex-shrink-0"
-                    />
+                  {matched ? (
+                    t?.imageUrl ? (
+                      <img
+                        src={t.imageUrl}
+                        alt={t.name}
+                        className="w-5 h-5 object-contain rounded flex-shrink-0"
+                      />
+                    ) : (
+                      <span className="text-sm leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>
+                    )
                   ) : (
-                    <span className="text-sm leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>
+                    <span className="text-sm leading-none opacity-40">{LAYER_ICONS[cat] ?? "📦"}</span>
                   )}
                   <span className="text-muted-foreground/50 font-mono">{cat}:</span>
                   <span
                     className="font-semibold max-w-[90px] truncate"
-                    style={{ color: matched ? "hsl(120 100% 65%)" : "hsl(var(--foreground))" }}
+                    style={{ color: matched ? "hsl(120 100% 65%)" : "hsl(var(--muted-foreground))", opacity: matched ? 1 : 0.35 }}
                   >
-                    {t?.name}
+                    {matched ? t?.name : "???"}
                   </span>
                   {matched && (
                     <span className="text-green-400 text-sm leading-none flex-shrink-0">✓</span>
@@ -602,19 +606,6 @@ export function Sandbox() {
                 <span className="text-xs text-muted-foreground/50 ml-1">
                   {activeCategoryTraits.length} available
                 </span>
-                {gameEnabled && bountyTraits[activeCategory] && (
-                  <span
-                    className="ml-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
-                    style={{
-                      background: "hsl(43 100% 52% / 0.15)",
-                      color: "hsl(43 100% 62%)",
-                      border: "1px solid hsl(43 100% 52% / 0.4)",
-                      animation: "dailyBadgePulse 1.8s ease-in-out infinite",
-                    }}
-                  >
-                    🎮 Bounty Target
-                  </span>
-                )}
                 {selected[activeCategory] && (
                   <button
                     onClick={() => selectTrait(activeCategory, null)}
@@ -651,28 +642,24 @@ export function Sandbox() {
 
                   {activeCategoryTraits.map((trait) => {
                     const isSelected = selected[activeCategory]?.id === trait.id;
-                    const isBounty = gameEnabled && bountyTraits[activeCategory]?.id === trait.id;
+                    const isBountyMatch = gameEnabled && bountyTraits[activeCategory]?.id === trait.id && isSelected;
 
                     return (
                       <button
                         key={trait.id}
                         onClick={() => selectTrait(activeCategory, isSelected ? null : trait)}
                         className={`group flex flex-col items-center gap-2 p-2.5 rounded-xl border transition-all ${
-                          isSelected && isBounty
+                          isBountyMatch
                             ? "daily-trait-selected border-green-500/80"
                             : isSelected
                             ? "border-primary/70 shadow-[0_0_14px_hsl(272_100%_62%_/_0.35)]"
-                            : isBounty
-                            ? "daily-trait-glow border-green-500/60"
                             : "border-border/30 bg-secondary/20 hover:border-primary/40 hover:bg-secondary/50"
                         }`}
                         style={
-                          isSelected && isBounty
+                          isBountyMatch
                             ? { background: "linear-gradient(135deg, hsl(120 80% 12% / 0.6), hsl(120 60% 8% / 0.4))" }
                             : isSelected
                             ? { background: "linear-gradient(135deg, hsl(272 100% 62% / 0.18), hsl(272 100% 62% / 0.06))" }
-                            : isBounty
-                            ? { background: "linear-gradient(135deg, hsl(120 80% 10% / 0.5), hsl(120 60% 7% / 0.3))" }
                             : {}
                         }
                       >
@@ -696,32 +683,27 @@ export function Sandbox() {
                             </div>
                           )}
 
-                          {/* Bounty badge */}
-                          {isBounty && (
+                          {/* Bounty match badge — only shows when user hits the right one */}
+                          {isBountyMatch && (
                             <div
                               className="absolute top-1 right-1 text-sm leading-none"
-                              style={{ animation: "dailyBadgePulse 1.4s ease-in-out infinite", filter: "drop-shadow(0 0 4px hsl(120 100% 55%))" }}
-                              title="Bounty Target!"
+                              style={{ filter: "drop-shadow(0 0 4px hsl(120 100% 55%))" }}
                             >
-                              {isSelected ? "✅" : "🎯"}
+                              ✅
                             </div>
                           )}
 
-                          {/* Selected / bounty ring */}
-                          {(isSelected || isBounty) && (
+                          {/* Selected ring */}
+                          {isSelected && (
                             <div
                               className="absolute inset-0 rounded-lg pointer-events-none"
                               style={{
-                                border: isSelected && isBounty
+                                border: isBountyMatch
                                   ? "2px solid hsl(120 100% 60%)"
-                                  : isSelected
-                                  ? "2px solid hsl(272 100% 62% / 0.8)"
-                                  : "2px solid hsl(120 100% 45% / 0.5)",
-                                boxShadow: isSelected && isBounty
+                                  : "2px solid hsl(272 100% 62% / 0.8)",
+                                boxShadow: isBountyMatch
                                   ? "inset 0 0 10px hsl(120 100% 55% / 0.3)"
-                                  : isSelected
-                                  ? "inset 0 0 8px hsl(272 100% 62% / 0.3)"
-                                  : "inset 0 0 6px hsl(120 100% 45% / 0.15)",
+                                  : "inset 0 0 8px hsl(272 100% 62% / 0.3)",
                               }}
                             />
                           )}
@@ -730,9 +712,8 @@ export function Sandbox() {
                         {/* Name */}
                         <div className="w-full text-center">
                           <p className={`text-[11px] font-semibold truncate ${
-                            isSelected && isBounty ? "text-green-400"
+                            isBountyMatch ? "text-green-400"
                             : isSelected ? "text-primary"
-                            : isBounty ? "text-green-500"
                             : "text-muted-foreground group-hover:text-foreground"
                           } transition-colors`}>
                             {trait.name}

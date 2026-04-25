@@ -401,6 +401,96 @@ router.put("/admin/layers", async (req, res): Promise<void> => {
   res.json({ layerOrder: JSON.parse(updated.layerOrder ?? "[]") });
 });
 
+// ── Store Settings ────────────────────────────────────────────────────────────
+
+const UpdateStoreSettingsBody = z.object({
+  storeName: z.string().max(100).optional(),
+  storeTagline: z.string().max(200).optional(),
+  storeOpen: z.boolean().optional(),
+  announcementBanner: z.string().max(300).nullable().optional(),
+  maxTraitsPerOrder: z.number().int().min(1).max(100).optional(),
+  contractAddress: z.string().nullable().optional(),
+  networkName: z.string().optional(),
+  twitterUrl: z.string().url().nullable().optional().or(z.literal("")),
+  discordUrl: z.string().url().nullable().optional().or(z.literal("")),
+  websiteUrl: z.string().url().nullable().optional().or(z.literal("")),
+  contactEmail: z.string().email().nullable().optional().or(z.literal("")),
+});
+
+const DEFAULT_STORE_SETTINGS = {
+  buyingFeePercent: "0",
+  buyingFeeWallet: null as null | string,
+  sellingFeePercent: "0",
+  sellingFeeWallet: null as null | string,
+};
+
+router.get("/admin/store-settings", async (_req, res): Promise<void> => {
+  let [settings] = await db.select().from(storeSettingsTable).limit(1);
+  if (!settings) {
+    [settings] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
+  }
+  res.json({
+    storeName: settings.storeName ?? "Wegen Trait Store",
+    storeTagline: settings.storeTagline ?? "",
+    storeOpen: settings.storeOpen ?? true,
+    announcementBanner: settings.announcementBanner ?? null,
+    maxTraitsPerOrder: settings.maxTraitsPerOrder ?? 10,
+    contractAddress: settings.contractAddress ?? null,
+    networkName: settings.networkName ?? "mainnet",
+    twitterUrl: settings.twitterUrl ?? null,
+    discordUrl: settings.discordUrl ?? null,
+    websiteUrl: settings.websiteUrl ?? null,
+    contactEmail: settings.contactEmail ?? null,
+  });
+});
+
+router.put("/admin/store-settings", async (req, res): Promise<void> => {
+  const body = UpdateStoreSettingsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.issues.map(i => i.message).join(", ") });
+    return;
+  }
+
+  let [existing] = await db.select().from(storeSettingsTable).limit(1);
+  if (!existing) {
+    [existing] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
+  }
+
+  const toUpdate: Record<string, unknown> = {};
+  const d = body.data;
+  if (d.storeName !== undefined) toUpdate.storeName = d.storeName;
+  if (d.storeTagline !== undefined) toUpdate.storeTagline = d.storeTagline;
+  if (d.storeOpen !== undefined) toUpdate.storeOpen = d.storeOpen;
+  if (d.announcementBanner !== undefined) toUpdate.announcementBanner = d.announcementBanner || null;
+  if (d.maxTraitsPerOrder !== undefined) toUpdate.maxTraitsPerOrder = d.maxTraitsPerOrder;
+  if (d.contractAddress !== undefined) toUpdate.contractAddress = d.contractAddress || null;
+  if (d.networkName !== undefined) toUpdate.networkName = d.networkName;
+  if (d.twitterUrl !== undefined) toUpdate.twitterUrl = d.twitterUrl || null;
+  if (d.discordUrl !== undefined) toUpdate.discordUrl = d.discordUrl || null;
+  if (d.websiteUrl !== undefined) toUpdate.websiteUrl = d.websiteUrl || null;
+  if (d.contactEmail !== undefined) toUpdate.contactEmail = d.contactEmail || null;
+
+  const [updated] = await db
+    .update(storeSettingsTable)
+    .set(toUpdate)
+    .where(eq(storeSettingsTable.id, existing.id))
+    .returning();
+
+  res.json({
+    storeName: updated.storeName ?? "Wegen Trait Store",
+    storeTagline: updated.storeTagline ?? "",
+    storeOpen: updated.storeOpen ?? true,
+    announcementBanner: updated.announcementBanner ?? null,
+    maxTraitsPerOrder: updated.maxTraitsPerOrder ?? 10,
+    contractAddress: updated.contractAddress ?? null,
+    networkName: updated.networkName ?? "mainnet",
+    twitterUrl: updated.twitterUrl ?? null,
+    discordUrl: updated.discordUrl ?? null,
+    websiteUrl: updated.websiteUrl ?? null,
+    contactEmail: updated.contactEmail ?? null,
+  });
+});
+
 // ── Rarity Tiers ─────────────────────────────────────────────────────────────
 
 const DEFAULT_RARITIES = [

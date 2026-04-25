@@ -78,6 +78,16 @@ import {
   ChevronDown,
   Search,
   Gem,
+  Settings,
+  Store,
+  Globe,
+  Twitter,
+  MessageSquare,
+  Mail,
+  Link,
+  ShieldCheck,
+  AlertTriangle,
+  Power,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -516,6 +526,9 @@ export function Admin() {
           </TabsTrigger>
           <TabsTrigger value="rarities" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
             <Gem className="w-4 h-4" /> Rarity Tiers
+          </TabsTrigger>
+          <TabsTrigger value="store-settings" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+            <Settings className="w-4 h-4" /> Store Settings
           </TabsTrigger>
         </TabsList>
 
@@ -1028,12 +1041,350 @@ export function Admin() {
         <TabsContent value="rarities" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <RarityTiersSettings />
         </TabsContent>
+
+        <TabsContent value="store-settings" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <StoreSettingsTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
 
 // ── Rarity Tiers Settings Tab ─────────────────────────────────────────────────
+// ── Store Settings Tab ────────────────────────────────────────────────────────
+
+type StoreSettingsData = {
+  storeName: string;
+  storeTagline: string;
+  storeOpen: boolean;
+  announcementBanner: string | null;
+  maxTraitsPerOrder: number;
+  contractAddress: string | null;
+  networkName: string;
+  twitterUrl: string | null;
+  discordUrl: string | null;
+  websiteUrl: string | null;
+  contactEmail: string | null;
+};
+
+const NETWORKS = [
+  { value: "mainnet", label: "Ethereum Mainnet" },
+  { value: "goerli", label: "Goerli Testnet" },
+  { value: "sepolia", label: "Sepolia Testnet" },
+  { value: "polygon", label: "Polygon" },
+  { value: "base", label: "Base" },
+  { value: "arbitrum", label: "Arbitrum One" },
+];
+
+function StoreSettingsTab() {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<StoreSettingsData>({
+    storeName: "Wegen Trait Store",
+    storeTagline: "",
+    storeOpen: true,
+    announcementBanner: null,
+    maxTraitsPerOrder: 10,
+    contractAddress: null,
+    networkName: "mainnet",
+    twitterUrl: null,
+    discordUrl: null,
+    websiteUrl: null,
+    contactEmail: null,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/store-settings")
+      .then(r => r.json())
+      .then((data: StoreSettingsData) => {
+        setForm(data);
+        setIsLoading(false);
+      })
+      .catch(() => setIsLoading(false));
+  }, []);
+
+  const set = (key: keyof StoreSettingsData, value: unknown) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/store-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          twitterUrl: form.twitterUrl || null,
+          discordUrl: form.discordUrl || null,
+          websiteUrl: form.websiteUrl || null,
+          contactEmail: form.contactEmail || null,
+          contractAddress: form.contractAddress || null,
+          announcementBanner: form.announcementBanner || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ title: err.error ?? "Save failed", variant: "destructive" });
+        return;
+      }
+      const updated = await res.json() as StoreSettingsData;
+      setForm(updated);
+      toast({ title: "Store settings saved" });
+    } catch {
+      toast({ title: "Failed to save settings", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const SectionHeader = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
+    <div className="flex items-start gap-3 mb-6">
+      <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 text-primary">
+        {icon}
+      </div>
+      <div>
+        <div className="font-bold text-base">{title}</div>
+        <div className="text-sm text-muted-foreground">{description}</div>
+      </div>
+    </div>
+  );
+
+  const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
+    <div className="space-y-1.5">
+      <label className="text-sm font-semibold text-foreground/80">{label}</label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground/60">{hint}</p>}
+    </div>
+  );
+
+  return (
+    <div className="space-y-8 max-w-3xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-extrabold tracking-tight">Store Settings</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Configure your store's identity, behavior, and integrations.</p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white font-bold text-sm hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-[0_0_16px_rgba(124,58,237,0.35)]"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? "Saving…" : "Save Changes"}
+        </button>
+      </div>
+
+      {/* ── General ─────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+        <SectionHeader
+          icon={<Store className="w-4 h-4" />}
+          title="General"
+          description="Basic store identity shown to shoppers."
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <Field label="Store Name">
+            <Input
+              value={form.storeName}
+              onChange={e => set("storeName", e.target.value)}
+              placeholder="Wegen Trait Store"
+              maxLength={100}
+              className="bg-secondary/50 border-border/50"
+            />
+          </Field>
+          <Field label="Tagline" hint="Short description shown under the store name.">
+            <Input
+              value={form.storeTagline ?? ""}
+              onChange={e => set("storeTagline", e.target.value)}
+              placeholder="Customize your Wegen NFT with unique traits"
+              maxLength={200}
+              className="bg-secondary/50 border-border/50"
+            />
+          </Field>
+        </div>
+
+        <Field label="Announcement Banner" hint="Optional message shown at the top of the store (leave blank to hide).">
+          <Input
+            value={form.announcementBanner ?? ""}
+            onChange={e => set("announcementBanner", e.target.value || null)}
+            placeholder="e.g. New traits drop Friday at 3pm EST!"
+            maxLength={300}
+            className="bg-secondary/50 border-border/50"
+          />
+        </Field>
+      </div>
+
+      {/* ── Store Status ─────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/50 bg-card p-6">
+        <SectionHeader
+          icon={<Power className="w-4 h-4" />}
+          title="Store Status"
+          description="Control whether shoppers can browse and buy traits."
+        />
+        <div className="flex items-center justify-between p-4 rounded-lg border border-border/40 bg-secondary/30">
+          <div>
+            <div className="font-semibold text-sm">Store Open</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {form.storeOpen
+                ? "Shoppers can browse and purchase traits."
+                : "Store is closed — shoppers see a maintenance message."}
+            </div>
+          </div>
+          <button
+            onClick={() => set("storeOpen", !form.storeOpen)}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full border-2 transition-all duration-200 focus:outline-none ${
+              form.storeOpen
+                ? "bg-emerald-500 border-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]"
+                : "bg-secondary/60 border-border"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${
+                form.storeOpen ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+        {!form.storeOpen && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2.5">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            Store is currently closed. Shoppers will see a maintenance page.
+          </div>
+        )}
+      </div>
+
+      {/* ── Purchase Limits ───────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/50 bg-card p-6">
+        <SectionHeader
+          icon={<ShieldCheck className="w-4 h-4" />}
+          title="Purchase Limits"
+          description="Control how many traits a customer can buy in one order."
+        />
+        <Field label="Max Traits Per Order" hint="Maximum number of traits a buyer can add to a single cart checkout (1–100).">
+          <div className="flex items-center gap-3">
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={form.maxTraitsPerOrder}
+              onChange={e => set("maxTraitsPerOrder", Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+              className="w-32 bg-secondary/50 border-border/50 font-mono"
+            />
+            <span className="text-sm text-muted-foreground">traits</span>
+          </div>
+        </Field>
+      </div>
+
+      {/* ── Collection / Contract ─────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+        <SectionHeader
+          icon={<Link className="w-4 h-4" />}
+          title="NFT Collection"
+          description="The on-chain contract that holds the NFTs these traits apply to."
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <Field label="Contract Address" hint="The ERC-721 or ERC-1155 collection contract address.">
+            <Input
+              value={form.contractAddress ?? ""}
+              onChange={e => set("contractAddress", e.target.value || null)}
+              placeholder="0x000…"
+              className="bg-secondary/50 border-border/50 font-mono text-sm"
+            />
+          </Field>
+          <Field label="Network">
+            <select
+              value={form.networkName}
+              onChange={e => set("networkName", e.target.value)}
+              className="w-full h-10 rounded-md border border-border/50 bg-secondary/50 px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/60"
+            >
+              {NETWORKS.map(n => (
+                <option key={n.value} value={n.value}>{n.label}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </div>
+
+      {/* ── Social Links ─────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+        <SectionHeader
+          icon={<Globe className="w-4 h-4" />}
+          title="Social & Contact"
+          description="Links shown in the store footer and help pages."
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <Field label="Twitter / X URL">
+            <div className="relative">
+              <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Input
+                value={form.twitterUrl ?? ""}
+                onChange={e => set("twitterUrl", e.target.value || null)}
+                placeholder="https://twitter.com/yourproject"
+                className="pl-9 bg-secondary/50 border-border/50"
+              />
+            </div>
+          </Field>
+          <Field label="Discord URL">
+            <div className="relative">
+              <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Input
+                value={form.discordUrl ?? ""}
+                onChange={e => set("discordUrl", e.target.value || null)}
+                placeholder="https://discord.gg/yourserver"
+                className="pl-9 bg-secondary/50 border-border/50"
+              />
+            </div>
+          </Field>
+          <Field label="Website URL">
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Input
+                value={form.websiteUrl ?? ""}
+                onChange={e => set("websiteUrl", e.target.value || null)}
+                placeholder="https://yourproject.io"
+                className="pl-9 bg-secondary/50 border-border/50"
+              />
+            </div>
+          </Field>
+          <Field label="Contact Email">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Input
+                value={form.contactEmail ?? ""}
+                onChange={e => set("contactEmail", e.target.value || null)}
+                placeholder="hello@yourproject.io"
+                type="email"
+                className="pl-9 bg-secondary/50 border-border/50"
+              />
+            </div>
+          </Field>
+        </div>
+      </div>
+
+      {/* Sticky bottom save */}
+      <div className="flex justify-end pt-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-bold text-sm hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-[0_0_16px_rgba(124,58,237,0.35)]"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? "Saving…" : "Save Changes"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 type RarityTierItem = {
   id: number;
   name: string;

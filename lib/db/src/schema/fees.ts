@@ -2,6 +2,8 @@ import {
   pgTable,
   serial,
   text,
+  boolean,
+  integer,
   timestamp,
 } from "drizzle-orm/pg-core";
 
@@ -12,6 +14,17 @@ export const storeSettingsTable = pgTable("store_settings", {
   sellingFeePercent: text("selling_fee_percent").notNull().default("0"),
   sellingFeeWallet: text("selling_fee_wallet"),
   layerOrder: text("layer_order").default('["Background","Body","Clothes","Mouth","Eyes","Headgear"]'),
+  storeName: text("store_name").default("Wegen Trait Store"),
+  storeTagline: text("store_tagline").default("Customize your Wegen NFT with unique traits"),
+  storeOpen: boolean("store_open").default(true),
+  announcementBanner: text("announcement_banner"),
+  maxTraitsPerOrder: integer("max_traits_per_order").default(10),
+  contractAddress: text("contract_address"),
+  networkName: text("network_name").default("mainnet"),
+  twitterUrl: text("twitter_url"),
+  discordUrl: text("discord_url"),
+  websiteUrl: text("website_url"),
+  contactEmail: text("contact_email"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

@@ -1234,7 +1234,7 @@ function FeesSettings() {
             <CardTitle className="flex items-center gap-2 text-base">
               <ShoppingCart className="w-5 h-5 text-primary" />
               Buyer Fee
-              <span className="ml-auto text-2xl font-black text-primary" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+              <span className="ml-auto text-2xl font-black text-primary" style={{ fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
                 {isNaN(buyingPct) ? "0" : buyingPct.toFixed(1)}%
               </span>
             </CardTitle>
@@ -1297,7 +1297,7 @@ function FeesSettings() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Tag className="w-5 h-5 text-accent" />
               Seller Fee
-              <span className="ml-auto text-2xl font-black text-accent" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+              <span className="ml-auto text-2xl font-black text-accent" style={{ fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
                 {isNaN(sellingPct) ? "0" : sellingPct.toFixed(1)}%
               </span>
             </CardTitle>
@@ -1495,19 +1495,19 @@ function TransactionsLog() {
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="border border-green-400/20 bg-green-400/5 rounded-lg p-4 text-center">
-          <div className="text-2xl font-black text-green-400" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+          <div className="text-2xl font-black text-green-400" style={{ fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
             {data?.total ?? 0}
           </div>
           <div className="text-xs text-muted-foreground mt-1">Total Events</div>
         </div>
         <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 text-center">
-          <div className="text-2xl font-black text-primary" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+          <div className="text-2xl font-black text-primary" style={{ fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
             {totalTrades}
           </div>
           <div className="text-xs text-muted-foreground mt-1">Equips</div>
         </div>
         <div className="border border-yellow-400/20 bg-yellow-400/5 rounded-lg p-4 text-center">
-          <div className="text-2xl font-black text-yellow-400" style={{ fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.05em' }}>
+          <div className="text-2xl font-black text-yellow-400" style={{ fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
             {totalEth.toFixed(3)} Ξ
           </div>
           <div className="text-xs text-muted-foreground mt-1">Volume (buys)</div>

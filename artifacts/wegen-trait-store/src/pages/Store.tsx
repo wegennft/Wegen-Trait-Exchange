@@ -45,7 +45,7 @@ import {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: "0.08em" };
+const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: "0.1em" };
 
 function getRarityColor(rarity: string) {
   switch (rarity) {

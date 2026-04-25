@@ -13,7 +13,8 @@ import {
   Download,
 } from "lucide-react";
 
-const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: "0.1em" };
+const BANGERS  = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: "0.12em" };
+const DISPLAY  = { fontFamily: "'Rubik Spray Paint', 'Bebas Neue', Impact, sans-serif", letterSpacing: "0.06em" };
 
 const LAYER_ICONS: Record<string, string> = {
   Background: "🖼️",
@@ -153,11 +154,11 @@ export function Sandbox() {
           <h1
             className="text-4xl leading-none"
             style={{
-              ...BANGERS,
+              ...DISPLAY,
               color: "hsl(var(--primary))",
               textShadow:
-                "3px 3px 0px rgba(0,0,0,1), 0 0 20px hsl(272 100% 62% / 0.5)",
-              WebkitTextStroke: "1.5px rgba(0,0,0,0.8)",
+                "3px 3px 0px rgba(0,0,0,1), 0 0 28px hsl(272 100% 65% / 0.7), 0 0 60px hsl(272 100% 65% / 0.3)",
+              WebkitTextStroke: "1.5px rgba(0,0,0,0.9)",
               paintOrder: "stroke fill",
             }}
           >
@@ -166,7 +167,7 @@ export function Sandbox() {
               style={{
                 color: "hsl(var(--accent))",
                 textShadow:
-                  "3px 3px 0px rgba(0,0,0,1), 0 0 20px hsl(43 100% 52% / 0.5)",
+                  "3px 3px 0px rgba(0,0,0,1), 0 0 28px hsl(43 100% 56% / 0.9), 0 0 60px hsl(43 100% 40% / 0.35)",
               }}
             >
               SANDBOX

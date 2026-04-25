@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.1em' };
-const MARKER = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.03em' };
+const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.12em' };
+const DISPLAY = { fontFamily: "'Rubik Spray Paint', 'Bebas Neue', Impact, sans-serif", letterSpacing: '0.06em' };
+const MARKER  = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.03em' };
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -205,14 +206,14 @@ export function Layout({ children }: { children: ReactNode }) {
               <span
                 className="text-5xl hidden sm:inline-block leading-none"
                 style={{
-                  ...BANGERS,
+                  ...DISPLAY,
                   color: 'hsl(var(--primary))',
-                  textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 28px hsl(272 100% 62% / 0.6)',
-                  WebkitTextStroke: '2px rgba(0,0,0,0.85)',
+                  textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 32px hsl(272 100% 65% / 0.7), 0 0 80px hsl(272 100% 65% / 0.25)',
+                  WebkitTextStroke: '1.5px rgba(0,0,0,0.9)',
                   paintOrder: 'stroke fill',
                 }}
               >
-                TRAIT<span style={{ color: 'hsl(var(--accent))', textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 28px hsl(43 100% 52% / 0.7)' }}>STORE</span>
+                TRAIT<span style={{ color: 'hsl(var(--accent))', textShadow: '4px 4px 0px rgba(0,0,0,1), -1px -1px 0 rgba(0,0,0,1), 0 0 32px hsl(43 100% 56% / 0.9), 0 0 80px hsl(43 100% 40% / 0.35)' }}>STORE</span>
               </span>
             </Link>
 
@@ -398,12 +399,12 @@ export function Layout({ children }: { children: ReactNode }) {
             <span
               className="block text-6xl sm:text-8xl"
               style={{
-                ...BANGERS,
+                ...DISPLAY,
                 color: 'hsl(43 100% 56%)',
                 textShadow:
                   '5px 5px 0px hsl(268 40% 2%), -2px -2px 0px hsl(268 40% 2%), ' +
-                  '8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(43 100% 56% / 0.6), 0 0 100px hsl(43 100% 40% / 0.3)',
-                WebkitTextStroke: '2px rgba(0,0,0,0.8)',
+                  '8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(43 100% 56% / 0.7), 0 0 120px hsl(43 100% 40% / 0.4)',
+                WebkitTextStroke: '1.5px rgba(0,0,0,0.9)',
                 paintOrder: 'stroke fill',
               }}
             >
@@ -412,7 +413,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 color: 'hsl(272 100% 65%)',
                 textShadow:
                   '5px 5px 0px hsl(268 40% 2%), -2px -2px 0px hsl(268 40% 2%), ' +
-                  '8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(272 100% 65% / 0.7), 0 0 100px hsl(272 100% 50% / 0.3)',
+                  '8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(272 100% 65% / 0.8), 0 0 120px hsl(272 100% 50% / 0.4)',
               }}> NFT</span>
             </span>
           </div>

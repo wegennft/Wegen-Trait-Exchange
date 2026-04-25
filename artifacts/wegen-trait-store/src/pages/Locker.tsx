@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Fingerprint, Lock, Unlock, Gem, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
-const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.07em' };
+const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.1em' };
 
 /* Purple: rgba(157,0,255,...)  Gold: rgba(255,200,0,...) */
 

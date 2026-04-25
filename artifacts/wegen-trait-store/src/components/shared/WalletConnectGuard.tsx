@@ -3,7 +3,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
 
-const BANGERS = { fontFamily: "'Bangers', Impact, sans-serif", letterSpacing: '0.08em' };
+const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.1em' };
 
 interface WalletConnectGuardProps {
   children: ReactNode;

@@ -3,8 +3,9 @@ import { Link, useLocation } from "wouter";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useEthPrice } from "@/hooks/useEthPrice";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 const DISPLAY = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: '0.04em' };
@@ -14,6 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { walletAddress, isConnected, connect, disconnect, isConnecting } = useWallet();
   const { settings } = useSiteSettings();
+  const { ethUsd, change24h, direction, isLoading: priceLoading } = useEthPrice();
 
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -244,6 +246,51 @@ export function Layout({ children }: { children: ReactNode }) {
                 }}>STORE</span>
               </span>
             </Link>
+
+            {/* ── ETH Price Ticker ── */}
+            <div
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full select-none"
+              style={{
+                background: "linear-gradient(135deg, hsl(272 60% 8%), hsl(272 40% 5%))",
+                border: "1px solid hsl(272 100% 62% / 0.25)",
+                boxShadow: "0 0 12px hsl(272 100% 50% / 0.1)",
+              }}
+            >
+              {/* ETH diamond icon */}
+              <svg width="13" height="13" viewBox="0 0 256 417" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <polygon points="128,0 0,208 128,284 256,208" fill="hsl(272,100%,72%)" opacity="0.95"/>
+                <polygon points="128,417 0,236 128,312" fill="hsl(272,100%,55%)" opacity="0.85"/>
+                <polygon points="128,417 256,236 128,312" fill="hsl(272,100%,65%)" opacity="0.9"/>
+                <polygon points="128,284 0,208 128,312" fill="hsl(272,100%,80%)" opacity="0.6"/>
+                <polygon points="128,284 256,208 128,312" fill="hsl(272,100%,75%)" opacity="0.7"/>
+              </svg>
+
+              {priceLoading || ethUsd === null ? (
+                <span className="text-xs font-mono text-muted-foreground/50 w-16">Loading…</span>
+              ) : (
+                <>
+                  <span
+                    className="text-xs font-mono font-bold tabular-nums"
+                    style={{ color: "hsl(272 100% 82%)", letterSpacing: "0.02em" }}
+                  >
+                    ${ethUsd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                  {change24h !== null && (
+                    <span
+                      className="flex items-center gap-0.5 text-[10px] font-bold"
+                      style={{ color: change24h >= 0 ? "#4ade80" : "#f87171" }}
+                    >
+                      {change24h >= 0.05
+                        ? <TrendingUp className="w-2.5 h-2.5" />
+                        : change24h <= -0.05
+                          ? <TrendingDown className="w-2.5 h-2.5" />
+                          : <Minus className="w-2.5 h-2.5" />}
+                      {Math.abs(change24h).toFixed(1)}%
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* ── Nav ── */}
             {!isAdminPage && (

@@ -24,6 +24,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
@@ -386,9 +387,16 @@ function NftPreviewBanner({
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 text-primary font-bold text-sm">
-                          <Coins className="w-3.5 h-3.5" />
-                          {effectivePreviewTrait.priceEth} ETH
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1 text-primary font-bold text-sm">
+                            <Coins className="w-3.5 h-3.5" />
+                            {effectivePreviewTrait.priceEth} ETH
+                          </div>
+                          {formatUsd(effectivePreviewTrait.priceEth ?? 0, ethUsd) && (
+                            <span className="text-[10px] text-muted-foreground/60 font-mono pl-5">
+                              ≈ {formatUsd(effectivePreviewTrait.priceEth ?? 0, ethUsd)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -427,6 +435,7 @@ export function Store() {
   const { walletAddress, isConnected, connect } = useWallet();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { ethUsd } = useEthPrice();
 
   // ── Maintenance mode gate ──
   const [storeConfig, setStoreConfig] = useState<{
@@ -920,9 +929,16 @@ export function Store() {
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{trait.description}</p>
                 )}
                 <div className="mt-auto pt-4 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-primary font-bold">
-                    <Coins className="w-4 h-4" />
-                    <span>{trait.priceEth} ETH</span>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5 text-primary font-bold">
+                      <Coins className="w-4 h-4" />
+                      <span>{trait.priceEth} ETH</span>
+                    </div>
+                    {formatUsd(trait.priceEth ?? 0, ethUsd) && (
+                      <span className="text-[10px] text-muted-foreground/55 font-mono pl-5">
+                        ≈ {formatUsd(trait.priceEth ?? 0, ethUsd)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground font-medium">
                     {trait.remainingSupply} / {trait.totalSupply} left
@@ -1052,6 +1068,11 @@ export function Store() {
                     <div className="flex items-center gap-1 text-accent text-xs font-bold font-mono mt-0.5">
                       <Coins className="w-3 h-3" />
                       {trait.priceEth} ETH
+                      {formatUsd(trait.priceEth ?? 0, ethUsd) && (
+                        <span className="text-muted-foreground/50 font-normal ml-1">
+                          · {formatUsd(trait.priceEth ?? 0, ethUsd)}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -1090,7 +1111,14 @@ export function Store() {
                   style={{ color: "hsl(43 100% 56%)" }}
                 >
                   <span style={BANGERS}>TOTAL</span>
-                  <span className="font-mono text-base">{cartTotal.toFixed(4)} ETH</span>
+                  <div className="text-right">
+                    <div className="font-mono text-base">{cartTotal.toFixed(4)} ETH</div>
+                    {formatUsd(cartTotal, ethUsd) && (
+                      <div className="text-xs text-muted-foreground/50 font-mono font-normal">
+                        ≈ {formatUsd(cartTotal, ethUsd)}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

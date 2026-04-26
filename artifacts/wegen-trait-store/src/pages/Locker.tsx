@@ -7,6 +7,7 @@ import {
   useGetUserNfts,
   useApplyTrait,
   useRemoveTrait,
+  useConfirmTraits,
   getGetLockerQueryKey,
   getGetUserNftsQueryKey,
 } from "@workspace/api-client-react";
@@ -15,8 +16,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Fingerprint, Lock, Unlock, Gem, Loader2, X, Plus, Eye,
-  ChevronDown, SlidersHorizontal, Package,
+  ChevronDown, SlidersHorizontal, Package, CheckCircle2, Zap, ExternalLink,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
@@ -111,6 +122,8 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const [filterLayer, setFilterLayer]   = useState("all");
   const [filterRarity, setFilterRarity] = useState("all");
   const [sortBy, setSortBy]             = useState<"rarity-desc" | "rarity-asc" | "name" | "date">("rarity-desc");
+  const [confirmOpen, setConfirmOpen]   = useState(false);
+  const [confirmedTx, setConfirmedTx]   = useState<string | null>(null);
 
   // Demo-mode local interactive state — fully mutable without wallet
   const [demoNfts, setDemoNfts]           = useState<DemoNft[]>(() => SAMPLE_NFTS.map(n => ({ ...n, equippedTraits: n.equippedTraits.map(e => ({ ...e })) })));
@@ -147,6 +160,35 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
       onError: () => toast({ title: "Error", description: "Failed to remove trait.", variant: "destructive" }),
     },
   });
+
+  const confirmTraits = useConfirmTraits({
+    mutation: {
+      onSuccess: (data) => {
+        setConfirmedTx(data.txHash);
+        setConfirmOpen(false);
+        toast({
+          title: "Traits Confirmed On-Chain!",
+          description: `Tx: ${data.txHash.slice(0, 10)}…${data.txHash.slice(-6)}`,
+        });
+      },
+      onError: () => toast({ title: "Error", description: "Failed to confirm traits on-chain.", variant: "destructive" }),
+    },
+  });
+
+  const handleConfirm = () => {
+    if (demo) {
+      // Demo simulation — fake tx hash
+      setTimeout(() => {
+        const fakeTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+        setConfirmedTx(fakeTx);
+        setConfirmOpen(false);
+        toast({ title: "Traits Confirmed On-Chain!", description: `Tx: ${fakeTx.slice(0, 10)}…${fakeTx.slice(-6)}` });
+      }, 1800);
+      return;
+    }
+    if (!walletAddress || !activeNft) return;
+    confirmTraits.mutate({ tokenId: activeNft.tokenId, data: { walletAddress } });
+  };
 
   const nfts       = demo ? demoNfts  : (nftsData?.nfts ?? []);
   const lockerItems = demo ? demoItems : (lockerData?.items ?? []);
@@ -398,6 +440,38 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   ))
                 )}
               </div>
+
+              {/* ── Confirm Trait Swap button ── */}
+              {activeNft.equippedTraits.length > 0 && (
+                <div className="flex-shrink-0 p-3 border-t" style={{ borderColor: 'rgba(157,0,255,0.2)' }}>
+                  {/* Last confirmed tx badge */}
+                  {confirmedTx && (
+                    <div className="flex items-center gap-1.5 mb-2 px-2 py-1 text-[9px] font-mono rounded"
+                      style={{ background: 'rgba(0,200,100,0.08)', border: '1px solid rgba(0,200,100,0.25)', color: 'hsl(145 70% 55%)' }}>
+                      <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">Confirmed: {confirmedTx.slice(0,10)}…{confirmedTx.slice(-6)}</span>
+                      <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 ml-auto" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setConfirmOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold uppercase transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{
+                      ...BANGERS,
+                      background: 'linear-gradient(90deg,rgba(157,0,255,0.25),rgba(255,200,0,0.15),rgba(157,0,255,0.25))',
+                      border: '1px solid rgba(255,200,0,0.55)',
+                      boxShadow: '0 0 18px rgba(255,200,0,0.2), inset 0 0 10px rgba(157,0,255,0.1)',
+                      color: 'hsl(43 100% 65%)',
+                    }}
+                  >
+                    <Zap className="w-4 h-4" />
+                    CONFIRM TRAIT SWAP
+                  </button>
+                  <p className="text-[9px] font-mono text-muted-foreground/40 text-center mt-1.5">
+                    pushes metadata to Ethereum mainnet
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
@@ -536,6 +610,78 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
           </div>
         </div>
       </div>
+
+      {/* ── Confirm Trait Swap Dialog ── */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent
+          style={{
+            background: 'linear-gradient(160deg,rgba(18,10,28,0.99),rgba(12,7,20,0.99))',
+            border: '1px solid rgba(255,200,0,0.35)',
+            boxShadow: '0 0 40px rgba(157,0,255,0.25), 0 0 80px rgba(255,200,0,0.08)',
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2" style={BANGERS}>
+              <Zap className="w-5 h-5 text-yellow-400" />
+              <span style={{ color: 'hsl(43 100% 65%)' }}>CONFIRM TRAIT SWAP</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-mono text-xs space-y-3 mt-2" asChild>
+              <div>
+                <p className="text-muted-foreground/80">
+                  This will push the current trait loadout for{' '}
+                  <span className="text-primary font-bold">Wegen #{activeNft?.tokenId}</span>{' '}
+                  to Ethereum mainnet and update its on-chain metadata.
+                </p>
+
+                {/* Traits list */}
+                {activeNft && activeNft.equippedTraits.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest mb-2">Traits being applied:</p>
+                    {activeNft.equippedTraits.map(et => (
+                      <div key={et.category} className="flex items-center gap-2 px-2.5 py-1.5 rounded"
+                        style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.2)' }}>
+                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(272 100% 65%)' }} />
+                        <span className="text-[10px] font-mono text-primary/60 uppercase w-20 flex-shrink-0">{et.category}</span>
+                        <span className="text-xs font-bold text-foreground truncate">{et.trait.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-yellow-500/60 mt-3">
+                  ⚡ A gas fee will be required to complete the transaction in your wallet.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel
+              className="font-mono text-xs"
+              style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 50% 70%)' }}
+            >
+              CANCEL
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirm(); }}
+              disabled={confirmTraits.isPending}
+              className="flex items-center gap-2 font-bold uppercase"
+              style={{
+                ...BANGERS,
+                background: 'linear-gradient(90deg,rgba(255,200,0,0.2),rgba(157,0,255,0.2))',
+                border: '1px solid rgba(255,200,0,0.6)',
+                color: 'hsl(43 100% 65%)',
+                boxShadow: '0 0 12px rgba(255,200,0,0.15)',
+              }}
+            >
+              {confirmTraits.isPending ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" />SIGNING…</>
+              ) : (
+                <><Zap className="w-3.5 h-3.5" />PUSH TO CHAIN</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

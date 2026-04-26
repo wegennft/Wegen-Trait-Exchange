@@ -240,6 +240,23 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface ConfirmTraitsBody {
+  walletAddress: string;
+}
+
+export interface ConfirmTraitsResponseTraitsAppliedItem {
+  category: string;
+  name: string;
+}
+
+export interface ConfirmTraitsResponse {
+  success: boolean;
+  /** Simulated/real on-chain transaction hash */
+  txHash: string;
+  tokenId: number;
+  traitsApplied: ConfirmTraitsResponseTraitsAppliedItem[];
+}
+
 export type ListTraitsParams = {
   category?: string;
   /**

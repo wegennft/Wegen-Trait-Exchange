@@ -478,6 +478,29 @@ export const removeTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercen
 export const removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMin = 0;
 export const removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMax = 100;
 
+/**
+ * @summary Confirm current trait loadout and push metadata on-chain
+ */
+export const ConfirmTraitsParams = zod.object({
+  tokenId: zod.coerce.number(),
+});
+
+export const ConfirmTraitsBody = zod.object({
+  walletAddress: zod.string(),
+});
+
+export const ConfirmTraitsResponse = zod.object({
+  success: zod.boolean(),
+  txHash: zod.string(),
+  tokenId: zod.number(),
+  traitsApplied: zod.array(
+    zod.object({
+      category: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
 export const RemoveTraitResponse = zod.object({
   success: zod.boolean(),
   nft: zod.object({

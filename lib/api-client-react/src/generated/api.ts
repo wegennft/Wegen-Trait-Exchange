@@ -21,6 +21,8 @@ import type {
   ApplyTraitBody,
   ApplyTraitResponse,
   CategoriesResponse,
+  ConfirmTraitsBody,
+  ConfirmTraitsResponse,
   CreateTraitBody,
   DeleteResponse,
   ErrorEnvelope,
@@ -1150,6 +1152,92 @@ export const useRemoveTrait = <
   TContext
 > => {
   return useMutation(getRemoveTraitMutationOptions(options));
+};
+
+/**
+ * @summary Confirm current trait loadout and push metadata on-chain
+ */
+export const getConfirmTraitsUrl = (tokenId: number) => {
+  return `/api/nfts/${tokenId}/confirm-traits`;
+};
+
+export const confirmTraits = async (
+  tokenId: number,
+  confirmTraitsBody: ConfirmTraitsBody,
+  options?: RequestInit,
+): Promise<ConfirmTraitsResponse> => {
+  return customFetch<ConfirmTraitsResponse>(getConfirmTraitsUrl(tokenId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(confirmTraitsBody),
+  });
+};
+
+export const getConfirmTraitsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmTraits>>,
+    TError,
+    { tokenId: number; data: BodyType<ConfirmTraitsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmTraits>>,
+  TError,
+  { tokenId: number; data: BodyType<ConfirmTraitsBody> },
+  TContext
+> => {
+  const mutationKey = ["confirmTraits"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmTraits>>,
+    { tokenId: number; data: BodyType<ConfirmTraitsBody> }
+  > = (props) => {
+    const { tokenId, data } = props ?? {};
+    return confirmTraits(tokenId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmTraitsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmTraits>>
+>;
+export type ConfirmTraitsMutationBody = BodyType<ConfirmTraitsBody>;
+export type ConfirmTraitsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Confirm current trait loadout and push metadata on-chain
+ */
+export const useConfirmTraits = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmTraits>>,
+    TError,
+    { tokenId: number; data: BodyType<ConfirmTraitsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmTraits>>,
+  TError,
+  { tokenId: number; data: BodyType<ConfirmTraitsBody> },
+  TContext
+> => {
+  return useMutation(getConfirmTraitsMutationOptions(options));
 };
 
 /**

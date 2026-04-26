@@ -12,6 +12,8 @@ export const wegenNftsTable = pgTable("wegen_nfts", {
   walletAddress: text("wallet_address").notNull(),
   name: text("name").notNull(),
   imageUrl: text("image_url"),
+  metadataTxHash: text("metadata_tx_hash"),
+  metadataUpdatedAt: timestamp("metadata_updated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

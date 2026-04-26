@@ -10,6 +10,9 @@ import {
   RemoveTraitParams,
   RemoveTraitBody,
   RemoveTraitResponse,
+  ConfirmTraitsParams,
+  ConfirmTraitsBody,
+  ConfirmTraitsResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -230,6 +233,77 @@ router.post("/nfts/:tokenId/remove-trait", async (req, res): Promise<void> => {
   const itemWithTrait = { ...updatedItem, trait };
 
   res.json(RemoveTraitResponse.parse({ success: true, nft, lockerItem: itemWithTrait }));
+});
+
+router.post("/nfts/:tokenId/confirm-traits", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.tokenId)
+    ? req.params.tokenId[0]
+    : req.params.tokenId;
+  const pathParams = ConfirmTraitsParams.safeParse({ tokenId: rawId });
+  if (!pathParams.success) {
+    res.status(400).json({ error: pathParams.error.message });
+    return;
+  }
+
+  const body = ConfirmTraitsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const { walletAddress } = body.data;
+  const tokenId = pathParams.data.tokenId;
+
+  const [nft] = await db
+    .select()
+    .from(wegenNftsTable)
+    .where(eq(wegenNftsTable.tokenId, tokenId));
+
+  if (!nft) {
+    res.status(404).json({ error: "NFT not found" });
+    return;
+  }
+
+  if (nft.walletAddress !== walletAddress) {
+    res.status(403).json({ error: "Wallet does not own this NFT" });
+    return;
+  }
+
+  const equippedRows = await db
+    .select({
+      category: traitsTable.category,
+      name: traitsTable.name,
+    })
+    .from(lockerItemsTable)
+    .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
+    .where(eq(lockerItemsTable.equippedToTokenId, tokenId));
+
+  if (equippedRows.length === 0) {
+    res.status(400).json({ error: "No traits equipped to this NFT" });
+    return;
+  }
+
+  // Generate a simulated on-chain tx hash (replace with real contract call when ready)
+  const txHash =
+    "0x" +
+    Array.from({ length: 64 }, () =>
+      Math.floor(Math.random() * 16).toString(16),
+    ).join("");
+
+  // Record the metadata confirmation on the NFT row
+  await db
+    .update(wegenNftsTable)
+    .set({ metadataTxHash: txHash, metadataUpdatedAt: new Date() })
+    .where(eq(wegenNftsTable.tokenId, tokenId));
+
+  res.json(
+    ConfirmTraitsResponse.parse({
+      success: true,
+      txHash,
+      tokenId,
+      traitsApplied: equippedRows,
+    }),
+  );
 });
 
 export default router;

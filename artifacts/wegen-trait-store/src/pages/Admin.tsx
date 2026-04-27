@@ -443,7 +443,7 @@ export function Admin() {
   });
 
   const handleCreate = (data: TraitFormValues) => {
-    createTrait.mutate({ data });
+    createTrait.mutate({ data, nftCollection: collection });
   };
 
   const handleUpdate = (data: TraitFormValues) => {
@@ -3105,6 +3105,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { collection } = useCollection();
 
   const { uploadFile: uploadFileHook } = useUpload({
     onSuccess: (response) => {
@@ -3193,7 +3194,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   async function createTraitAsync(data: TraitFormValues): Promise<void> {
     return new Promise((resolve, reject) => {
       batchCreateTrait.mutate(
-        { data },
+        { data, nftCollection: collection },
         {
           onSuccess: () => resolve(),
           onError: (err) => reject(err),

@@ -1322,15 +1322,17 @@ export function useGetStoreStats<
 /**
  * @summary Create a new trait (admin only)
  */
-export const getCreateTraitUrl = () => {
-  return `/api/admin/traits`;
+export const getCreateTraitUrl = (nftCollection?: string) => {
+  const q = nftCollection && nftCollection !== "wegens" ? `?nftCollection=${encodeURIComponent(nftCollection)}` : "";
+  return `/api/admin/traits${q}`;
 };
 
 export const createTrait = async (
   createTraitBody: CreateTraitBody,
+  nftCollection?: string,
   options?: RequestInit,
 ): Promise<Trait> => {
-  return customFetch<Trait>(getCreateTraitUrl(), {
+  return customFetch<Trait>(getCreateTraitUrl(nftCollection), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1345,14 +1347,14 @@ export const getCreateTraitMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createTrait>>,
     TError,
-    { data: BodyType<CreateTraitBody> },
+    { data: BodyType<CreateTraitBody>; nftCollection?: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof createTrait>>,
   TError,
-  { data: BodyType<CreateTraitBody> },
+  { data: BodyType<CreateTraitBody>; nftCollection?: string },
   TContext
 > => {
   const mutationKey = ["createTrait"];
@@ -1366,11 +1368,11 @@ export const getCreateTraitMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof createTrait>>,
-    { data: BodyType<CreateTraitBody> }
+    { data: BodyType<CreateTraitBody>; nftCollection?: string }
   > = (props) => {
-    const { data } = props ?? {};
+    const { data, nftCollection } = props ?? {};
 
-    return createTrait(data, requestOptions);
+    return createTrait(data, nftCollection, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1392,14 +1394,14 @@ export const useCreateTrait = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createTrait>>,
     TError,
-    { data: BodyType<CreateTraitBody> },
+    { data: BodyType<CreateTraitBody>; nftCollection?: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof createTrait>>,
   TError,
-  { data: BodyType<CreateTraitBody> },
+  { data: BodyType<CreateTraitBody>; nftCollection?: string },
   TContext
 > => {
   return useMutation(getCreateTraitMutationOptions(options));

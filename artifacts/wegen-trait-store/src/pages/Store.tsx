@@ -973,19 +973,21 @@ export function Store() {
                 {trait.description && (
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{trait.description}</p>
                 )}
-                <div className="mt-auto pt-4 flex items-center justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5 text-primary font-bold">
-                      <Coins className="w-4 h-4" />
-                      <span>{trait.priceEth} ETH</span>
+                <div className="mt-auto pt-3">
+                  {/* Price block */}
+                  <div className="px-3 py-2.5 rounded mb-2" style={{ background: 'rgba(157,0,255,0.1)', border: '1px solid rgba(157,0,255,0.25)' }}>
+                    <div className="flex items-center gap-2" style={{ ...BANGERS, color: 'hsl(272 100% 75%)' }}>
+                      <Coins className="w-5 h-5 flex-shrink-0" style={{ color: 'hsl(43 100% 60%)' }} />
+                      <span className="text-2xl leading-none">{trait.priceEth}</span>
+                      <span className="text-base opacity-70">ETH</span>
                     </div>
                     {formatUsd(trait.priceEth ?? 0, ethUsd) && (
-                      <span className="text-[10px] text-muted-foreground/55 font-mono pl-5">
+                      <div className="text-sm font-mono mt-0.5 pl-7" style={{ color: 'hsl(43 100% 62%)', opacity: 0.85 }}>
                         ≈ {formatUsd(trait.priceEth ?? 0, ethUsd)}
-                      </span>
+                      </div>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground font-medium">
+                  <div className="text-xs text-muted-foreground/50 font-mono text-right">
                     {trait.remainingSupply} / {trait.totalSupply} left
                   </div>
                 </div>

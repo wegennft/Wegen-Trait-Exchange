@@ -600,18 +600,20 @@ const DEFAULT_RARITIES = [
   { name: "common",    rank: 4, color: "#9CA3AF" },
 ];
 
-async function ensureDefaultRarities() {
-  const existing = await db.select().from(rarityTiersTable);
+async function ensureDefaultRarities(nftCollection: string) {
+  const existing = await db.select().from(rarityTiersTable).where(eq(rarityTiersTable.nftCollection, nftCollection));
   if (existing.length === 0) {
-    await db.insert(rarityTiersTable).values(DEFAULT_RARITIES);
+    await db.insert(rarityTiersTable).values(DEFAULT_RARITIES.map(r => ({ ...r, nftCollection })));
   }
 }
 
-router.get("/admin/rarities", async (_req, res): Promise<void> => {
-  await ensureDefaultRarities();
+router.get("/admin/rarities", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  await ensureDefaultRarities(nftCollection);
   const tiers = await db
     .select()
     .from(rarityTiersTable)
+    .where(eq(rarityTiersTable.nftCollection, nftCollection))
     .orderBy(asc(rarityTiersTable.rank));
   res.json({ tiers });
 });
@@ -622,6 +624,7 @@ const CreateRarityBody = z.object({
 });
 
 router.post("/admin/rarities", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const body = CreateRarityBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: "Invalid body" });
@@ -637,12 +640,12 @@ router.post("/admin/rarities", async (req, res): Promise<void> => {
     return;
   }
   const maxRankResult = await db.execute(
-    sql`SELECT COALESCE(MAX(rank), 0) as max_rank FROM rarity_tiers`
+    sql`SELECT COALESCE(MAX(rank), 0) as max_rank FROM rarity_tiers WHERE nft_collection = ${nftCollection}`
   );
   const maxRank = Number((maxRankResult.rows[0] as { max_rank: number }).max_rank ?? 0);
   const [tier] = await db
     .insert(rarityTiersTable)
-    .values({ name, rank: maxRank + 1, color: body.data.color })
+    .values({ name, rank: maxRank + 1, color: body.data.color, nftCollection })
     .returning();
   res.status(201).json({ tier });
 });
@@ -677,11 +680,13 @@ router.delete("/admin/rarities/:id", async (req, res): Promise<void> => {
 
 // Move rarity up (swap with the tier above it — lower rank number)
 router.post("/admin/rarities/:id/move-up", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const tiers = await db
     .select()
     .from(rarityTiersTable)
+    .where(eq(rarityTiersTable.nftCollection, nftCollection))
     .orderBy(asc(rarityTiersTable.rank));
   const idx = tiers.findIndex(t => t.id === id);
   if (idx <= 0) { res.json({ tiers }); return; }
@@ -689,17 +694,19 @@ router.post("/admin/rarities/:id/move-up", async (req, res): Promise<void> => {
   const current = tiers[idx];
   await db.update(rarityTiersTable).set({ rank: above.rank }).where(eq(rarityTiersTable.id, current.id));
   await db.update(rarityTiersTable).set({ rank: current.rank }).where(eq(rarityTiersTable.id, above.id));
-  const updated = await db.select().from(rarityTiersTable).orderBy(asc(rarityTiersTable.rank));
+  const updated = await db.select().from(rarityTiersTable).where(eq(rarityTiersTable.nftCollection, nftCollection)).orderBy(asc(rarityTiersTable.rank));
   res.json({ tiers: updated });
 });
 
 // Move rarity down (swap with the tier below it — higher rank number)
 router.post("/admin/rarities/:id/move-down", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const tiers = await db
     .select()
     .from(rarityTiersTable)
+    .where(eq(rarityTiersTable.nftCollection, nftCollection))
     .orderBy(asc(rarityTiersTable.rank));
   const idx = tiers.findIndex(t => t.id === id);
   if (idx < 0 || idx >= tiers.length - 1) { res.json({ tiers }); return; }
@@ -707,7 +714,7 @@ router.post("/admin/rarities/:id/move-down", async (req, res): Promise<void> => 
   const current = tiers[idx];
   await db.update(rarityTiersTable).set({ rank: below.rank }).where(eq(rarityTiersTable.id, current.id));
   await db.update(rarityTiersTable).set({ rank: current.rank }).where(eq(rarityTiersTable.id, below.id));
-  const updated = await db.select().from(rarityTiersTable).orderBy(asc(rarityTiersTable.rank));
+  const updated = await db.select().from(rarityTiersTable).where(eq(rarityTiersTable.nftCollection, nftCollection)).orderBy(asc(rarityTiersTable.rank));
   res.json({ tiers: updated });
 });
 

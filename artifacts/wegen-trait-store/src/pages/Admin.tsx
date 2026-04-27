@@ -382,9 +382,9 @@ export function Admin() {
   const traitsData = traitCollection === "wegens" ? wegensTraitsData : wegenettesTraitsData;
   const isLoadingTraits = traitCollection === "wegens" ? isLoadingWegens : isLoadingWegenettes;
   const { data: rarityTiersData } = useQuery({
-    queryKey: ["admin-rarity-tiers"],
+    queryKey: ["admin-rarity-tiers", collection],
     queryFn: async () => {
-      const res = await fetch("/api/admin/rarities");
+      const res = await fetch(`/api/admin/rarities?nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) return { tiers: [] };
       return res.json() as Promise<{ tiers: { id: number; name: string; rank: number; color: string | null }[] }>;
     },
@@ -1902,6 +1902,7 @@ type RarityTierItem = {
 
 function RarityTiersSettings() {
   const { toast } = useToast();
+  const { collection } = useCollection();
   const [tiers, setTiers] = useState<RarityTierItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -1911,23 +1912,24 @@ function RarityTiersSettings() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchTiers = async () => {
-    const res = await fetch("/api/admin/rarities");
-    if (!res.ok) return;
+    setIsLoading(true);
+    const res = await fetch(`/api/admin/rarities?nftCollection=${encodeURIComponent(collection)}`);
+    if (!res.ok) { setIsLoading(false); return; }
     const data = await res.json();
     setTiers(data.tiers ?? []);
     setIsLoading(false);
   };
 
-  useEffect(() => { fetchTiers(); }, []);
+  useEffect(() => { fetchTiers(); }, [collection]);
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
     setIsAdding(true);
     try {
-      const res = await fetch("/api/admin/rarities", {
+      const res = await fetch(`/api/admin/rarities?nftCollection=${encodeURIComponent(collection)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim(), color: newColor }),
+        body: JSON.stringify({ name: newName.trim(), color: newColor, nftCollection: collection }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1946,7 +1948,7 @@ function RarityTiersSettings() {
   const handleMove = async (id: number, dir: "up" | "down") => {
     setMovingId(id);
     try {
-      const res = await fetch(`/api/admin/rarities/${id}/move-${dir}`, { method: "POST" });
+      const res = await fetch(`/api/admin/rarities/${id}/move-${dir}?nftCollection=${encodeURIComponent(collection)}`, { method: "POST" });
       if (!res.ok) return;
       const data = await res.json();
       setTiers(data.tiers ?? []);

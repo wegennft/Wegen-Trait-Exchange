@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   jsonb,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -38,13 +39,16 @@ export const traitsTable = pgTable("traits", {
 
 export const rarityTiersTable = pgTable("rarity_tiers", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
+  nftCollection: text("nft_collection").notNull().default("wegens"),
   rank: integer("rank").notNull().default(0),
   color: text("color").default("#888888"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  unique("rarity_tiers_name_collection_unique").on(table.name, table.nftCollection),
+]);
 
 export const insertTraitSchema = createInsertSchema(traitsTable).omit({
   id: true,

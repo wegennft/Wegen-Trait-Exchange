@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
+import { useCollection } from "@/contexts/CollectionContext";
 import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -413,6 +414,7 @@ function CreateListingModal({
   const [lookingFor, setLookingFor] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { collection } = useCollection();
 
   const availableItems = myLockerItems.filter(i => i.equippedToTokenId === null);
 
@@ -425,6 +427,7 @@ function CreateListingModal({
           posterWallet: walletAddress,
           lookingFor,
           lockerItemIds: selectedIds,
+          nftCollection: collection,
         }),
       });
       if (!res.ok) {
@@ -434,8 +437,8 @@ function CreateListingModal({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["swap-listings"] });
-      queryClient.invalidateQueries({ queryKey: ["swap-my-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["swap-listings", collection] });
+      queryClient.invalidateQueries({ queryKey: ["swap-my-listings", walletAddress, collection] });
       toast({ title: "Swap listing posted!" });
       setSelectedIds([]);
       setLookingFor("");
@@ -541,6 +544,7 @@ function AcceptTradeModal({
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { collection } = useCollection();
 
   const availableItems = myLockerItems.filter(i => i.equippedToTokenId === null);
 
@@ -549,7 +553,7 @@ function AcceptTradeModal({
       const res = await fetch(`/api/swap/listings/${listing!.id}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress, lockerItemIds: selectedIds }),
+        body: JSON.stringify({ walletAddress, lockerItemIds: selectedIds, nftCollection: collection }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -558,9 +562,9 @@ function AcceptTradeModal({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["swap-listings"] });
-      queryClient.invalidateQueries({ queryKey: ["swap-my-listings"] });
-      queryClient.invalidateQueries({ queryKey: ["locker", walletAddress] });
+      queryClient.invalidateQueries({ queryKey: ["swap-listings", collection] });
+      queryClient.invalidateQueries({ queryKey: ["swap-my-listings", walletAddress, collection] });
+      queryClient.invalidateQueries({ queryKey: ["locker", walletAddress, collection] });
       toast({ title: "Trade complete! Traits have been swapped." });
       setSelectedIds([]);
       onClose();
@@ -798,6 +802,7 @@ function ListForSaleModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
+  const { collection } = useCollection();
 
   const availableItems = myLockerItems.filter(i => i.equippedToTokenId === null);
 
@@ -812,7 +817,7 @@ function ListForSaleModal({
       const res = await fetch("/api/market/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sellerWallet: walletAddress, lockerItemId: selectedItem.id, priceEth }),
+        body: JSON.stringify({ sellerWallet: walletAddress, lockerItemId: selectedItem.id, priceEth, nftCollection: collection }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -924,11 +929,15 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { ethUsd } = useEthPrice();
+  const { collection } = useCollection();
+
+  const marketListingsKey = ["market-listings", collection];
+  const myMarketListingsKey = ["market-my-listings", walletAddress, collection];
 
   const { data: allMarketData, isLoading: loadingMarket } = useQuery<{ listings: MarketListing[]; total: number }>({
-    queryKey: ["market-listings"],
+    queryKey: marketListingsKey,
     queryFn: async () => {
-      const res = await fetch("/api/market/listings?status=active");
+      const res = await fetch(`/api/market/listings?status=active&nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load market");
       return res.json();
     },
@@ -936,10 +945,10 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
   });
 
   const { data: myMarketData, isLoading: loadingMine } = useQuery<{ listings: MarketListing[]; total: number }>({
-    queryKey: ["market-my-listings", walletAddress],
+    queryKey: myMarketListingsKey,
     enabled: !!walletAddress,
     queryFn: async () => {
-      const res = await fetch(`/api/market/listings?seller=${walletAddress}&status=all`);
+      const res = await fetch(`/api/market/listings?seller=${walletAddress}&status=all&nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load your listings");
       return res.json();
     },
@@ -959,9 +968,9 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
       return res.json();
     },
     onSuccess: (data: { priceEth: string }) => {
-      queryClient.invalidateQueries({ queryKey: ["market-listings"] });
-      queryClient.invalidateQueries({ queryKey: ["market-my-listings"] });
-      queryClient.invalidateQueries({ queryKey: ["locker", walletAddress] });
+      queryClient.invalidateQueries({ queryKey: marketListingsKey });
+      queryClient.invalidateQueries({ queryKey: myMarketListingsKey });
+      queryClient.invalidateQueries({ queryKey: ["locker", walletAddress, collection] });
       toast({ title: `Trait purchased for ${parseFloat(data.priceEth).toFixed(4)} Ξ!` });
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
@@ -980,8 +989,8 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["market-listings"] });
-      queryClient.invalidateQueries({ queryKey: ["market-my-listings"] });
+      queryClient.invalidateQueries({ queryKey: marketListingsKey });
+      queryClient.invalidateQueries({ queryKey: myMarketListingsKey });
       toast({ title: "Listing cancelled" });
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
@@ -1268,13 +1277,18 @@ export function Swap() {
   const [createOpen, setCreateOpen] = useState(false);
   const [acceptTarget, setAcceptTarget] = useState<SwapListing | null>(null);
   const { walletAddress, isConnected, connect } = useWallet();
+  const { collection } = useCollection();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const swapListingsKey = ["swap-listings", collection];
+  const mySwapListingsKey = ["swap-my-listings", walletAddress, collection];
+  const lockerKey = ["locker", walletAddress, collection];
+
   const { data: allListings, isLoading: loadingAll } = useQuery<{ listings: SwapListing[]; total: number }>({
-    queryKey: ["swap-listings"],
+    queryKey: swapListingsKey,
     queryFn: async () => {
-      const res = await fetch("/api/swap/listings?status=open");
+      const res = await fetch(`/api/swap/listings?status=open&nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load listings");
       return res.json();
     },
@@ -1282,20 +1296,20 @@ export function Swap() {
   });
 
   const { data: myListings, isLoading: loadingMine } = useQuery<{ listings: SwapListing[]; total: number }>({
-    queryKey: ["swap-my-listings", walletAddress],
+    queryKey: mySwapListingsKey,
     enabled: !!walletAddress,
     queryFn: async () => {
-      const res = await fetch(`/api/swap/listings?wallet=${walletAddress}&status=all`);
+      const res = await fetch(`/api/swap/listings?wallet=${walletAddress}&status=all&nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load your listings");
       return res.json();
     },
   });
 
   const { data: lockerData } = useQuery({
-    queryKey: ["locker", walletAddress],
+    queryKey: lockerKey,
     enabled: !!walletAddress,
     queryFn: async () => {
-      const res = await fetch(`/api/locker/${walletAddress}`);
+      const res = await fetch(`/api/locker/${walletAddress}?nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load locker");
       return res.json();
     },
@@ -1316,8 +1330,8 @@ export function Swap() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["swap-listings"] });
-      queryClient.invalidateQueries({ queryKey: ["swap-my-listings"] });
+      queryClient.invalidateQueries({ queryKey: swapListingsKey });
+      queryClient.invalidateQueries({ queryKey: mySwapListingsKey });
       toast({ title: "Listing cancelled" });
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),

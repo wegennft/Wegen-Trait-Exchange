@@ -11,6 +11,12 @@ import {
 
 const router: IRouter = Router();
 
+function getNftCollection(req: import("express").Request): string {
+  const c = (req.query.nftCollection ?? req.body?.nftCollection) as string | undefined;
+  if (c === "wegenettes") return "wegenettes";
+  return "wegens";
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 async function getListingWithItems(listingId: number) {
@@ -32,17 +38,18 @@ async function getListingWithItems(listingId: number) {
 // ── GET /swap/listings ───────────────────────────────────────────────────────
 
 router.get("/swap/listings", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const wallet = req.query["wallet"] as string | undefined;
   const status = (req.query["status"] as string) ?? "open";
 
-  const conditions = [];
+  const conditions: ReturnType<typeof eq>[] = [eq(swapListingsTable.nftCollection, nftCollection)];
   if (status !== "all") conditions.push(eq(swapListingsTable.status, status));
   if (wallet) conditions.push(eq(swapListingsTable.posterWallet, wallet));
 
   const listings = await db
     .select()
     .from(swapListingsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(swapListingsTable.createdAt);
 
   const withItems = await Promise.all(
@@ -61,6 +68,7 @@ router.get("/swap/listings", async (req, res): Promise<void> => {
 // ── POST /swap/listings ──────────────────────────────────────────────────────
 
 router.post("/swap/listings", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const { posterWallet, lookingFor, lockerItemIds } = req.body as {
     posterWallet: string;
     lookingFor: string;
@@ -80,6 +88,7 @@ router.post("/swap/listings", async (req, res): Promise<void> => {
       and(
         inArray(lockerItemsTable.id, lockerItemIds),
         eq(lockerItemsTable.walletAddress, posterWallet),
+        eq(traitsTable.nftCollection, nftCollection),
       ),
     );
 
@@ -96,7 +105,7 @@ router.post("/swap/listings", async (req, res): Promise<void> => {
 
   const [listing] = await db
     .insert(swapListingsTable)
-    .values({ posterWallet, lookingFor, status: "open" })
+    .values({ posterWallet, lookingFor, status: "open", nftCollection })
     .returning();
 
   await db.insert(swapListingItemsTable).values(
@@ -149,6 +158,7 @@ router.delete("/swap/listings/:id", async (req, res): Promise<void> => {
 // ── POST /swap/listings/:id/accept ───────────────────────────────────────────
 
 router.post("/swap/listings/:id/accept", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const listingId = Number(req.params["id"]);
   const { walletAddress, lockerItemIds } = req.body as {
     walletAddress: string;
@@ -193,6 +203,7 @@ router.post("/swap/listings/:id/accept", async (req, res): Promise<void> => {
       and(
         inArray(lockerItemsTable.id, lockerItemIds),
         eq(lockerItemsTable.walletAddress, walletAddress),
+        eq(traitsTable.nftCollection, nftCollection),
       ),
     );
 
@@ -201,7 +212,6 @@ router.post("/swap/listings/:id/accept", async (req, res): Promise<void> => {
     return;
   }
 
-  // Transfer: poster's items → acceptor's wallet
   if (posterLockerItemIds.length > 0) {
     await db
       .update(lockerItemsTable)
@@ -209,7 +219,6 @@ router.post("/swap/listings/:id/accept", async (req, res): Promise<void> => {
       .where(inArray(lockerItemsTable.id, posterLockerItemIds));
   }
 
-  // Transfer: acceptor's items → poster's wallet
   if (lockerItemIds.length > 0) {
     await db
       .update(lockerItemsTable)
@@ -217,13 +226,11 @@ router.post("/swap/listings/:id/accept", async (req, res): Promise<void> => {
       .where(inArray(lockerItemsTable.id, lockerItemIds));
   }
 
-  // Mark listing accepted
   await db
     .update(swapListingsTable)
     .set({ status: "accepted", acceptedByWallet: walletAddress, updatedAt: new Date() })
     .where(eq(swapListingsTable.id, listingId));
 
-  // Record transactions for both sides
   const posterTraits = await db
     .select()
     .from(traitsTable)
@@ -240,6 +247,7 @@ router.post("/swap/listings/:id/accept", async (req, res): Promise<void> => {
       ethAmount: t.priceEth,
       txHash: null,
       tokenId: null,
+      nftCollection,
     });
   }
 
@@ -254,6 +262,7 @@ router.post("/swap/listings/:id/accept", async (req, res): Promise<void> => {
       ethAmount: r.t.priceEth,
       txHash: null,
       tokenId: null,
+      nftCollection,
     });
   }
 

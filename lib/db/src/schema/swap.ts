@@ -14,6 +14,7 @@ export const swapListingsTable = pgTable("swap_listings", {
   lookingFor: text("looking_for").notNull(),
   status: text("status").notNull().default("open"),
   acceptedByWallet: text("accepted_by_wallet"),
+  nftCollection: text("nft_collection").notNull().default("wegens"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -56,6 +57,7 @@ export const marketListingsTable = pgTable("market_listings", {
   priceEth: text("price_eth").notNull(),
   status: text("status").notNull().default("active"), // "active" | "sold" | "cancelled"
   buyerWallet: text("buyer_wallet"),
+  nftCollection: text("nft_collection").notNull().default("wegens"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

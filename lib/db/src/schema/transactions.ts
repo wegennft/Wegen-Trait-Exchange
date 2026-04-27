@@ -23,6 +23,7 @@ export const transactionsTable = pgTable("transactions", {
   ethAmount: text("eth_amount").notNull(),
   txHash: text("tx_hash"),
   tokenId: integer("token_id"),
+  nftCollection: text("nft_collection").notNull().default("wegens"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

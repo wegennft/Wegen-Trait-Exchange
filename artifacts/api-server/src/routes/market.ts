@@ -10,30 +10,36 @@ import {
 
 const router: IRouter = Router();
 
+function getNftCollection(req: import("express").Request): string {
+  const c = (req.query.nftCollection ?? req.body?.nftCollection) as string | undefined;
+  if (c === "wegenettes") return "wegenettes";
+  return "wegens";
+}
+
 // ── GET /market/listings ──────────────────────────────────────────────────────
-// Query params: status ("active"|"all"), seller (wallet)
 
 router.get("/market/listings", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const status = (req.query["status"] as string) ?? "active";
   const seller = req.query["seller"] as string | undefined;
 
-  const conditions: ReturnType<typeof eq>[] = [];
+  const conditions: ReturnType<typeof eq>[] = [eq(marketListingsTable.nftCollection, nftCollection)];
   if (status !== "all") conditions.push(eq(marketListingsTable.status, status));
   if (seller) conditions.push(eq(marketListingsTable.sellerWallet, seller.toLowerCase()));
 
   const listings = await db
     .select()
     .from(marketListingsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(marketListingsTable.createdAt));
 
   res.json({ listings, total: listings.length });
 });
 
 // ── POST /market/listings ─────────────────────────────────────────────────────
-// Body: { sellerWallet, lockerItemId, priceEth }
 
 router.post("/market/listings", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
   const { sellerWallet, lockerItemId, priceEth } = req.body as {
     sellerWallet: string;
     lockerItemId: number;
@@ -50,7 +56,6 @@ router.post("/market/listings", async (req, res): Promise<void> => {
     return;
   }
 
-  // Verify the locker item belongs to the seller and exists
   const [lockerRow] = await db
     .select({ li: lockerItemsTable, t: traitsTable })
     .from(lockerItemsTable)
@@ -59,6 +64,7 @@ router.post("/market/listings", async (req, res): Promise<void> => {
       and(
         eq(lockerItemsTable.id, lockerItemId),
         eq(lockerItemsTable.walletAddress, sellerWallet.toLowerCase()),
+        eq(traitsTable.nftCollection, nftCollection),
       ),
     );
 
@@ -72,7 +78,6 @@ router.post("/market/listings", async (req, res): Promise<void> => {
     return;
   }
 
-  // Check not already listed
   const [existing] = await db
     .select({ id: marketListingsTable.id })
     .from(marketListingsTable)
@@ -99,6 +104,7 @@ router.post("/market/listings", async (req, res): Promise<void> => {
       traitImageUrl: lockerRow.t.imageUrl ?? null,
       priceEth,
       status: "active",
+      nftCollection,
     })
     .returning();
 
@@ -106,7 +112,6 @@ router.post("/market/listings", async (req, res): Promise<void> => {
 });
 
 // ── DELETE /market/listings/:id ───────────────────────────────────────────────
-// Body: { walletAddress }
 
 router.delete("/market/listings/:id", async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
@@ -139,7 +144,6 @@ router.delete("/market/listings/:id", async (req, res): Promise<void> => {
 });
 
 // ── POST /market/listings/:id/buy ─────────────────────────────────────────────
-// Body: { buyerWallet }
 
 router.post("/market/listings/:id/buy", async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
@@ -168,19 +172,16 @@ router.post("/market/listings/:id/buy", async (req, res): Promise<void> => {
     return;
   }
 
-  // Transfer ownership of the locker item to the buyer
   await db
     .update(lockerItemsTable)
     .set({ walletAddress: buyerWallet.toLowerCase(), equippedToTokenId: null })
     .where(eq(lockerItemsTable.id, listing.lockerItemId));
 
-  // Mark listing sold
   await db
     .update(marketListingsTable)
     .set({ status: "sold", buyerWallet: buyerWallet.toLowerCase(), updatedAt: new Date() })
     .where(eq(marketListingsTable.id, id));
 
-  // Record transactions for both sides
   await db.insert(transactionsTable).values({
     type: "sale",
     traitId: listing.traitId,
@@ -191,6 +192,7 @@ router.post("/market/listings/:id/buy", async (req, res): Promise<void> => {
     ethAmount: listing.priceEth,
     txHash: null,
     tokenId: null,
+    nftCollection: listing.nftCollection,
   });
 
   await db.insert(transactionsTable).values({
@@ -203,6 +205,7 @@ router.post("/market/listings/:id/buy", async (req, res): Promise<void> => {
     ethAmount: listing.priceEth,
     txHash: null,
     tokenId: null,
+    nftCollection: listing.nftCollection,
   });
 
   res.json({ success: true, priceEth: listing.priceEth });

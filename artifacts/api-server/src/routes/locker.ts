@@ -10,6 +10,12 @@ import {
 
 const router: IRouter = Router();
 
+function getNftCollection(req: import("express").Request): string {
+  const c = (req.query.nftCollection ?? req.body?.nftCollection) as string | undefined;
+  if (c === "wegenettes") return "wegenettes";
+  return "wegens";
+}
+
 router.get("/locker/:walletAddress", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.walletAddress)
     ? req.params.walletAddress[0]
@@ -19,6 +25,8 @@ router.get("/locker/:walletAddress", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+
+  const nftCollection = getNftCollection(req);
 
   const items = await db
     .select({
@@ -46,7 +54,12 @@ router.get("/locker/:walletAddress", async (req, res): Promise<void> => {
     })
     .from(lockerItemsTable)
     .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
-    .where(eq(lockerItemsTable.walletAddress, params.data.walletAddress))
+    .where(
+      and(
+        eq(lockerItemsTable.walletAddress, params.data.walletAddress),
+        eq(traitsTable.nftCollection, nftCollection),
+      )
+    )
     .orderBy(lockerItemsTable.purchasedAt);
 
   res.json(
@@ -129,6 +142,7 @@ router.post(
       ethAmount: trait.priceEth,
       txHash: txHash ?? null,
       tokenId: null,
+      nftCollection: trait.nftCollection,
     });
 
     const itemWithTrait = {

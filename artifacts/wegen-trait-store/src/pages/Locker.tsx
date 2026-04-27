@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
+import { useCollection } from "@/contexts/CollectionContext";
 import { WalletConnectGuard } from "@/components/shared/WalletConnectGuard";
 import {
-  useGetLocker,
-  useGetUserNfts,
   useApplyTrait,
   useRemoveTrait,
   useConfirmTraits,
@@ -13,7 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Fingerprint, Lock, Unlock, Gem, Loader2, X, Plus, Eye,
   ChevronDown, SlidersHorizontal, Package, CheckCircle2, Zap, ExternalLink,
@@ -113,6 +112,7 @@ type DemoItem = {
 
 function LockerContent({ demo = false }: { demo?: boolean }) {
   const { walletAddress } = useWallet();
+  const { collection, collectionLabel } = useCollection();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -130,21 +130,36 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const [demoItems, setDemoItems]         = useState<DemoItem[]>(() => DEMO_LOCKER_ITEMS.map(i => ({ ...i })));
   const [demoEquipping, setDemoEquipping] = useState<number | null>(null);
 
-  const { data: lockerData, isLoading: isLoadingLocker } = useGetLocker(walletAddress || "", {
-    query: { enabled: !!walletAddress && !demo, queryKey: getGetLockerQueryKey(walletAddress || "") },
+  const lockerQueryKey = [...getGetLockerQueryKey(walletAddress || ""), collection];
+  const nftsQueryKey   = [...getGetUserNftsQueryKey(walletAddress || ""), collection];
+
+  const { data: lockerData, isLoading: isLoadingLocker } = useQuery({
+    queryKey: lockerQueryKey,
+    enabled: !!walletAddress && !demo,
+    queryFn: async () => {
+      const res = await fetch(`/api/locker/${walletAddress}?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) throw new Error("Failed to load locker");
+      return res.json();
+    },
   });
-  const { data: nftsData, isLoading: isLoadingNfts } = useGetUserNfts(walletAddress || "", {
-    query: { enabled: !!walletAddress && !demo, queryKey: getGetUserNftsQueryKey(walletAddress || "") },
+  const { data: nftsData, isLoading: isLoadingNfts } = useQuery({
+    queryKey: nftsQueryKey,
+    enabled: !!walletAddress && !demo,
+    queryFn: async () => {
+      const res = await fetch(`/api/nfts/${walletAddress}?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) throw new Error("Failed to load NFTs");
+      return res.json();
+    },
   });
 
   const applyTrait = useApplyTrait({
     mutation: {
       onSuccess: (_data, variables) => {
-        const item = lockerData?.items?.find(i => i.id === variables.data.lockerItemId);
-        const replacing = activeNft?.equippedTraits.some(et => et.category === item?.trait.category);
+        const item = lockerData?.items?.find((i: { id: number }) => i.id === variables.data.lockerItemId);
+        const replacing = activeNft?.equippedTraits.some((et: { category: string }) => et.category === item?.trait?.category);
         toast({ title: replacing ? "Trait Swapped!" : "Trait Equipped!", description: replacing ? "Previous trait returned to stash." : "Looking fresh." });
-        queryClient.invalidateQueries({ queryKey: getGetUserNftsQueryKey(walletAddress || "") });
-        queryClient.invalidateQueries({ queryKey: getGetLockerQueryKey(walletAddress || "") });
+        queryClient.invalidateQueries({ queryKey: nftsQueryKey });
+        queryClient.invalidateQueries({ queryKey: lockerQueryKey });
       },
       onError: () => toast({ title: "Error", description: "Failed to equip trait.", variant: "destructive" }),
     },
@@ -154,8 +169,8 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     mutation: {
       onSuccess: () => {
         toast({ title: "Trait Removed", description: "Returned to your stash." });
-        queryClient.invalidateQueries({ queryKey: getGetUserNftsQueryKey(walletAddress || "") });
-        queryClient.invalidateQueries({ queryKey: getGetLockerQueryKey(walletAddress || "") });
+        queryClient.invalidateQueries({ queryKey: nftsQueryKey });
+        queryClient.invalidateQueries({ queryKey: lockerQueryKey });
       },
       onError: () => toast({ title: "Error", description: "Failed to remove trait.", variant: "destructive" }),
     },
@@ -304,7 +319,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
               </button>
             );
           }) : (
-            <span className="text-muted-foreground text-xs font-mono">// no Wegens found //</span>
+            <span className="text-muted-foreground text-xs font-mono">// no {collectionLabel} found //</span>
           )}
         </div>
 
@@ -477,7 +492,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center p-6">
                 <Gem className="w-12 h-12 text-primary/15 mx-auto mb-3" />
-                <p className="text-xs font-mono text-muted-foreground/40 uppercase tracking-widest">// select a Wegen above //</p>
+                <p className="text-xs font-mono text-muted-foreground/40 uppercase tracking-widest">// select a {collectionLabel.replace(/s$/, "")} above //</p>
               </div>
             </div>
           )}
@@ -629,7 +644,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
               <div>
                 <p className="text-muted-foreground/80">
                   This will push the current trait loadout for{' '}
-                  <span className="text-primary font-bold">Wegen #{activeNft?.tokenId}</span>{' '}
+                  <span className="text-primary font-bold">{collectionLabel.replace(/s$/, "")} #{activeNft?.tokenId}</span>{' '}
                   to Ethereum mainnet and update its on-chain metadata.
                 </p>
 

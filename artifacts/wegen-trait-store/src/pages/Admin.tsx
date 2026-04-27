@@ -556,33 +556,40 @@ export function Admin() {
         </p>
       </div>
 
+      <style>{`
+        .admin-nav-tabs [data-state="active"] {
+          background: ${accent} !important;
+          color: #fff !important;
+          box-shadow: 0 0 10px ${accent}66 !important;
+        }
+      `}</style>
       <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") || "dashboard"} className="space-y-6">
-        <TabsList className="bg-secondary border border-border/50 p-1 h-auto">
-          <TabsTrigger value="dashboard" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+        <TabsList className="admin-nav-tabs bg-secondary border border-border/50 p-1 h-auto">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <BarChart3 className="w-4 h-4" /> Dashboard
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="appearance" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Paintbrush className="w-4 h-4" /> Appearance
           </TabsTrigger>
-          <TabsTrigger value="fees" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="fees" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Percent className="w-4 h-4" /> Fees
           </TabsTrigger>
-          <TabsTrigger value="transactions" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="transactions" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Activity className="w-4 h-4" /> Transactions & Analytics
           </TabsTrigger>
-          <TabsTrigger value="layers" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="layers" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Layers className="w-4 h-4" /> Layers
           </TabsTrigger>
-          <TabsTrigger value="rarities" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="rarities" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Gem className="w-4 h-4" /> Rarity Tiers
           </TabsTrigger>
-          <TabsTrigger value="store-settings" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="store-settings" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Settings className="w-4 h-4" /> Store Settings
           </TabsTrigger>
-          <TabsTrigger value="games" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="games" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Gamepad2 className="w-4 h-4" /> Games
           </TabsTrigger>
-          <TabsTrigger value="airdrop" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-sm px-4 py-2">
+          <TabsTrigger value="airdrop" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Gift className="w-4 h-4" /> Airdrop
           </TabsTrigger>
         </TabsList>
@@ -643,7 +650,8 @@ export function Admin() {
                 <button
                   key={v}
                   onClick={() => { setTraitView(v); setTraitCategory("all"); }}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${traitView === v ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${traitView === v ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
+                  style={traitView === v ? { background: COLLECTION_THEMES[traitCollection].accent } : {}}
                 >
                   {v === "all"
                     ? `All (${traitsData?.traits?.length ?? 0})`
@@ -730,13 +738,19 @@ export function Admin() {
                     onClick={() => setTraitCategory(cat)}
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
                       isActive
-                        ? "bg-primary/20 border-primary/60 text-primary shadow-[0_0_8px_rgba(124,58,237,0.25)]"
+                        ? "text-white"
                         : "bg-secondary/50 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
                     }`}
+                    style={isActive ? {
+                      background: `${COLLECTION_THEMES[traitCollection].accent}30`,
+                      borderColor: `${COLLECTION_THEMES[traitCollection].accent}90`,
+                      color: COLLECTION_THEMES[traitCollection].accent,
+                      boxShadow: `0 0 8px ${COLLECTION_THEMES[traitCollection].glow}`,
+                    } : {}}
                   >
                     {cat !== "all" && <span className="text-sm leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>}
                     {cat === "all" ? "All Categories" : cat}
-                    <span className={`ml-0.5 ${isActive ? "text-primary/80" : "text-muted-foreground/50"}`}>
+                    <span className={`ml-0.5 ${isActive ? "opacity-80" : "text-muted-foreground/50"}`}>
                       ({count})
                     </span>
                   </button>

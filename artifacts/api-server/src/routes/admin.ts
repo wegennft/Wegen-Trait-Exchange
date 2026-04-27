@@ -1,6 +1,26 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, asc, inArray, desc } from "drizzle-orm";
 import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable } from "@workspace/db";
+
+function getNftCollection(req: import("express").Request): string {
+  const c = (req.query.nftCollection ?? req.body?.nftCollection) as string | undefined;
+  if (c === "wegenettes") return "wegenettes";
+  return "wegens";
+}
+
+async function getOrCreateSettings(nftCollection: string) {
+  let [settings] = await db.select().from(storeSettingsTable).where(eq(storeSettingsTable.nftCollection, nftCollection)).limit(1);
+  if (!settings) {
+    [settings] = await db.insert(storeSettingsTable).values({
+      buyingFeePercent: "0",
+      buyingFeeWallet: null,
+      sellingFeePercent: "0",
+      sellingFeeWallet: null,
+      nftCollection,
+    }).returning();
+  }
+  return settings;
+}
 import { z } from "zod";
 import { encryptAuthorityKey, verifyStoredKey } from "../keyEncryption.js";
 
@@ -68,6 +88,8 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
     priceWei = "0";
   }
 
+  const nftCollection = getNftCollection(req);
+
   const [trait] = await db
     .insert(traitsTable)
     .values({
@@ -83,6 +105,7 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
       totalSupply,
       remainingSupply: totalSupply,
       rarity: rarity as "common" | "uncommon" | "rare" | "legendary",
+      nftCollection,
       isActive: isActive ?? true,
       payoutSplits: splits,
     })
@@ -186,23 +209,9 @@ router.delete("/admin/traits/:traitId", async (req, res): Promise<void> => {
   res.json(DeleteTraitResponse.parse({ success: true, message: "Trait deleted" }));
 });
 
-router.get("/admin/fees", async (_req, res): Promise<void> => {
-  let [settings] = await db.select().from(storeSettingsTable).limit(1);
-
-  if (!settings) {
-    [settings] = await db
-      .insert(storeSettingsTable)
-      .values({
-        buyingFeePercent: "0",
-        buyingFeeWallet: null,
-        sellingFeePercent: "0",
-        sellingFeeWallet: null,
-        marketplaceListingFeePercent: "0",
-        marketplaceListingFeeWallet: null,
-      })
-      .returning();
-  }
-
+router.get("/admin/fees", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const settings = await getOrCreateSettings(nftCollection);
   res.json(settings);
 });
 
@@ -213,7 +222,8 @@ router.put("/admin/fees", async (req, res): Promise<void> => {
     return;
   }
 
-  let [existing] = await db.select().from(storeSettingsTable).limit(1);
+  const nftCollection = getNftCollection(req);
+  const existing = await getOrCreateSettings(nftCollection);
 
   if (!existing) {
     const [created] = await db
@@ -225,6 +235,7 @@ router.put("/admin/fees", async (req, res): Promise<void> => {
         sellingFeeWallet: body.data.sellingFeeWallet ?? null,
         marketplaceListingFeePercent: body.data.marketplaceListingFeePercent ?? "0",
         marketplaceListingFeeWallet: body.data.marketplaceListingFeeWallet ?? null,
+        nftCollection,
       })
       .returning();
     res.json(created);
@@ -364,16 +375,9 @@ router.get("/admin/transactions", async (req, res): Promise<void> => {
 
 const DEFAULT_LAYER_ORDER = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
 
-router.get("/admin/layers", async (_req, res): Promise<void> => {
-  let [settings] = await db.select().from(storeSettingsTable).limit(1);
-  if (!settings) {
-    [settings] = await db.insert(storeSettingsTable).values({
-      buyingFeePercent: "0",
-      buyingFeeWallet: null,
-      sellingFeePercent: "0",
-      sellingFeeWallet: null,
-    }).returning();
-  }
+router.get("/admin/layers", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const settings = await getOrCreateSettings(nftCollection);
   const layerOrder = settings.layerOrder
     ? (JSON.parse(settings.layerOrder) as string[])
     : DEFAULT_LAYER_ORDER;
@@ -389,18 +393,8 @@ router.put("/admin/layers", async (req, res): Promise<void> => {
     return;
   }
 
-  let [existing] = await db.select().from(storeSettingsTable).limit(1);
-  if (!existing) {
-    [existing] = await db.insert(storeSettingsTable).values({
-      buyingFeePercent: "0",
-      buyingFeeWallet: null,
-      sellingFeePercent: "0",
-      sellingFeeWallet: null,
-      layerOrder: JSON.stringify(layerOrder),
-    }).returning();
-    res.json({ layerOrder: JSON.parse(existing.layerOrder ?? "[]") });
-    return;
-  }
+  const nftCollection = getNftCollection(req);
+  const existing = await getOrCreateSettings(nftCollection);
 
   const [updated] = await db
     .update(storeSettingsTable)
@@ -463,11 +457,9 @@ function serializeStoreSettings(settings: typeof storeSettingsTable.$inferSelect
   };
 }
 
-router.get("/admin/store-settings", async (_req, res): Promise<void> => {
-  let [settings] = await db.select().from(storeSettingsTable).limit(1);
-  if (!settings) {
-    [settings] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
-  }
+router.get("/admin/store-settings", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const settings = await getOrCreateSettings(nftCollection);
   res.json(serializeStoreSettings(settings));
 });
 
@@ -478,10 +470,8 @@ router.put("/admin/store-settings", async (req, res): Promise<void> => {
     return;
   }
 
-  let [existing] = await db.select().from(storeSettingsTable).limit(1);
-  if (!existing) {
-    [existing] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
-  }
+  const nftCollection = getNftCollection(req);
+  const existing = await getOrCreateSettings(nftCollection);
 
   const toUpdate: Record<string, unknown> = {};
   const d = body.data;
@@ -532,11 +522,9 @@ function serializeGameSettings(settings: typeof storeSettingsTable.$inferSelect)
   };
 }
 
-router.get("/admin/game-settings", async (_req, res): Promise<void> => {
-  let [settings] = await db.select().from(storeSettingsTable).limit(1);
-  if (!settings) {
-    [settings] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
-  }
+router.get("/admin/game-settings", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const settings = await getOrCreateSettings(nftCollection);
   res.json(serializeGameSettings(settings));
 });
 
@@ -546,10 +534,8 @@ router.put("/admin/game-settings", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.issues.map(i => i.message).join(", ") });
     return;
   }
-  let [existing] = await db.select().from(storeSettingsTable).limit(1);
-  if (!existing) {
-    [existing] = await db.insert(storeSettingsTable).values(DEFAULT_STORE_SETTINGS).returning();
-  }
+  const nftCollection = getNftCollection(req);
+  const existing = await getOrCreateSettings(nftCollection);
   const toUpdate: Record<string, unknown> = {};
   const d = body.data;
   if (d.dailyGameEnabled !== undefined) toUpdate.dailyGameEnabled = d.dailyGameEnabled;

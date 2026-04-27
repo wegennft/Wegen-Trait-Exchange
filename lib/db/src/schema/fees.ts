@@ -35,6 +35,7 @@ export const storeSettingsTable = pgTable("store_settings", {
   dailyGameEnabled: boolean("daily_game_enabled").default(true),
   dailyGameOverrides: text("daily_game_overrides").default("{}"),
   celebrationGifUrl: text("celebration_gif_url"),
+  nftCollection: text("nft_collection").notNull().default("wegens"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

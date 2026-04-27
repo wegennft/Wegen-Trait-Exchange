@@ -2,8 +2,9 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
+import { useCollection, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
@@ -14,6 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { walletAddress, isConnected, connect, disconnect, isConnecting } = useWallet();
   const { settings } = useSiteSettings();
+  const { collection, collectionLabel, setCollection } = useCollection();
 
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -241,6 +243,58 @@ export function Layout({ children }: { children: ReactNode }) {
               }}>STORE</span>
             </span>
           </Link>
+
+          {/* ── Collection Switcher dropdown ── */}
+          {!isAdminPage && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md flex-shrink-0 transition-all group"
+                  style={{
+                    background: collection === "wegenettes"
+                      ? 'linear-gradient(135deg, hsl(320 100% 40% / 0.18), hsl(272 100% 50% / 0.12))'
+                      : 'linear-gradient(135deg, hsl(272 100% 50% / 0.15), hsl(43 100% 52% / 0.08))',
+                    border: collection === "wegenettes"
+                      ? '1px solid hsl(320 100% 55% / 0.4)'
+                      : '1px solid hsl(272 100% 62% / 0.35)',
+                    boxShadow: collection === "wegenettes"
+                      ? '0 0 10px hsl(320 100% 55% / 0.2)'
+                      : '0 0 10px hsl(272 100% 62% / 0.15)',
+                  }}
+                >
+                  <Layers className="w-3 h-3 flex-shrink-0" style={{ color: collection === "wegenettes" ? 'hsl(320 100% 65%)' : 'hsl(272 100% 70%)' }} />
+                  <span style={{ ...BANGERS, fontSize: '0.78rem', color: collection === "wegenettes" ? 'hsl(320 100% 70%)' : 'hsl(272 100% 75%)' }}>
+                    {collectionLabel}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52 bg-card border-border">
+                <DropdownMenuLabel style={BANGERS} className="text-xs text-muted-foreground tracking-widest">COLLECTION</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {(["wegens", "wegenettes"] as NftCollection[]).map((c) => (
+                  <DropdownMenuItem
+                    key={c}
+                    onClick={() => setCollection(c)}
+                    className={`cursor-pointer gap-2 ${collection === c ? 'text-primary' : ''}`}
+                    style={BANGERS}
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{
+                        background: c === collection
+                          ? (c === "wegenettes" ? 'hsl(320 100% 60%)' : 'hsl(272 100% 62%)')
+                          : 'transparent',
+                        border: `1px solid ${c === "wegenettes" ? 'hsl(320 100% 60%)' : 'hsl(272 100% 62%)'}`,
+                      }}
+                    />
+                    {c === "wegens" ? "Wegens" : "Wegenettes"}
+                    {collection === c && <span className="ml-auto text-[9px] font-mono text-muted-foreground">ACTIVE</span>}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* ── Nav (flexible middle) ── */}
           {!isAdminPage && (

@@ -13,20 +13,29 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/traits/categories", async (_req, res): Promise<void> => {
+function getNftCollection(query: Record<string, unknown>): string {
+  const c = query.nftCollection;
+  if (c === "wegenettes") return "wegenettes";
+  return "wegens";
+}
+
+router.get("/traits/categories", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   const rows = await db
     .selectDistinct({ category: traitsTable.category })
     .from(traitsTable)
+    .where(eq(traitsTable.nftCollection, nftCollection))
     .orderBy(traitsTable.category);
   const categories = rows.map((r) => r.category);
   res.json(ListTraitCategoriesResponse.parse({ categories }));
 });
 
-router.get("/store/themes", async (_req, res): Promise<void> => {
+router.get("/store/themes", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   const rows = await db
     .selectDistinct({ theme: traitsTable.theme })
     .from(traitsTable)
-    .where(isNotNull(traitsTable.theme))
+    .where(and(isNotNull(traitsTable.theme), eq(traitsTable.nftCollection, nftCollection)))
     .orderBy(traitsTable.theme);
   const themes = rows.map((r) => r.theme).filter(Boolean) as string[];
   res.json(ListStoreThemesResponse.parse({ themes }));
@@ -39,9 +48,11 @@ router.get("/traits", async (req, res): Promise<void> => {
     return;
   }
   const { category, theme, page, limit, includeAll } = params.data;
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   const offset = (page - 1) * limit;
 
   const conditions = includeAll ? [] : [eq(traitsTable.isActive, true)];
+  conditions.push(eq(traitsTable.nftCollection, nftCollection));
   if (category) {
     conditions.push(eq(traitsTable.category, category));
   }
@@ -92,13 +103,17 @@ router.get("/traits/:traitId", async (req, res): Promise<void> => {
   res.json(GetTraitResponse.parse(trait));
 });
 
-router.get("/store/stats", async (_req, res): Promise<void> => {
+router.get("/store/stats", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const collectionFilter = eq(traitsTable.nftCollection, nftCollection);
+
   const [traitsCountResult, categoryRows, lockerCountResult, holderCountResult] =
     await Promise.all([
-      db.select({ count: sql<number>`count(*)::int` }).from(traitsTable),
+      db.select({ count: sql<number>`count(*)::int` }).from(traitsTable).where(collectionFilter),
       db
         .selectDistinct({ category: traitsTable.category })
-        .from(traitsTable),
+        .from(traitsTable)
+        .where(collectionFilter),
       db.execute(sql`SELECT count(*)::int as count FROM locker_items`),
       db.execute(
         sql`SELECT count(distinct wallet_address)::int as count FROM locker_items`,
@@ -111,7 +126,9 @@ router.get("/store/stats", async (_req, res): Promise<void> => {
   const totalHolders = (holderCountResult.rows[0] as { count: number })?.count ?? 0;
 
   const categoryCountRows = await db.execute(sql`
-    SELECT category, count(*)::int as count FROM traits GROUP BY category ORDER BY category
+    SELECT category, count(*)::int as count FROM traits
+    WHERE nft_collection = ${nftCollection}
+    GROUP BY category ORDER BY category
   `);
 
   const traitsByCategory = (categoryCountRows.rows as { category: string; count: number }[]).map(
@@ -136,14 +153,19 @@ router.get("/store/stats", async (_req, res): Promise<void> => {
 });
 
 // ── GET /store/config — public config for frontend (maintenance gate etc.) ────
-router.get("/store/config", async (_req, res): Promise<void> => {
-  const [settings] = await db.select().from(storeSettingsTable).limit(1);
+router.get("/store/config", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const [settings] = await db
+    .select()
+    .from(storeSettingsTable)
+    .where(eq(storeSettingsTable.nftCollection, nftCollection))
+    .limit(1);
   res.json({
     storeOpen: settings?.storeOpen ?? true,
     maintenanceMode: settings?.maintenanceMode ?? false,
     maintenanceWhitelist: JSON.parse(settings?.maintenanceWhitelist ?? "[]") as string[],
     ineligibleNfts: JSON.parse(settings?.ineligibleNfts ?? "[]") as string[],
-    storeName: settings?.storeName ?? "Wegen Trait Store",
+    storeName: settings?.storeName ?? (nftCollection === "wegenettes" ? "Wegenettes Trait Store" : "Wegen Trait Store"),
     announcementBanner: settings?.announcementBanner ?? null,
   });
 });

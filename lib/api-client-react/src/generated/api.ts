@@ -572,27 +572,29 @@ export function useGetTrait<
 /**
  * @summary List all trait categories
  */
-export const getListTraitCategoriesUrl = () => {
-  return `/api/traits/categories`;
+export const getListTraitCategoriesUrl = (nftCollection?: string) => {
+  const q = nftCollection && nftCollection !== "wegens" ? `?nftCollection=${encodeURIComponent(nftCollection)}` : "";
+  return `/api/traits/categories${q}`;
 };
 
 export const listTraitCategories = async (
+  nftCollection?: string,
   options?: RequestInit,
 ): Promise<CategoriesResponse> => {
-  return customFetch<CategoriesResponse>(getListTraitCategoriesUrl(), {
+  return customFetch<CategoriesResponse>(getListTraitCategoriesUrl(nftCollection), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListTraitCategoriesQueryKey = () => {
-  return [`/api/traits/categories`] as const;
+export const getListTraitCategoriesQueryKey = (nftCollection?: string) => {
+  return [`/api/traits/categories`, nftCollection] as const;
 };
 
 export const getListTraitCategoriesQueryOptions = <
   TData = Awaited<ReturnType<typeof listTraitCategories>>,
   TError = ErrorType<unknown>,
->(options?: {
+>(nftCollection?: string, options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listTraitCategories>>,
     TError,
@@ -602,11 +604,11 @@ export const getListTraitCategoriesQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListTraitCategoriesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListTraitCategoriesQueryKey(nftCollection);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof listTraitCategories>>
-  > = ({ signal }) => listTraitCategories({ signal, ...requestOptions });
+  > = ({ signal }) => listTraitCategories(nftCollection, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listTraitCategories>>,
@@ -627,7 +629,7 @@ export type ListTraitCategoriesQueryError = ErrorType<unknown>;
 export function useListTraitCategories<
   TData = Awaited<ReturnType<typeof listTraitCategories>>,
   TError = ErrorType<unknown>,
->(options?: {
+>(nftCollection?: string, options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listTraitCategories>>,
     TError,
@@ -635,7 +637,7 @@ export function useListTraitCategories<
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListTraitCategoriesQueryOptions(options);
+  const queryOptions = getListTraitCategoriesQueryOptions(nftCollection, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -647,27 +649,29 @@ export function useListTraitCategories<
 /**
  * @summary List all trait themes/collections
  */
-export const getListStoreThemesUrl = () => {
-  return `/api/store/themes`;
+export const getListStoreThemesUrl = (nftCollection?: string) => {
+  const q = nftCollection && nftCollection !== "wegens" ? `?nftCollection=${encodeURIComponent(nftCollection)}` : "";
+  return `/api/store/themes${q}`;
 };
 
 export const listStoreThemes = async (
+  nftCollection?: string,
   options?: RequestInit,
 ): Promise<ThemesResponse> => {
-  return customFetch<ThemesResponse>(getListStoreThemesUrl(), {
+  return customFetch<ThemesResponse>(getListStoreThemesUrl(nftCollection), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListStoreThemesQueryKey = () => {
-  return [`/api/store/themes`] as const;
+export const getListStoreThemesQueryKey = (nftCollection?: string) => {
+  return [`/api/store/themes`, nftCollection] as const;
 };
 
 export const getListStoreThemesQueryOptions = <
   TData = Awaited<ReturnType<typeof listStoreThemes>>,
   TError = ErrorType<unknown>,
->(options?: {
+>(nftCollection?: string, options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listStoreThemes>>,
     TError,
@@ -677,11 +681,11 @@ export const getListStoreThemesQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListStoreThemesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListStoreThemesQueryKey(nftCollection);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listStoreThemes>>> = ({
     signal,
-  }) => listStoreThemes({ signal, ...requestOptions });
+  }) => listStoreThemes(nftCollection, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listStoreThemes>>,
@@ -702,7 +706,7 @@ export type ListStoreThemesQueryError = ErrorType<unknown>;
 export function useListStoreThemes<
   TData = Awaited<ReturnType<typeof listStoreThemes>>,
   TError = ErrorType<unknown>,
->(options?: {
+>(nftCollection?: string, options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listStoreThemes>>,
     TError,
@@ -710,7 +714,7 @@ export function useListStoreThemes<
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListStoreThemesQueryOptions(options);
+  const queryOptions = getListStoreThemesQueryOptions(nftCollection, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

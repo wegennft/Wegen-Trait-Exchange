@@ -25,6 +25,7 @@ export const traitsTable = pgTable("traits", {
   dropName: text("drop_name"),
   isActive: boolean("is_active").notNull().default(true),
   rarity: text("rarity").notNull().default("common"),
+  nftCollection: text("nft_collection").notNull().default("wegens"),
   payoutSplits: jsonb("payout_splits").notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

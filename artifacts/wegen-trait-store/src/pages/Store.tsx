@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
+import { useCollection } from "@/contexts/CollectionContext";
 import {
   useListTraits,
   useListTraitCategories,
@@ -437,9 +438,16 @@ export function Store() {
   const [checkoutProgress, setCheckoutProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { walletAddress, isConnected, connect } = useWallet();
+  const { collection } = useCollection();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { ethUsd, change24h, isLoading: priceLoading } = useEthPrice();
+
+  // Reset filters when collection changes
+  useEffect(() => {
+    setSelectedCategory(undefined);
+    setSelectedTheme(undefined);
+  }, [collection]);
 
   // ── Maintenance mode gate ──
   const [storeConfig, setStoreConfig] = useState<{
@@ -454,22 +462,22 @@ export function Store() {
 
   const fetchConfig = useCallback(() => {
     setConfigLoading(true);
-    fetch("/api/store/config")
+    fetch(`/api/store/config?nftCollection=${encodeURIComponent(collection)}`)
       .then(r => r.json())
       .then(data => { setStoreConfig(data); setConfigLoading(false); })
       .catch(() => setConfigLoading(false));
-  }, []);
+  }, [collection]);
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
   const { data: storeStats } = useGetStoreStats();
-  const { data: themesData } = useListStoreThemes();
-  const { data: categoriesData, isLoading: isLoadingCategories } = useListTraitCategories();
+  const { data: themesData } = useListStoreThemes(collection);
+  const { data: categoriesData, isLoading: isLoadingCategories } = useListTraitCategories(collection);
   const { data: traitsData, isLoading: isLoadingTraits } = useListTraits(
-    { category: selectedCategory, theme: selectedTheme, limit: 9999 },
+    { category: selectedCategory, theme: selectedTheme, limit: 9999, nftCollection: collection },
     {
       query: {
-        queryKey: getListTraitsQueryKey({ category: selectedCategory, theme: selectedTheme, limit: 9999 }),
+        queryKey: getListTraitsQueryKey({ category: selectedCategory, theme: selectedTheme, limit: 9999, nftCollection: collection }),
       },
     },
   );

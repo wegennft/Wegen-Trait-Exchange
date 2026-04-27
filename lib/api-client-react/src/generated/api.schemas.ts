@@ -265,4 +265,6 @@ export type ListTraitsParams = {
   theme?: string;
   page?: number;
   limit?: number;
+  /** NFT collection: 'wegens' or 'wegenettes' */
+  nftCollection?: string;
 };

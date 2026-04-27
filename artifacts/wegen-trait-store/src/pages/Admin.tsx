@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useCollection, type NftCollection } from "@/contexts/CollectionContext";
 import {
   useGetAdminStats,
   useListTraits,
@@ -162,14 +163,15 @@ const LAYER_ICONS: Record<string, string> = {
 function LayerOrderSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { collection } = useCollection();
   const [layers, setLayers] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const { isLoading, data: layersData } = useQuery({
-    queryKey: ["admin-layers"],
+    queryKey: ["admin-layers", collection],
     queryFn: async () => {
-      const res = await fetch("/api/admin/layers");
+      const res = await fetch(`/api/admin/layers?nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load layers");
       return res.json() as Promise<{ layerOrder: string[] }>;
     },
@@ -184,7 +186,7 @@ function LayerOrderSettings() {
 
   const saveLayers = useMutation({
     mutationFn: async (newOrder: string[]) => {
-      const res = await fetch("/api/admin/layers", {
+      const res = await fetch(`/api/admin/layers?nftCollection=${encodeURIComponent(collection)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ layerOrder: newOrder }),
@@ -371,8 +373,9 @@ function LayerOrderSettings() {
 }
 
 export function Admin() {
+  const { collection, collectionLabel, setCollection } = useCollection();
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
-  const { data: traitsData, isLoading: isLoadingTraits } = useListTraits({ includeAll: true, limit: 9999 });
+  const { data: traitsData, isLoading: isLoadingTraits } = useListTraits({ includeAll: true, limit: 9999, nftCollection: collection });
   const { data: rarityTiersData } = useQuery({
     queryKey: ["admin-rarity-tiers"],
     queryFn: async () => {
@@ -507,6 +510,43 @@ export function Admin() {
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-500">
+      {/* ── Collection Switcher ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl border" style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div>
+          <div className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-1">Managing Collection</div>
+          <div className="text-xl font-bold" style={{ fontFamily: "'Bungee', Impact, sans-serif", color: collection === "wegenettes" ? 'hsl(320 100% 65%)' : 'hsl(272 100% 70%)' }}>
+            {collectionLabel} Trait Store
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {(["wegens", "wegenettes"] as NftCollection[]).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCollection(c)}
+              className="px-4 py-2 rounded-lg text-sm font-bold transition-all"
+              style={{
+                fontFamily: "'Bungee', Impact, sans-serif",
+                letterSpacing: '0.08em',
+                background: collection === c
+                  ? (c === "wegenettes" ? 'hsl(320 100% 40% / 0.3)' : 'hsl(272 100% 50% / 0.25)')
+                  : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${collection === c
+                  ? (c === "wegenettes" ? 'hsl(320 100% 60% / 0.6)' : 'hsl(272 100% 62% / 0.6)')
+                  : 'rgba(255,255,255,0.08)'}`,
+                color: collection === c
+                  ? (c === "wegenettes" ? 'hsl(320 100% 75%)' : 'hsl(272 100% 80%)')
+                  : 'rgba(255,255,255,0.4)',
+                boxShadow: collection === c
+                  ? (c === "wegenettes" ? '0 0 14px hsl(320 100% 55% / 0.25)' : '0 0 14px hsl(272 100% 62% / 0.25)')
+                  : 'none',
+              }}
+            >
+              {c === "wegens" ? "Wegens" : "Wegenettes"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight mb-1">Admin Dashboard</h1>
         <p className="text-muted-foreground text-sm">
@@ -1127,6 +1167,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function StoreSettingsTab() {
   const { toast } = useToast();
+  const { collection } = useCollection();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<StoreSettingsData>({
     storeName: "Wegen Trait Store",
@@ -1157,7 +1198,7 @@ function StoreSettingsTab() {
   const [keyConfirmClear, setKeyConfirmClear] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/store-settings")
+    fetch(`/api/admin/store-settings?nftCollection=${encodeURIComponent(collection)}`)
       .then(r => r.json())
       .then((data: StoreSettingsData) => {
         setForm(prev => ({
@@ -1171,7 +1212,7 @@ function StoreSettingsTab() {
         setIsLoading(false);
       })
       .catch(() => setIsLoading(false));
-  }, []);
+  }, [collection]);
 
   const set = (key: keyof StoreSettingsData, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -1222,7 +1263,7 @@ function StoreSettingsTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/store-settings", {
+      const res = await fetch(`/api/admin/store-settings?nftCollection=${encodeURIComponent(collection)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2392,11 +2433,12 @@ type FeeFormValues = z.infer<typeof feeSchema>;
 function FeesSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { collection } = useCollection();
 
   const { data: fees, isLoading } = useQuery<FeeSettings>({
-    queryKey: ["admin-fees"],
+    queryKey: ["admin-fees", collection],
     queryFn: async () => {
-      const res = await fetch("/api/admin/fees");
+      const res = await fetch(`/api/admin/fees?nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load fees");
       return res.json();
     },
@@ -2426,7 +2468,7 @@ function FeesSettings() {
 
   const saveFees = useMutation({
     mutationFn: async (data: FeeFormValues) => {
-      const res = await fetch("/api/admin/fees", {
+      const res = await fetch(`/api/admin/fees?nftCollection=${encodeURIComponent(collection)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4008,11 +4050,12 @@ type GameSettings = {
 function GamesTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { collection } = useCollection();
 
   const { data: gameSettings, isLoading } = useQuery<GameSettings>({
-    queryKey: ["admin-game-settings"],
+    queryKey: ["admin-game-settings", collection],
     queryFn: async () => {
-      const res = await fetch("/api/admin/game-settings");
+      const res = await fetch(`/api/admin/game-settings?nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) throw new Error("Failed to load");
       return res.json();
     },
@@ -4041,7 +4084,7 @@ function GamesTab() {
 
   const { mutate: save, isPending: saving } = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/admin/game-settings", {
+      const res = await fetch(`/api/admin/game-settings?nftCollection=${encodeURIComponent(collection)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useListTraits } from "@workspace/api-client-react";
+import { useCollection } from "@/contexts/CollectionContext";
 import { useQuery } from "@tanstack/react-query";
 import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
 import { TraitMedia } from "@/components/TraitMedia";
@@ -104,6 +105,7 @@ type GameSettings = {
 };
 
 export function Sandbox() {
+  const { collection } = useCollection();
   const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -112,19 +114,19 @@ export function Sandbox() {
   const [bountyCount, setBountyCount] = useState(0);
   const winTriggered = useRef(false);
 
-  const { data: traitsData, isLoading } = useListTraits({ includeAll: true, limit: 9999 });
+  const { data: traitsData, isLoading } = useListTraits({ includeAll: true, limit: 9999, nftCollection: collection });
   const { data: layerData } = useQuery({
-    queryKey: ["sandbox-layer-order"],
+    queryKey: ["sandbox-layer-order", collection],
     queryFn: async () => {
-      const res = await fetch("/api/admin/layers");
+      const res = await fetch(`/api/admin/layers?nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) return { layerOrder: DEFAULT_LAYER_ORDER };
       return res.json() as Promise<{ layerOrder: string[] }>;
     },
   });
   const { data: gameSettings } = useQuery<GameSettings>({
-    queryKey: ["game-settings"],
+    queryKey: ["game-settings", collection],
     queryFn: async () => {
-      const res = await fetch("/api/admin/game-settings");
+      const res = await fetch(`/api/admin/game-settings?nftCollection=${encodeURIComponent(collection)}`);
       if (!res.ok) return { dailyGameEnabled: true, dailyGameOverrides: {}, celebrationGifUrl: null };
       return res.json();
     },

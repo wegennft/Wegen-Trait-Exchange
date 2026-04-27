@@ -48,6 +48,8 @@ import {
   Trash2,
   X,
   Zap,
+  Archive,
+  Lock,
 } from "lucide-react";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -911,9 +913,20 @@ export function Store() {
               : "The store is currently empty."}
           </p>
         </div>
-      ) : (
+      ) : (() => {
+        const activeTraits  = traitsData?.traits?.filter(t => t.remainingSupply > 0) ?? [];
+        const vaultedTraits = traitsData?.traits?.filter(t => t.remainingSupply <= 0) ?? [];
+        return (
+        <>
+        {activeTraits.length === 0 && vaultedTraits.length > 0 ? (
+          <div className="text-center py-16 border border-dashed border-border/30 rounded-xl" style={{ background: 'rgba(10,6,18,0.6)' }}>
+            <Archive className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-muted-foreground/50 mb-1" style={BANGERS}>ALL SOLD OUT</h3>
+            <p className="text-sm text-muted-foreground/40 font-mono">// check the vault below for the full archive //</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {traitsData?.traits?.map((trait, index) => (
+          {activeTraits.map((trait, index) => (
             <Card
               key={trait.id}
               className={`bg-card/92 border-border/60 overflow-hidden group transition-all duration-200 flex flex-col cursor-pointer ${
@@ -1010,11 +1023,7 @@ export function Store() {
               </CardContent>
 
               <CardFooter className="p-0 border-t border-border/20">
-                {trait.remainingSupply <= 0 ? (
-                  <div className="w-full h-11 flex items-center justify-center text-sm text-muted-foreground/50 font-semibold" style={BANGERS}>
-                    SOLD OUT
-                  </div>
-                ) : isInCart(trait.id) ? (
+                {isInCart(trait.id) ? (
                   <button
                     onClick={() => toggleCart(trait)}
                     className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold transition-all"
@@ -1041,7 +1050,130 @@ export function Store() {
             </Card>
           ))}
         </div>
-      )}
+        )}
+
+        {/* ── THE VAULT — sold-out archive ── */}
+        {vaultedTraits.length > 0 && (
+          <div className="mt-16 pt-10" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            {/* Vault header */}
+            <div className="flex items-center gap-3 mb-8">
+              <div
+                className="p-2.5 rounded-lg flex-shrink-0"
+                style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <Lock className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.25)' }} />
+              </div>
+              <div>
+                <h2
+                  className="text-2xl"
+                  style={{ ...BANGERS, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.12em' }}
+                >
+                  THE VAULT
+                </h2>
+                <p className="text-[11px] font-mono mt-0.5" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                  // sold out — collector&apos;s archive //
+                </p>
+              </div>
+              <div
+                className="ml-auto px-3 py-1.5 rounded text-[10px] font-mono font-bold flex items-center gap-1.5"
+                style={{
+                  background: 'rgba(0,0,0,0.4)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  color: 'rgba(255,255,255,0.25)',
+                }}
+              >
+                <Archive className="w-3 h-3" />
+                {vaultedTraits.length} ARCHIVED
+              </div>
+            </div>
+
+            {/* Vault grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {vaultedTraits.map((trait) => (
+                <div
+                  key={trait.id}
+                  className="relative overflow-hidden rounded-xl group/vault transition-all duration-200 hover:scale-[1.02]"
+                  style={{
+                    background: 'rgba(8,5,15,0.85)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                  }}
+                >
+                  {/* Greyscale image */}
+                  <div
+                    className="relative aspect-square overflow-hidden flex items-center justify-center p-4"
+                    style={{ filter: 'grayscale(100%) brightness(0.45)' }}
+                  >
+                    {trait.imageUrl ? (
+                      <TraitMedia
+                        url={trait.imageUrl}
+                        mediaType={(trait as Record<string, unknown>).mediaType as string}
+                        alt={trait.name}
+                        className="w-full h-full object-cover group-hover/vault:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="text-5xl font-black text-white/10 uppercase tracking-tighter mix-blend-overlay">
+                        {trait.category.slice(0, 3)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* VAULT badge */}
+                  <div className="absolute top-1.5 right-1.5">
+                    <span
+                      className="text-[8px] font-bold px-1.5 py-0.5 rounded font-mono tracking-widest"
+                      style={{
+                        background: 'rgba(0,0,0,0.75)',
+                        border: '1px solid rgba(255,255,255,0.09)',
+                        color: 'rgba(255,255,255,0.3)',
+                      }}
+                    >
+                      VAULT
+                    </span>
+                  </div>
+
+                  {/* Rarity badge */}
+                  <div className="absolute top-1.5 left-1.5">
+                    <span
+                      className="text-[8px] font-bold px-1.5 py-0.5 rounded capitalize"
+                      style={{
+                        background: 'rgba(0,0,0,0.7)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        color: 'rgba(255,255,255,0.22)',
+                      }}
+                    >
+                      {trait.rarity}
+                    </span>
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-2.5 space-y-0.5">
+                    <div
+                      className="text-xs font-bold truncate"
+                      style={{ ...BANGERS, color: 'rgba(255,255,255,0.35)' }}
+                      title={trait.name}
+                    >
+                      {trait.name}
+                    </div>
+                    <div className="text-[9px] font-mono capitalize" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                      {trait.category}
+                    </div>
+                    <div
+                      className="text-[9px] font-mono flex items-center gap-1 mt-1"
+                      style={{ color: 'rgba(255,255,255,0.18)' }}
+                    >
+                      <Lock className="w-2 h-2 flex-shrink-0" />
+                      {trait.totalSupply.toLocaleString()} minted — SOLD OUT
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        </>
+        );
+      })()}
 
       {/* ── Cart Sheet ── */}
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>

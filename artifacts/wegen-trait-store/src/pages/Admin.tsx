@@ -378,7 +378,7 @@ export function Admin() {
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
   const { data: wegensTraitsData, isLoading: isLoadingWegens } = useListTraits({ includeAll: true, limit: 9999, nftCollection: "wegens" });
   const { data: wegenettesTraitsData, isLoading: isLoadingWegenettes } = useListTraits({ includeAll: true, limit: 9999, nftCollection: "wegenettes" });
-  const [traitCollection, setTraitCollection] = useState<"wegens" | "wegenettes">("wegens");
+  const [traitCollection, setTraitCollection] = useState<"wegens" | "wegenettes">(collection);
   const traitsData = traitCollection === "wegens" ? wegensTraitsData : wegenettesTraitsData;
   const isLoadingTraits = traitCollection === "wegens" ? isLoadingWegens : isLoadingWegenettes;
   const { data: rarityTiersData } = useQuery({

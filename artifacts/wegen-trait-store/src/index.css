@@ -116,6 +116,51 @@
   --ring: 272 100% 60%;
 }
 
+/* ── Wegenettes collection theme overrides ── */
+[data-collection="wegenettes"],
+[data-collection="wegenettes"].dark {
+  --background: 300 30% 2%;
+  --card: 300 25% 4%;
+  --popover: 300 25% 4%;
+  --primary: 320 100% 55%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 320 100% 55%;
+  --secondary: 300 25% 8%;
+  --muted: 295 20% 11%;
+  --input: 295 20% 9%;
+}
+
+[data-collection="wegenettes"] body {
+  background-color: hsl(300 30% 2%);
+  background-image:
+    /* Hot-pink spray bloom — top left */
+    radial-gradient(ellipse 900px 600px at 15% 10%, hsl(320 100% 50% / 0.18) 0%, transparent 65%),
+    /* Purple haze — top right */
+    radial-gradient(ellipse 600px 700px at 92% 6%, hsl(272 100% 55% / 0.16) 0%, transparent 60%),
+    /* Pink pool — bottom center */
+    radial-gradient(ellipse 700px 400px at 50% 100%, hsl(320 100% 38% / 0.14) 0%, transparent 70%),
+    /* Purple warmth — bottom left */
+    radial-gradient(ellipse 500px 350px at 5% 88%, hsl(272 100% 52% / 0.12) 0%, transparent 70%),
+    /* Mid-canvas purple accent */
+    radial-gradient(ellipse 400px 400px at 75% 55%, hsl(272 100% 45% / 0.08) 0%, transparent 65%),
+    /* Brick mortar grid — horizontal lines */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 28px,
+      hsl(320 30% 8% / 0.55) 28px,
+      hsl(320 30% 8% / 0.55) 29px
+    ),
+    /* Brick mortar grid — vertical */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 56px,
+      hsl(272 30% 8% / 0.35) 56px,
+      hsl(272 30% 8% / 0.35) 57px
+    );
+}
+
 @layer base {
   * {
     @apply border-border;

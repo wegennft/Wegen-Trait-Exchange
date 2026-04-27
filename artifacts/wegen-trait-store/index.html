@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Wegen NFT Trait Store</title>
+    <script>
+      (function () {
+        var p = new URLSearchParams(window.location.search);
+        var c = p.get('c') || localStorage.getItem('nftCollection') || 'wegens';
+        document.documentElement.setAttribute('data-collection', c);
+        if (c === 'wegenettes') {
+          var s = document.createElement('style');
+          s.id = '__ct';
+          s.textContent = ':root{--primary:320 100% 55%!important;--ring:320 100% 55%!important;--background:300 30% 2%!important;--card:300 25% 4%!important;--popover:300 25% 4%!important;--secondary:300 25% 8%!important;--muted:295 20% 11%!important;--input:295 20% 9%!important}body{background-color:hsl(300 30% 2%)!important;background-image:radial-gradient(ellipse 900px 600px at 15% 10%,hsl(320 100% 50%/.18) 0%,transparent 65%),radial-gradient(ellipse 600px 700px at 92% 6%,hsl(272 100% 55%/.16) 0%,transparent 60%),radial-gradient(ellipse 700px 400px at 50% 100%,hsl(320 100% 38%/.14) 0%,transparent 70%),radial-gradient(ellipse 500px 350px at 5% 88%,hsl(272 100% 52%/.12) 0%,transparent 70%),radial-gradient(ellipse 400px 400px at 75% 55%,hsl(272 100% 45%/.08) 0%,transparent 65%),repeating-linear-gradient(0deg,transparent 0px,transparent 28px,hsl(320 30% 8%/.55) 28px,hsl(320 30% 8%/.55) 29px),repeating-linear-gradient(90deg,transparent 0px,transparent 56px,hsl(272 30% 8%/.35) 56px,hsl(272 30% 8%/.35) 57px)!important}';
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

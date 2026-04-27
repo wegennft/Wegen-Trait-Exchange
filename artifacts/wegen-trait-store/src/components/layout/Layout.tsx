@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
-import { useCollection, type NftCollection } from "@/contexts/CollectionContext";
+import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -15,7 +15,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { walletAddress, isConnected, connect, disconnect, isConnecting } = useWallet();
   const { settings } = useSiteSettings();
-  const { collection, collectionLabel, setCollection } = useCollection();
+  const { collection, collectionLabel, setCollection, theme } = useCollection();
+  const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
 
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -52,14 +53,14 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Ambient Background Layer ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-        {/* Heavy purple spray cloud — top left */}
+        {/* Heavy spray cloud — top left */}
         <div
           className="orb-drift"
           style={{
             position: 'absolute', top: '-15%', left: '-8%',
             width: 800, height: 600,
             borderRadius: '60% 40% 55% 45% / 50% 60% 40% 50%',
-            background: 'radial-gradient(ellipse at center, hsl(272 100% 50% / 0.22) 0%, hsl(272 100% 35% / 0.1) 50%, transparent 78%)',
+            background: `radial-gradient(ellipse at center, hsl(${accentHsl} / 0.22) 0%, hsl(${accentHsl} / 0.1) 50%, transparent 78%)`,
             filter: 'blur(55px)',
             animationDuration: '20s',
           }}
@@ -77,14 +78,14 @@ export function Layout({ children }: { children: ReactNode }) {
             animationDelay: '1.5s',
           }}
         />
-        {/* Deep purple drip cloud — bottom right */}
+        {/* Deep drip cloud — bottom right */}
         <div
           className="orb-drift"
           style={{
             position: 'absolute', bottom: '5%', right: '2%',
             width: 600, height: 500,
             borderRadius: '50% 50% 60% 40% / 40% 60% 50% 50%',
-            background: 'radial-gradient(ellipse at center, hsl(272 100% 40% / 0.16) 0%, hsl(285 80% 30% / 0.07) 55%, transparent 72%)',
+            background: `radial-gradient(ellipse at center, hsl(${accentHsl} / 0.16) 0%, hsl(${accentHsl} / 0.07) 55%, transparent 72%)`,
             filter: 'blur(48px)',
             animationDuration: '25s',
             animationDelay: '4s',
@@ -110,7 +111,7 @@ export function Layout({ children }: { children: ReactNode }) {
             position: 'absolute', top: '40%', left: '40%',
             width: 350, height: 280,
             borderRadius: '50%',
-            background: 'radial-gradient(ellipse at center, hsl(272 80% 45% / 0.08) 0%, transparent 70%)',
+            background: `radial-gradient(ellipse at center, hsl(${accentHsl} / 0.08) 0%, transparent 70%)`,
             filter: 'blur(35px)',
             animationDuration: '17s',
             animationDelay: '2s',
@@ -119,18 +120,18 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {/* Floating particles — small glowing dots */}
         {[
-          { left: '12%',  bottom: '20%', size: 3, color: 'hsl(272 100% 65%)', dur: '9s',  delay: '0s',   drift: '15px'  },
-          { left: '28%',  bottom: '35%', size: 2, color: 'hsl(43 100% 56%)',  dur: '12s', delay: '1.5s', drift: '-10px' },
-          { left: '45%',  bottom: '15%', size: 2, color: 'hsl(272 100% 70%)', dur: '8s',  delay: '3s',   drift: '20px'  },
-          { left: '63%',  bottom: '40%', size: 3, color: 'hsl(43 100% 60%)',  dur: '11s', delay: '0.8s', drift: '-18px' },
-          { left: '78%',  bottom: '25%', size: 2, color: 'hsl(272 100% 65%)', dur: '14s', delay: '4s',   drift: '12px'  },
-          { left: '88%',  bottom: '55%', size: 2, color: 'hsl(43 100% 56%)',  dur: '10s', delay: '2s',   drift: '-8px'  },
-          { left: '20%',  bottom: '60%', size: 2, color: 'hsl(272 100% 75%)', dur: '13s', delay: '5s',   drift: '16px'  },
-          { left: '55%',  bottom: '70%', size: 3, color: 'hsl(43 100% 65%)',  dur: '7s',  delay: '1s',   drift: '-14px' },
-          { left: '38%',  bottom: '80%', size: 2, color: 'hsl(272 100% 65%)', dur: '16s', delay: '6s',   drift: '10px'  },
-          { left: '72%',  bottom: '75%', size: 2, color: 'hsl(43 100% 56%)',  dur: '9s',  delay: '3.5s', drift: '-20px' },
-          { left: '5%',   bottom: '50%', size: 2, color: 'hsl(272 100% 70%)', dur: '11s', delay: '2.5s', drift: '18px'  },
-          { left: '93%',  bottom: '30%', size: 2, color: 'hsl(43 100% 60%)',  dur: '13s', delay: '7s',   drift: '-12px' },
+          { left: '12%',  bottom: '20%', size: 3, color: `hsl(${accentHsl})`,         dur: '9s',  delay: '0s',   drift: '15px'  },
+          { left: '28%',  bottom: '35%', size: 2, color: 'hsl(43 100% 56%)',           dur: '12s', delay: '1.5s', drift: '-10px' },
+          { left: '45%',  bottom: '15%', size: 2, color: `hsl(${accentHsl})`,         dur: '8s',  delay: '3s',   drift: '20px'  },
+          { left: '63%',  bottom: '40%', size: 3, color: 'hsl(43 100% 60%)',           dur: '11s', delay: '0.8s', drift: '-18px' },
+          { left: '78%',  bottom: '25%', size: 2, color: `hsl(${accentHsl})`,         dur: '14s', delay: '4s',   drift: '12px'  },
+          { left: '88%',  bottom: '55%', size: 2, color: 'hsl(43 100% 56%)',           dur: '10s', delay: '2s',   drift: '-8px'  },
+          { left: '20%',  bottom: '60%', size: 2, color: `hsl(${accentHsl})`,         dur: '13s', delay: '5s',   drift: '16px'  },
+          { left: '55%',  bottom: '70%', size: 3, color: 'hsl(43 100% 65%)',           dur: '7s',  delay: '1s',   drift: '-14px' },
+          { left: '38%',  bottom: '80%', size: 2, color: `hsl(${accentHsl})`,         dur: '16s', delay: '6s',   drift: '10px'  },
+          { left: '72%',  bottom: '75%', size: 2, color: 'hsl(43 100% 56%)',           dur: '9s',  delay: '3.5s', drift: '-20px' },
+          { left: '5%',   bottom: '50%', size: 2, color: `hsl(${accentHsl})`,         dur: '11s', delay: '2.5s', drift: '18px'  },
+          { left: '93%',  bottom: '30%', size: 2, color: 'hsl(43 100% 60%)',           dur: '13s', delay: '7s',   drift: '-12px' },
         ].map((p, i) => (
           <div
             key={i}
@@ -151,14 +152,14 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {/* Twinkling stationary sparks */}
         {[
-          { left: '8%',  top: '25%', size: 2, color: 'hsl(43 100% 70%)',  dur: '3.2s', delay: '0s'   },
-          { left: '32%', top: '12%', size: 1, color: 'hsl(272 100% 80%)', dur: '4.5s', delay: '1.2s' },
-          { left: '58%', top: '8%',  size: 2, color: 'hsl(43 100% 65%)',  dur: '2.8s', delay: '2.1s' },
-          { left: '75%', top: '18%', size: 1, color: 'hsl(272 100% 75%)', dur: '5s',   delay: '0.7s' },
-          { left: '90%', top: '42%', size: 2, color: 'hsl(43 100% 70%)',  dur: '3.8s', delay: '3s'   },
-          { left: '15%', top: '68%', size: 1, color: 'hsl(272 100% 80%)', dur: '4.2s', delay: '1.8s' },
-          { left: '50%', top: '55%', size: 2, color: 'hsl(43 100% 60%)',  dur: '3s',   delay: '0.5s' },
-          { left: '82%', top: '72%', size: 1, color: 'hsl(272 100% 75%)', dur: '6s',   delay: '4s'   },
+          { left: '8%',  top: '25%', size: 2, color: 'hsl(43 100% 70%)',          dur: '3.2s', delay: '0s'   },
+          { left: '32%', top: '12%', size: 1, color: `hsl(${accentHsl})`,         dur: '4.5s', delay: '1.2s' },
+          { left: '58%', top: '8%',  size: 2, color: 'hsl(43 100% 65%)',          dur: '2.8s', delay: '2.1s' },
+          { left: '75%', top: '18%', size: 1, color: `hsl(${accentHsl})`,         dur: '5s',   delay: '0.7s' },
+          { left: '90%', top: '42%', size: 2, color: 'hsl(43 100% 70%)',          dur: '3.8s', delay: '3s'   },
+          { left: '15%', top: '68%', size: 1, color: `hsl(${accentHsl})`,         dur: '4.2s', delay: '1.8s' },
+          { left: '50%', top: '55%', size: 2, color: 'hsl(43 100% 60%)',          dur: '3s',   delay: '0.5s' },
+          { left: '82%', top: '72%', size: 1, color: `hsl(${accentHsl})`,         dur: '6s',   delay: '4s'   },
         ].map((s, i) => (
           <div
             key={i}
@@ -180,15 +181,15 @@ export function Layout({ children }: { children: ReactNode }) {
         className="sticky top-0 z-50 w-full border-b border-accent/20 backdrop-blur-2xl"
         style={{
           background: 'linear-gradient(180deg, hsl(270 45% 3% / 0.97) 0%, hsl(270 42% 2% / 0.93) 100%)',
-          boxShadow: '0 4px 40px hsl(272 100% 50% / 0.14), 0 1px 0 hsl(43 100% 52% / 0.2), 0 0 80px hsl(270 45% 2% / 0.85)',
+          boxShadow: `0 4px 40px hsl(${accentHsl} / 0.14), 0 1px 0 hsl(43 100% 52% / 0.2), 0 0 80px hsl(270 45% 2% / 0.85)`,
         }}
       >
-        {/* Top neon filigree bar — gold-to-purple-to-gold */}
+        {/* Top neon filigree bar — gold-to-accent-to-gold */}
         <div
           className="h-[2px] w-full"
           style={{
-            background: 'linear-gradient(90deg, transparent 0%, hsl(43 100% 52%) 15%, hsl(272 100% 60%) 50%, hsl(43 100% 52%) 85%, transparent 100%)',
-            boxShadow: '0 0 14px hsl(43 100% 52% / 0.9), 0 0 35px hsl(272 100% 60% / 0.5), 0 2px 28px hsl(43 100% 40% / 0.35)',
+            background: `linear-gradient(90deg, transparent 0%, hsl(43 100% 52%) 15%, hsl(${accentHsl}) 50%, hsl(43 100% 52%) 85%, transparent 100%)`,
+            boxShadow: `0 0 14px hsl(43 100% 52% / 0.9), 0 0 35px hsl(${accentHsl} / 0.5), 0 2px 28px hsl(43 100% 40% / 0.35)`,
           }}
         />
 
@@ -206,14 +207,14 @@ export function Layout({ children }: { children: ReactNode }) {
                 <div
                   className="absolute inset-0"
                   style={{
-                    background: 'radial-gradient(ellipse at center, hsl(272 100% 62% / 0.35) 0%, transparent 75%)',
+                    background: `radial-gradient(ellipse at center, hsl(${accentHsl} / 0.35) 0%, transparent 75%)`,
                     filter: 'blur(4px)',
                     transform: 'scale(1.6)',
                   }}
                 />
                 <div
                   className="absolute inset-0 bg-primary group-hover:rotate-6 transition-transform"
-                  style={{ boxShadow: '0 0 16px hsl(272 100% 62% / 0.8), inset 0 0 8px rgba(255,255,255,0.1)' }}
+                  style={{ boxShadow: `0 0 16px hsl(${accentHsl} / 0.8), inset 0 0 8px rgba(255,255,255,0.1)` }}
                 />
                 <Zap className="relative z-10 w-5 h-5 text-white" />
               </div>
@@ -223,10 +224,10 @@ export function Layout({ children }: { children: ReactNode }) {
               style={{
                 ...BANGERS,
                 fontSize: 'clamp(2rem, 2.9vw, 2.6rem)',
-                color: '#9900ff',
+                color: accent,
                 textShadow: [
-                  '0 0 8px #9900ff',
-                  '0 0 18px #6600cc',
+                  `0 0 8px ${accent}`,
+                  `0 0 18px hsl(${accentHsl} / 0.7)`,
                   '2px 2px 0px #000',
                   '4px 4px 0px rgba(0,0,0,0.6)',
                 ].join(', '),
@@ -251,19 +252,13 @@ export function Layout({ children }: { children: ReactNode }) {
                 <button
                   className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md flex-shrink-0 transition-all group"
                   style={{
-                    background: collection === "wegenettes"
-                      ? 'linear-gradient(135deg, hsl(320 100% 40% / 0.18), hsl(272 100% 50% / 0.12))'
-                      : 'linear-gradient(135deg, hsl(272 100% 50% / 0.15), hsl(43 100% 52% / 0.08))',
-                    border: collection === "wegenettes"
-                      ? '1px solid hsl(320 100% 55% / 0.4)'
-                      : '1px solid hsl(272 100% 62% / 0.35)',
-                    boxShadow: collection === "wegenettes"
-                      ? '0 0 10px hsl(320 100% 55% / 0.2)'
-                      : '0 0 10px hsl(272 100% 62% / 0.15)',
+                    background: gradient2,
+                    border: `1px solid ${accent}66`,
+                    boxShadow: `0 0 10px ${glow2}`,
                   }}
                 >
-                  <Layers className="w-3 h-3 flex-shrink-0" style={{ color: collection === "wegenettes" ? 'hsl(320 100% 65%)' : 'hsl(272 100% 70%)' }} />
-                  <span style={{ ...BANGERS, fontSize: '0.78rem', color: collection === "wegenettes" ? 'hsl(320 100% 70%)' : 'hsl(272 100% 75%)' }}>
+                  <Layers className="w-3 h-3 flex-shrink-0" style={{ color: accent }} />
+                  <span style={{ ...BANGERS, fontSize: '0.78rem', color: accent }}>
                     {collectionLabel}
                   </span>
                   <ChevronDown className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -283,9 +278,9 @@ export function Layout({ children }: { children: ReactNode }) {
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{
                         background: c === collection
-                          ? (c === "wegenettes" ? 'hsl(320 100% 60%)' : 'hsl(272 100% 62%)')
+                          ? COLLECTION_THEMES[c].accent
                           : 'transparent',
-                        border: `1px solid ${c === "wegenettes" ? 'hsl(320 100% 60%)' : 'hsl(272 100% 62%)'}`,
+                        border: `1px solid ${COLLECTION_THEMES[c].accent}`,
                       }}
                     />
                     {c === "wegens" ? "Wegens" : "Wegenettes"}
@@ -322,8 +317,8 @@ export function Layout({ children }: { children: ReactNode }) {
                         className="absolute bottom-0 left-1 right-1"
                         style={{
                           height: '3px',
-                          background: 'linear-gradient(90deg, transparent, hsl(272 100% 62%), transparent)',
-                          boxShadow: '0 0 8px hsl(272 100% 62% / 0.9), 0 2px 12px hsl(272 100% 62% / 0.5)',
+                          background: `linear-gradient(90deg, transparent, hsl(${accentHsl}), transparent)`,
+                          boxShadow: `0 0 8px hsl(${accentHsl} / 0.9), 0 2px 12px hsl(${accentHsl} / 0.5)`,
                           filter: 'blur(0.3px)',
                         }}
                       />
@@ -332,7 +327,7 @@ export function Layout({ children }: { children: ReactNode }) {
                         className="absolute bottom-0 left-1 right-1 opacity-0 group-hover:opacity-40 transition-opacity"
                         style={{
                           height: '2px',
-                          background: 'linear-gradient(90deg, transparent, hsl(272 100% 62%), transparent)',
+                          background: `linear-gradient(90deg, transparent, hsl(${accentHsl}), transparent)`,
                         }}
                       />
                     )}
@@ -387,9 +382,9 @@ export function Layout({ children }: { children: ReactNode }) {
                 style={{
                   ...BANGERS,
                   fontSize: '0.75rem',
-                  background: 'linear-gradient(135deg, hsl(272 100% 52%) 0%, hsl(272 100% 68%) 100%)',
-                  border: '2px solid hsl(272 100% 70% / 0.6)',
-                  boxShadow: '2px 2px 0px rgba(0,0,0,0.9), 0 0 14px hsl(272 100% 62% / 0.4)',
+                  background: gradient,
+                  border: `2px solid hsl(${accentHsl} / 0.6)`,
+                  boxShadow: `2px 2px 0px rgba(0,0,0,0.9), 0 0 14px hsl(${accentHsl} / 0.4)`,
                 }}
               >
                 <span
@@ -489,10 +484,10 @@ export function Layout({ children }: { children: ReactNode }) {
             >
               WEGEN
               <span style={{
-                color: 'hsl(272 100% 65%)',
+                color: accent,
                 textShadow:
-                  '5px 5px 0px hsl(268 40% 2%), -2px -2px 0px hsl(268 40% 2%), ' +
-                  '8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(272 100% 65% / 0.8), 0 0 120px hsl(272 100% 50% / 0.4)',
+                  `5px 5px 0px hsl(268 40% 2%), -2px -2px 0px hsl(268 40% 2%), ` +
+                  `8px 8px 0px rgba(0,0,0,0.8), 0 0 50px hsl(${accentHsl} / 0.8), 0 0 120px hsl(${accentHsl} / 0.4)`,
               }}> NFT</span>
             </span>
           </div>
@@ -515,11 +510,11 @@ export function Layout({ children }: { children: ReactNode }) {
             </span>
             <div
               className="w-2 h-2 rotate-45 flex-shrink-0"
-              style={{ background: 'hsl(272 100% 65%)', boxShadow: '0 0 8px hsl(272 100% 65%)' }}
+              style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
             />
             <div
               className="flex-1 h-px"
-              style={{ background: 'linear-gradient(to left, transparent, hsl(272 100% 65% / 0.6))' }}
+              style={{ background: `linear-gradient(to left, transparent, hsl(${accentHsl} / 0.6))` }}
             />
           </div>
         </div>

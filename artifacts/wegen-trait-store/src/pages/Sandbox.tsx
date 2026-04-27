@@ -105,7 +105,8 @@ type GameSettings = {
 };
 
 export function Sandbox() {
-  const { collection } = useCollection();
+  const { collection, theme } = useCollection();
+  const { accent, glow, glow2, gradient, gradient2 } = theme;
   const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -257,9 +258,9 @@ export function Sandbox() {
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{
-            background: "linear-gradient(135deg, hsl(272 100% 62% / 0.3), hsl(43 100% 52% / 0.2))",
-            border: "1px solid hsl(272 100% 62% / 0.4)",
-            boxShadow: "0 0 16px hsl(272 100% 62% / 0.2)",
+            background: gradient2,
+            border: `1px solid ${accent}66`,
+            boxShadow: `0 0 16px ${glow2}`,
           }}
         >
           <FlaskConical className="w-5 h-5 text-primary" />
@@ -270,7 +271,7 @@ export function Sandbox() {
             style={{
               ...DISPLAY,
               color: "hsl(var(--primary))",
-              textShadow: "3px 3px 0px rgba(0,0,0,1), 0 0 28px hsl(272 100% 65% / 0.7), 0 0 60px hsl(272 100% 65% / 0.3)",
+              textShadow: `3px 3px 0px rgba(0,0,0,1), 0 0 28px ${glow}, 0 0 60px ${glow2}`,
               WebkitTextStroke: "1.5px rgba(0,0,0,0.9)",
               paintOrder: "stroke fill",
             }}
@@ -313,7 +314,7 @@ export function Sandbox() {
               {bountyCount > 0 && (
                 <span
                   className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "hsl(272 100% 62% / 0.2)", color: "hsl(272 100% 75%)", border: "1px solid hsl(272 100% 62% / 0.35)" }}
+                  style={{ background: `${accent}33`, color: accent, border: `1px solid ${accent}59` }}
                 >
                   <Zap className="w-2.5 h-2.5" />
                   #{bountyCount + 1}
@@ -337,8 +338,8 @@ export function Sandbox() {
                 className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all hover:opacity-100 opacity-60"
                 style={{
                   background: "hsl(272 20% 10%)",
-                  border: "1px solid hsl(272 100% 62% / 0.25)",
-                  color: "hsl(272 100% 75%)",
+                  border: `1px solid ${accent}40`,
+                  color: accent,
                 }}
                 title="Skip to next bounty"
               >
@@ -432,10 +433,10 @@ export function Sandbox() {
                 background: "radial-gradient(ellipse at 30% 30%, hsl(272 40% 12%), hsl(272 25% 6%) 70%)",
                 border: isBountyDone
                   ? "2px solid hsl(120 100% 55% / 0.7)"
-                  : "2px solid hsl(272 100% 62% / 0.35)",
+                  : `2px solid ${accent}59`,
                 boxShadow: isBountyDone
                   ? "0 0 40px hsl(120 100% 55% / 0.35), inset 0 0 40px rgba(0,0,0,0.4)"
-                  : "0 0 40px hsl(272 100% 62% / 0.15), inset 0 0 40px rgba(0,0,0,0.4)",
+                  : `0 0 40px ${glow2}, inset 0 0 40px rgba(0,0,0,0.4)`,
                 transition: "border-color 0.5s, box-shadow 0.5s",
               }}
             >
@@ -526,7 +527,7 @@ export function Sandbox() {
                         className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all"
                         style={{
                           background: isMatchedBounty ? "hsl(120 60% 8%)" : "hsl(272 20% 10%)",
-                          border: isMatchedBounty ? "1px solid hsl(120 100% 45% / 0.4)" : "1px solid hsl(272 100% 62% / 0.2)",
+                          border: isMatchedBounty ? "1px solid hsl(120 100% 45% / 0.4)" : `1px solid ${accent}33`,
                         }}
                       >
                         <span className="text-base leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>
@@ -568,7 +569,7 @@ export function Sandbox() {
                     }`}
                     style={
                       isActive
-                        ? { background: "linear-gradient(135deg, hsl(272 100% 62% / 0.15), hsl(272 100% 62% / 0.05))", boxShadow: "0 0 12px hsl(272 100% 62% / 0.2)" }
+                        ? { background: gradient2, boxShadow: `0 0 12px ${glow2}` }
                         : {}
                     }
                   >
@@ -600,7 +601,7 @@ export function Sandbox() {
             {/* Trait grid */}
             <div
               className="rounded-xl p-4"
-              style={{ background: "hsl(272 20% 7%)", border: "1px solid hsl(272 100% 62% / 0.15)" }}
+              style={{ background: "hsl(272 20% 7%)", border: `1px solid ${accent}26` }}
             >
               {/* Category header */}
               <div className="flex items-center gap-2 mb-4">
@@ -664,7 +665,7 @@ export function Sandbox() {
                           isBountyMatch
                             ? { background: "linear-gradient(135deg, hsl(120 80% 12% / 0.6), hsl(120 60% 8% / 0.4))" }
                             : isSelected
-                            ? { background: "linear-gradient(135deg, hsl(272 100% 62% / 0.18), hsl(272 100% 62% / 0.06))" }
+                            ? { background: gradient2 }
                             : {}
                         }
                       >
@@ -705,10 +706,10 @@ export function Sandbox() {
                               style={{
                                 border: isBountyMatch
                                   ? "2px solid hsl(120 100% 60%)"
-                                  : "2px solid hsl(272 100% 62% / 0.8)",
+                                  : `2px solid ${accent}cc`,
                                 boxShadow: isBountyMatch
                                   ? "inset 0 0 10px hsl(120 100% 55% / 0.3)"
-                                  : "inset 0 0 8px hsl(272 100% 62% / 0.3)",
+                                  : `inset 0 0 8px ${accent}4d`,
                               }}
                             />
                           )}
@@ -833,10 +834,10 @@ export function Sandbox() {
             {/* Bounty counter */}
             <div
               className="flex items-center gap-2 px-4 py-2 rounded-xl"
-              style={{ background: "hsl(272 40% 10%)", border: "1px solid hsl(272 100% 62% / 0.3)" }}
+              style={{ background: "hsl(272 40% 10%)", border: `1px solid ${accent}4d` }}
             >
-              <Zap className="w-4 h-4" style={{ color: "hsl(272 100% 75%)" }} />
-              <span className="text-sm font-semibold" style={{ color: "hsl(272 100% 80%)", ...BANGERS }}>
+              <Zap className="w-4 h-4" style={{ color: accent }} />
+              <span className="text-sm font-semibold" style={{ color: accent, ...BANGERS }}>
                 {bountyCount + 1} BUILT
               </span>
             </div>

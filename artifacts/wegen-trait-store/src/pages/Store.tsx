@@ -438,7 +438,8 @@ export function Store() {
   const [checkoutProgress, setCheckoutProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { walletAddress, isConnected, connect } = useWallet();
-  const { collection } = useCollection();
+  const { collection, theme } = useCollection();
+  const { accent, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { ethUsd, change24h, isLoading: priceLoading } = useEthPrice();
@@ -644,11 +645,11 @@ export function Store() {
             style={{
               ...DISPLAY,
               fontSize: 'clamp(3.5rem, 9vw, 6.5rem)',
-              color: '#9900ff',
+              color: accent,
               textShadow: [
-                '0 0 12px #9900ff',
-                '0 0 30px #6600cc',
-                '0 0 60px #44009988',
+                `0 0 12px ${accent}`,
+                `0 0 30px hsl(${accentHsl} / 0.8)`,
+                `0 0 60px hsl(${accentHsl} / 0.53)`,
                 '0 0 2px #000',
               ].join(', '),
             }}
@@ -679,23 +680,23 @@ export function Store() {
           <div
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl select-none"
             style={{
-              background: "linear-gradient(135deg, hsl(272 60% 8%), hsl(272 40% 5%))",
-              border: "1px solid hsl(272 100% 62% / 0.25)",
-              boxShadow: "0 0 14px hsl(272 100% 50% / 0.12)",
+              background: `linear-gradient(135deg, ${accent}18, ${accent}08)`,
+              border: `1px solid ${accent}40`,
+              boxShadow: `0 0 14px ${glow2}`,
             }}
           >
             <svg width="13" height="13" viewBox="0 0 256 417" fill="none" aria-hidden>
-              <polygon points="128,0 0,208 128,284 256,208" fill="hsl(272,100%,72%)" opacity="0.95"/>
-              <polygon points="128,417 0,236 128,312" fill="hsl(272,100%,55%)" opacity="0.85"/>
-              <polygon points="128,417 256,236 128,312" fill="hsl(272,100%,65%)" opacity="0.9"/>
-              <polygon points="128,284 0,208 128,312" fill="hsl(272,100%,80%)" opacity="0.6"/>
-              <polygon points="128,284 256,208 128,312" fill="hsl(272,100%,75%)" opacity="0.7"/>
+              <polygon points="128,0 0,208 128,284 256,208" fill={accent} opacity="0.95"/>
+              <polygon points="128,417 0,236 128,312" fill={accent} opacity="0.85"/>
+              <polygon points="128,417 256,236 128,312" fill={accent} opacity="0.9"/>
+              <polygon points="128,284 0,208 128,312" fill={accent} opacity="0.6"/>
+              <polygon points="128,284 256,208 128,312" fill={accent} opacity="0.7"/>
             </svg>
             {priceLoading || ethUsd === null ? (
               <span className="text-sm font-mono text-muted-foreground/40">···</span>
             ) : (
               <div className="flex flex-col leading-none">
-                <span className="text-sm font-mono font-bold tabular-nums" style={{ color: "hsl(272 100% 82%)" }}>
+                <span className="text-sm font-mono font-bold tabular-nums" style={{ color: accent }}>
                   ${ethUsd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </span>
                 {change24h !== null && (
@@ -721,12 +722,12 @@ export function Store() {
           className="relative flex items-center gap-3 px-5 py-3 rounded-xl border transition-all group"
           style={{
             background: cartCount > 0
-              ? "linear-gradient(135deg, hsl(272 100% 65% / 0.2), hsl(43 100% 56% / 0.1))"
+              ? gradient2
               : "hsl(268 35% 6%)",
             border: cartCount > 0
-              ? "1px solid hsl(272 100% 65% / 0.6)"
+              ? `1px solid ${accent}99`
               : "1px solid hsl(268 22% 16%)",
-            boxShadow: cartCount > 0 ? "0 0 20px hsl(272 100% 65% / 0.25)" : "none",
+            boxShadow: cartCount > 0 ? `0 0 20px ${glow}` : "none",
           }}
         >
           <div className="relative">
@@ -734,7 +735,7 @@ export function Store() {
             {cartCount > 0 && (
               <span
                 className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                style={{ background: "hsl(272 100% 65%)", boxShadow: "0 0 8px hsl(272 100% 65% / 0.8)" }}
+                style={{ background: accent, boxShadow: `0 0 8px ${glow}` }}
               >
                 {cartCount}
               </span>
@@ -996,8 +997,8 @@ export function Store() {
                 )}
                 <div className="mt-auto pt-3">
                   {/* Price block */}
-                  <div className="px-3 py-2.5 rounded mb-2" style={{ background: 'rgba(157,0,255,0.1)', border: '1px solid rgba(157,0,255,0.25)' }}>
-                    <div className="flex items-center gap-2" style={{ ...BANGERS, color: 'hsl(272 100% 75%)' }}>
+                  <div className="px-3 py-2.5 rounded mb-2" style={{ background: `${accent}1a`, border: `1px solid ${accent}40` }}>
+                    <div className="flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
                       <Coins className="w-5 h-5 flex-shrink-0" style={{ color: 'hsl(43 100% 60%)' }} />
                       <span className="text-2xl leading-none">{trait.priceEth}</span>
                       <span className="text-base opacity-70">ETH</span>
@@ -1036,7 +1037,7 @@ export function Store() {
                     onClick={() => toggleCart(trait)}
                     className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold transition-all"
                     style={{
-                      background: "linear-gradient(135deg, hsl(272 100% 65% / 0.25), hsl(43 100% 56% / 0.15))",
+                      background: gradient2,
                       color: "hsl(43 100% 60%)",
                       ...BANGERS,
                     }}
@@ -1189,7 +1190,7 @@ export function Store() {
           className="flex flex-col w-full sm:max-w-md p-0 border-l border-primary/30"
           style={{
             background: "hsl(268 40% 4%)",
-            boxShadow: "-10px 0 60px hsl(272 100% 65% / 0.15)",
+            boxShadow: `-10px 0 60px ${glow2}`,
           }}
         >
           {/* Header */}
@@ -1199,7 +1200,7 @@ export function Store() {
                 <div className="flex items-center gap-3">
                   <div
                     className="w-9 h-9 rounded-lg flex items-center justify-center"
-                    style={{ background: "hsl(272 100% 65% / 0.2)", border: "1px solid hsl(272 100% 65% / 0.4)" }}
+                    style={{ background: `${accent}33`, border: `1px solid ${accent}66` }}
                   >
                     <ShoppingCart className="w-4 h-4 text-primary" />
                   </div>
@@ -1337,8 +1338,8 @@ export function Store() {
                       className="h-full rounded-full transition-all duration-300"
                       style={{
                         width: `${(checkoutProgress.done / checkoutProgress.total) * 100}%`,
-                        background: "linear-gradient(90deg, hsl(272 100% 65%), hsl(43 100% 56%))",
-                        boxShadow: "0 0 10px hsl(272 100% 65% / 0.6)",
+                        background: gradient,
+                        boxShadow: `0 0 10px ${glow}`,
                       }}
                     />
                   </div>
@@ -1349,7 +1350,7 @@ export function Store() {
               {!isConnected ? (
                 <Button
                   className="w-full gap-2 font-bold"
-                  style={{ ...BANGERS, background: "linear-gradient(135deg, hsl(272 100% 55%), hsl(272 100% 68%))" }}
+                  style={{ ...BANGERS, background: gradient }}
                   onClick={connect}
                 >
                   <Wallet className="w-4 h-4" />

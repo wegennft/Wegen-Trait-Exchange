@@ -59,9 +59,17 @@ function hexToHsl(hex: string): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+const COLLECTION_CSS_VARS: Record<string, { primary: string; background: string; card: string; secondary: string; muted: string; input: string }> = {
+  wegenettes: { primary: "320 100% 55%", background: "300 30% 2%", card: "300 25% 4%", secondary: "300 25% 8%", muted: "295 20% 11%", input: "295 20% 9%" },
+  wegens:     { primary: "272 100% 62%", background: "270 45% 2%", card: "270 30% 4%", secondary: "270 30% 7%", muted: "270 20% 10%", input: "270 25% 8%" },
+};
+
 function applyColorsToRoot(colors: SiteColors) {
   const root = document.documentElement;
-  const p = hexToHsl(colors.primary);
+  const collection = root.getAttribute("data-collection") ?? "wegens";
+  const cVars = COLLECTION_CSS_VARS[collection] ?? COLLECTION_CSS_VARS.wegens;
+
+  const p = cVars.primary;
   const s = hexToHsl(colors.secondary);
   const t = hexToHsl(colors.text);
   const hl = hexToHsl(colors.headerLine);
@@ -78,6 +86,7 @@ function applyColorsToRoot(colors: SiteColors) {
   root.style.setProperty("--input", hl);
   root.style.setProperty("--card", cp);
   root.style.setProperty("--popover", cp);
+  root.style.setProperty("--background", cVars.background);
 }
 
 interface SiteSettingsContextValue {

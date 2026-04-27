@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useCollection, type NftCollection } from "@/contexts/CollectionContext";
+import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import {
   useGetAdminStats,
   useListTraits,
@@ -373,7 +373,8 @@ function LayerOrderSettings() {
 }
 
 export function Admin() {
-  const { collection, collectionLabel, setCollection } = useCollection();
+  const { collection, collectionLabel, setCollection, theme } = useCollection();
+  const { accent, glow } = theme;
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
   const { data: wegensTraitsData, isLoading: isLoadingWegens } = useListTraits({ includeAll: true, limit: 9999, nftCollection: "wegens" });
   const { data: wegenettesTraitsData, isLoading: isLoadingWegenettes } = useListTraits({ includeAll: true, limit: 9999, nftCollection: "wegenettes" });
@@ -519,12 +520,15 @@ export function Admin() {
       <div className="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl border" style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.08)' }}>
         <div>
           <div className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-1">Managing Collection</div>
-          <div className="text-xl font-bold" style={{ fontFamily: "'Bungee', Impact, sans-serif", color: collection === "wegenettes" ? 'hsl(320 100% 65%)' : 'hsl(272 100% 70%)' }}>
+          <div className="text-xl font-bold" style={{ fontFamily: "'Bungee', Impact, sans-serif", color: accent }}>
             {collectionLabel} Trait Store
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {(["wegens", "wegenettes"] as NftCollection[]).map((c) => (
+          {(["wegens", "wegenettes"] as NftCollection[]).map((c) => {
+            const cTheme = COLLECTION_THEMES[c];
+            const isActive = collection === c;
+            return (
             <button
               key={c}
               onClick={() => setCollection(c)}
@@ -532,23 +536,16 @@ export function Admin() {
               style={{
                 fontFamily: "'Bungee', Impact, sans-serif",
                 letterSpacing: '0.08em',
-                background: collection === c
-                  ? (c === "wegenettes" ? 'hsl(320 100% 40% / 0.3)' : 'hsl(272 100% 50% / 0.25)')
-                  : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${collection === c
-                  ? (c === "wegenettes" ? 'hsl(320 100% 60% / 0.6)' : 'hsl(272 100% 62% / 0.6)')
-                  : 'rgba(255,255,255,0.08)'}`,
-                color: collection === c
-                  ? (c === "wegenettes" ? 'hsl(320 100% 75%)' : 'hsl(272 100% 80%)')
-                  : 'rgba(255,255,255,0.4)',
-                boxShadow: collection === c
-                  ? (c === "wegenettes" ? '0 0 14px hsl(320 100% 55% / 0.25)' : '0 0 14px hsl(272 100% 62% / 0.25)')
-                  : 'none',
+                background: isActive ? `${cTheme.accent}30` : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${isActive ? `${cTheme.accent}99` : 'rgba(255,255,255,0.08)'}`,
+                color: isActive ? cTheme.accent : 'rgba(255,255,255,0.4)',
+                boxShadow: isActive ? `0 0 14px ${cTheme.glow2}` : 'none',
               }}
             >
               {c === "wegens" ? "Wegens" : "Wegenettes"}
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -595,10 +592,9 @@ export function Admin() {
       <div className="mt-0 mb-4 space-y-3">
         {/* ── Collection selector tabs ── */}
         <div className="flex gap-0 rounded-xl overflow-hidden border border-border/40" style={{ background: 'rgba(0,0,0,0.3)' }}>
-          {([
-            { key: "wegens" as const, label: "WEGENS", accent: 'hsl(272 100% 62%)', glow: 'hsl(272 100% 62% / 0.25)' },
-            { key: "wegenettes" as const, label: "WEGENETTES", accent: 'hsl(320 100% 60%)', glow: 'hsl(320 100% 60% / 0.25)' },
-          ]).map(({ key, label, accent, glow }) => {
+          {(["wegens", "wegenettes"] as const).map((key) => {
+            const { accent, glow } = COLLECTION_THEMES[key];
+            const label = key === "wegens" ? "WEGENS" : "WEGENETTES";
             const d = key === "wegens" ? wegensTraitsData : wegenettesTraitsData;
             const inStore = d?.traits?.filter(t => t.isActive).length ?? 0;
             const vaulted = d?.traits?.filter(t => !t.isActive).length ?? 0;
@@ -636,7 +632,7 @@ export function Admin() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold tracking-tight">
-              <span style={{ color: traitCollection === "wegenettes" ? 'hsl(320 100% 65%)' : 'hsl(272 100% 70%)' }}>
+              <span style={{ color: COLLECTION_THEMES[traitCollection].accent }}>
                 {traitCollection === "wegenettes" ? "Wegenettes" : "Wegens"}
               </span>
               {" "}Traits
@@ -697,7 +693,7 @@ export function Admin() {
           {/* Single trait */}
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary text-white hover:bg-primary/90" style={{ background: traitCollection === "wegenettes" ? 'hsl(320 100% 40%)' : undefined }}>
+              <Button className="bg-primary text-white hover:bg-primary/90" style={{ background: COLLECTION_THEMES[traitCollection].accent }}>
                 <Plus className="w-4 h-4 mr-2" />
                 New {traitCollection === "wegenettes" ? "Wegenettes" : "Wegens"} Trait
               </Button>

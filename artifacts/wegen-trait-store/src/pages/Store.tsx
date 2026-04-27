@@ -987,9 +987,25 @@ export function Store() {
                       </div>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground/50 font-mono text-right">
-                    {trait.remainingSupply} / {trait.totalSupply} left
-                  </div>
+                  {/* Supply meter */}
+                  {(() => {
+                    const pct = trait.totalSupply > 0 ? (trait.remainingSupply / trait.totalSupply) * 100 : 0;
+                    const supplyColor = pct <= 10 ? 'hsl(0 80% 60%)' : pct <= 30 ? 'hsl(35 100% 55%)' : 'hsl(145 65% 50%)';
+                    return (
+                      <div className="mt-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>Supply</span>
+                          <span className="text-sm font-bold font-mono" style={{ color: supplyColor, ...BANGERS }}>
+                            {trait.remainingSupply.toLocaleString()}
+                            <span className="text-xs font-normal opacity-60"> / {trait.totalSupply.toLocaleString()}</span>
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full w-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: supplyColor, boxShadow: `0 0 6px ${supplyColor}` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </CardContent>
 

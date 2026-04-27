@@ -375,7 +375,11 @@ function LayerOrderSettings() {
 export function Admin() {
   const { collection, collectionLabel, setCollection } = useCollection();
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
-  const { data: traitsData, isLoading: isLoadingTraits } = useListTraits({ includeAll: true, limit: 9999, nftCollection: collection });
+  const { data: wegensTraitsData, isLoading: isLoadingWegens } = useListTraits({ includeAll: true, limit: 9999, nftCollection: "wegens" });
+  const { data: wegenettesTraitsData, isLoading: isLoadingWegenettes } = useListTraits({ includeAll: true, limit: 9999, nftCollection: "wegenettes" });
+  const [traitCollection, setTraitCollection] = useState<"wegens" | "wegenettes">("wegens");
+  const traitsData = traitCollection === "wegens" ? wegensTraitsData : wegenettesTraitsData;
+  const isLoadingTraits = traitCollection === "wegens" ? isLoadingWegens : isLoadingWegenettes;
   const { data: rarityTiersData } = useQuery({
     queryKey: ["admin-rarity-tiers"],
     queryFn: async () => {
@@ -443,7 +447,7 @@ export function Admin() {
   });
 
   const handleCreate = (data: TraitFormValues) => {
-    createTrait.mutate({ data, nftCollection: collection });
+    createTrait.mutate({ data, nftCollection: traitCollection });
   };
 
   const handleUpdate = (data: TraitFormValues) => {
@@ -466,6 +470,7 @@ export function Admin() {
   };
 
   useEffect(() => { setSelectedIds(new Set()); }, [traitView, traitCategory, traitRarity, traitSearch]);
+  useEffect(() => { setTraitView("all"); setTraitCategory("all"); setTraitRarity("all"); setTraitSearch(""); setSelectedIds(new Set()); }, [traitCollection]);
 
   const filteredTraitsForDisplay = useMemo(() =>
     (traitsData?.traits ?? []).filter(trait =>
@@ -588,9 +593,54 @@ export function Admin() {
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
 
       <div className="mt-0 mb-4 space-y-3">
+        {/* ── Collection selector tabs ── */}
+        <div className="flex gap-0 rounded-xl overflow-hidden border border-border/40" style={{ background: 'rgba(0,0,0,0.3)' }}>
+          {([
+            { key: "wegens" as const, label: "WEGENS", accent: 'hsl(272 100% 62%)', glow: 'hsl(272 100% 62% / 0.25)' },
+            { key: "wegenettes" as const, label: "WEGENETTES", accent: 'hsl(320 100% 60%)', glow: 'hsl(320 100% 60% / 0.25)' },
+          ]).map(({ key, label, accent, glow }) => {
+            const d = key === "wegens" ? wegensTraitsData : wegenettesTraitsData;
+            const inStore = d?.traits?.filter(t => t.isActive).length ?? 0;
+            const vaulted = d?.traits?.filter(t => !t.isActive).length ?? 0;
+            const isActive = traitCollection === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setTraitCollection(key)}
+                className="flex-1 flex flex-col items-start gap-1 px-5 py-3 transition-all duration-200 relative"
+                style={{
+                  background: isActive ? `${accent}18` : 'transparent',
+                  borderBottom: isActive ? `2px solid ${accent}` : '2px solid transparent',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black tracking-widest uppercase" style={{ fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em', color: isActive ? accent : 'rgba(255,255,255,0.35)', textShadow: isActive ? `0 0 12px ${glow}` : 'none' }}>
+                    {label}
+                  </span>
+                  {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest" style={{ background: `${accent}25`, color: accent, border: `1px solid ${accent}50` }}>Active</span>}
+                </div>
+                <div className="flex items-center gap-3 text-[11px] font-mono">
+                  <span style={{ color: isActive ? 'rgba(52,211,153,0.9)' : 'rgba(255,255,255,0.25)' }}>
+                    {inStore} in store
+                  </span>
+                  <span className="text-muted-foreground/30">·</span>
+                  <span style={{ color: isActive ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)' }}>
+                    {vaulted} vaulted
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold tracking-tight">Trait Management</h2>
+            <h2 className="text-2xl font-bold tracking-tight">
+              <span style={{ color: traitCollection === "wegenettes" ? 'hsl(320 100% 65%)' : 'hsl(272 100% 70%)' }}>
+                {traitCollection === "wegenettes" ? "Wegenettes" : "Wegens"}
+              </span>
+              {" "}Traits
+            </h2>
             {/* Primary tabs: All / In Store / Vault */}
             <div className="flex bg-secondary border border-border/50 rounded-md p-1 gap-1">
               {(["all", "in-store", "vault"] as const).map((v) => (
@@ -647,14 +697,14 @@ export function Admin() {
           {/* Single trait */}
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary text-white hover:bg-primary/90">
+              <Button className="bg-primary text-white hover:bg-primary/90" style={{ background: traitCollection === "wegenettes" ? 'hsl(320 100% 40%)' : undefined }}>
                 <Plus className="w-4 h-4 mr-2" />
-                New Trait
+                New {traitCollection === "wegenettes" ? "Wegenettes" : "Wegens"} Trait
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Trait</DialogTitle>
+                <DialogTitle>Create New Trait — {traitCollection === "wegenettes" ? "Wegenettes" : "Wegens"}</DialogTitle>
               </DialogHeader>
               <TraitForm
                 onSubmit={handleCreate}

@@ -678,14 +678,14 @@ export function Store() {
         <div className="flex items-center gap-3">
           {/* ETH price pill */}
           <div
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl select-none"
+            className="flex items-center gap-3 px-5 py-3 rounded-xl select-none"
             style={{
               background: `linear-gradient(135deg, ${accent}18, ${accent}08)`,
               border: `1px solid ${accent}40`,
-              boxShadow: `0 0 14px ${glow2}`,
+              boxShadow: `0 0 18px ${glow2}`,
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 256 417" fill="none" aria-hidden>
+            <svg width="22" height="22" viewBox="0 0 256 417" fill="none" aria-hidden>
               <polygon points="128,0 0,208 128,284 256,208" fill={accent} opacity="0.95"/>
               <polygon points="128,417 0,236 128,312" fill={accent} opacity="0.85"/>
               <polygon points="128,417 256,236 128,312" fill={accent} opacity="0.9"/>
@@ -693,22 +693,22 @@ export function Store() {
               <polygon points="128,284 256,208 128,312" fill={accent} opacity="0.7"/>
             </svg>
             {priceLoading || ethUsd === null ? (
-              <span className="text-sm font-mono text-muted-foreground/40">···</span>
+              <span className="text-xl font-mono text-muted-foreground/40">···</span>
             ) : (
               <div className="flex flex-col leading-none">
-                <span className="text-sm font-mono font-bold tabular-nums" style={{ color: accent }}>
+                <span className="text-xl font-mono font-bold tabular-nums" style={{ color: accent }}>
                   ${ethUsd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </span>
                 {change24h !== null && (
                   <span
-                    className="flex items-center gap-0.5 text-[10px] font-bold mt-0.5"
+                    className="flex items-center gap-1 text-sm font-bold mt-1"
                     style={{ color: change24h >= 0 ? "#4ade80" : "#f87171" }}
                   >
                     {change24h >= 0.05
-                      ? <TrendingUp className="w-2.5 h-2.5" />
+                      ? <TrendingUp className="w-3.5 h-3.5" />
                       : change24h <= -0.05
-                        ? <TrendingDown className="w-2.5 h-2.5" />
-                        : <Minus className="w-2.5 h-2.5" />}
+                        ? <TrendingDown className="w-3.5 h-3.5" />
+                        : <Minus className="w-3.5 h-3.5" />}
                     {Math.abs(change24h).toFixed(1)}%
                   </span>
                 )}

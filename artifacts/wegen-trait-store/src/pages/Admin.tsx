@@ -998,11 +998,14 @@ export function Admin() {
                               <DialogTitle>Edit Trait: {trait.name}</DialogTitle>
                             </DialogHeader>
                             {editingTrait?.id === trait.id && (
-                              <TraitForm
-                                defaultValues={editingTrait}
-                                onSubmit={handleUpdate}
-                                isSubmitting={updateTrait.isPending}
-                              />
+                              <>
+                                <TraitForm
+                                  defaultValues={editingTrait}
+                                  onSubmit={handleUpdate}
+                                  isSubmitting={updateTrait.isPending}
+                                />
+                                <TraitVariantsManager traitId={editingTrait.id} />
+                              </>
                             )}
                           </DialogContent>
                         </Dialog>
@@ -4091,6 +4094,152 @@ function TraitForm({
         {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Save Trait"}
       </Button>
     </form>
+  );
+}
+
+/* ── TraitVariantsManager ─────────────────────────────────────────────────── */
+
+function TraitVariantsManager({ traitId }: { traitId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [variantName, setVariantName] = useState("");
+  const [variantImageUrl, setVariantImageUrl] = useState("");
+  const [variantMediaType, setVariantMediaType] = useState<"image" | "gif" | "video" | "audio">("image");
+  const [isAdding, setIsAdding] = useState(false);
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
+  const variantFileRef = useRef<HTMLInputElement>(null);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin-trait-variants", traitId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/traits/${traitId}/variants`);
+      if (!res.ok) throw new Error("Failed to load variants");
+      return res.json() as Promise<{ variants: Array<{ id: number; name: string; imageUrl: string | null; mediaType: string; sortOrder: number }> }>;
+    },
+  });
+  const variants = data?.variants ?? [];
+
+  const { uploadFile, isUploading, progress } = useUpload({
+    onSuccess: (response) => {
+      setVariantImageUrl(`/api/storage${response.objectPath}`);
+    },
+    onError: (err) => {
+      toast({ title: `Upload failed: ${err.message}`, variant: "destructive" });
+    },
+  });
+
+  const handleVariantFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVariantMediaType(detectMediaType(file));
+    await uploadFile(file);
+    if (variantFileRef.current) variantFileRef.current.value = "";
+  };
+
+  const handleAddVariant = async () => {
+    if (!variantName.trim()) {
+      toast({ title: "Enter a variant name", variant: "destructive" }); return;
+    }
+    setIsAdding(true);
+    try {
+      const res = await fetch(`/api/admin/traits/${traitId}/variants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: variantName.trim(), imageUrl: variantImageUrl || null, mediaType: variantMediaType }),
+      });
+      if (!res.ok) throw new Error("Failed to add variant");
+      setVariantName("");
+      setVariantImageUrl("");
+      setVariantMediaType("image");
+      await refetch();
+      void queryClient.invalidateQueries({ queryKey: ["trait-variants"] });
+      toast({ title: "Variant added!" });
+    } catch {
+      toast({ title: "Failed to add variant", variant: "destructive" });
+    } finally { setIsAdding(false); }
+  };
+
+  const handleDeleteVariant = async (variantId: number) => {
+    setIsDeletingId(variantId);
+    try {
+      await fetch(`/api/admin/variants/${variantId}`, { method: "DELETE" });
+      await refetch();
+      void queryClient.invalidateQueries({ queryKey: ["trait-variants"] });
+      toast({ title: "Variant removed" });
+    } catch {
+      toast({ title: "Failed to delete variant", variant: "destructive" });
+    } finally { setIsDeletingId(null); }
+  };
+
+  return (
+    <div className="space-y-4 pt-2">
+      <Separator />
+      <div className="flex items-center gap-2">
+        <Layers className="w-4 h-4 text-primary" />
+        <h3 className="text-sm font-semibold">Trait Variants</h3>
+        <span className="text-xs text-muted-foreground/50 font-mono">alternate visual versions shown in Sandbox</span>
+      </div>
+
+      {/* Existing variants */}
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground/50"><Loader2 className="w-3 h-3 animate-spin" />Loading…</div>
+      ) : variants.length === 0 ? (
+        <p className="text-xs text-muted-foreground/40 font-mono">// no variants yet — add one below //</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {variants.map(v => (
+            <div key={v.id} className="group relative flex flex-col items-center gap-1 p-1.5 rounded-lg border border-border/30 bg-secondary/20 hover:border-border/60 transition-all">
+              <div className="w-14 h-14 rounded overflow-hidden bg-black/30">
+                {v.imageUrl ? (
+                  <TraitMedia url={v.imageUrl} mediaType={v.mediaType} alt={v.name} className="w-full h-full object-contain" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 text-lg">📦</div>
+                )}
+              </div>
+              <span className="text-[9px] font-mono w-14 text-center truncate text-muted-foreground/70">{v.name}</span>
+              <button
+                onClick={() => handleDeleteVariant(v.id)}
+                disabled={isDeletingId === v.id}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-background border border-border/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:border-destructive"
+              >
+                {isDeletingId === v.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <X className="w-2.5 h-2.5" />}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new variant */}
+      <div className="space-y-2 p-3 rounded-lg border border-border/20 bg-secondary/10">
+        <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Add Variant</p>
+        <div className="flex gap-2">
+          <Input
+            value={variantName}
+            onChange={e => setVariantName(e.target.value)}
+            placeholder="e.g. Chrome, Pink, Dark Mode"
+            className="bg-secondary/50 text-sm h-8 flex-1"
+            onKeyDown={e => e.key === "Enter" && void handleAddVariant()}
+          />
+          <Button type="button" size="sm" variant="outline" onClick={() => variantFileRef.current?.click()} disabled={isUploading} className="h-8 px-3 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10">
+            {isUploading ? <><Loader2 className="w-3 h-3 animate-spin" />{progress}%</> : <><ImageIcon className="w-3 h-3" />Image</>}
+          </Button>
+          <Button type="button" size="sm" onClick={handleAddVariant} disabled={isAdding || !variantName.trim()} className="h-8 px-3 text-xs gap-1.5">
+            {isAdding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+            Add
+          </Button>
+        </div>
+        {variantImageUrl && (
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded overflow-hidden bg-black/30 flex-shrink-0">
+              <TraitMedia url={variantImageUrl} mediaType={variantMediaType} alt="preview" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-[10px] text-muted-foreground/60 font-mono truncate flex-1">Image ready</span>
+            <button type="button" onClick={() => setVariantImageUrl("")} className="text-muted-foreground/40 hover:text-destructive"><X className="w-3 h-3" /></button>
+          </div>
+        )}
+        <input ref={variantFileRef} type="file" accept="image/*,video/*,audio/*" className="hidden" onChange={handleVariantFileChange} />
+      </div>
+    </div>
   );
 }
 

@@ -150,6 +150,69 @@ paths:
               schema:
                 $ref: "#/components/schemas/TraitListResponse"
 
+  /traits/{traitId}/variants:
+    get:
+      operationId: listTraitVariants
+      tags: [traits]
+      summary: List variants for a trait
+      parameters:
+        - name: traitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of trait variants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraitVariantsResponse"
+
+  /admin/traits/{traitId}/variants:
+    post:
+      operationId: createTraitVariant
+      tags: [admin]
+      summary: Add a variant to a trait
+      parameters:
+        - name: traitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTraitVariantBody"
+      responses:
+        "200":
+          description: Created variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraitVariantResponse"
+
+  /admin/variants/{variantId}:
+    delete:
+      operationId: deleteTraitVariant
+      tags: [admin]
+      summary: Delete a trait variant
+      parameters:
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
   /traits/{traitId}:
     get:
       operationId: getTrait
@@ -468,8 +531,13 @@ components:
           description: Named collection/theme this trait belongs to (e.g. "Stoner Traits", "70s Vibes")
         description:
           type: string
+          nullable: true
         imageUrl:
           type: string
+          nullable: true
+        mediaType:
+          type: string
+          nullable: true
         priceEth:
           type: string
           description: Price in ETH (as string to avoid floating point issues)
@@ -485,6 +553,9 @@ components:
         rarity:
           type: string
           enum: [common, uncommon, rare, legendary]
+        nftCollection:
+          type: string
+          nullable: true
         payoutSplits:
           type: array
           items:
@@ -773,6 +844,68 @@ components:
             type: string
       required:
         - themes
+
+    TraitVariant:
+      type: object
+      properties:
+        id:
+          type: integer
+        traitId:
+          type: integer
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        mediaType:
+          type: string
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - traitId
+        - name
+        - mediaType
+        - sortOrder
+        - createdAt
+
+    TraitVariantsResponse:
+      type: object
+      properties:
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/TraitVariant"
+      required:
+        - variants
+
+    TraitVariantResponse:
+      type: object
+      properties:
+        variant:
+          $ref: "#/components/schemas/TraitVariant"
+      required:
+        - variant
+
+    CreateTraitVariantBody:
+      type: object
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        mediaType:
+          type: string
+          default: image
+        sortOrder:
+          type: integer
+          default: 0
+      required:
+        - name
 
     CreateTraitBody:
       type: object

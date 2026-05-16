@@ -14,10 +14,9 @@ export interface Trait {
   category: string;
   /** Named collection/theme this trait belongs to (e.g. "Stoner Traits", "70s Vibes") */
   theme?: string | null;
-  /** Drop name — the release/event this trait was first available in */
-  dropName?: string | null;
-  description?: string;
-  imageUrl?: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  mediaType?: string | null;
   /** Price in ETH (as string to avoid floating point issues) */
   priceEth: string;
   /** Price in wei */
@@ -26,6 +25,7 @@ export interface Trait {
   remainingSupply: number;
   isActive: boolean;
   rarity: TraitRarity;
+  nftCollection?: string | null;
   /** Wallet addresses and their percentage share of sale proceeds */
   payoutSplits: PayoutSplit[];
   createdAt: Date;

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, asc, inArray, desc } from "drizzle-orm";
-import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable } from "@workspace/db";
+import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable, traitVariantsTable } from "@workspace/db";
 
 function getNftCollection(req: import("express").Request): string {
   const c = (req.query.nftCollection ?? req.body?.nftCollection) as string | undefined;
@@ -752,6 +752,44 @@ router.post("/admin/airdrop", async (req, res): Promise<void> => {
 
   const inserted = await db.insert(lockerItemsTable).values(rows).returning();
   res.json({ ok: true, count: inserted.length, wallets: walletAddresses.length, traitsPerWallet: traitIds.length });
+});
+
+// ── Trait Variants ────────────────────────────────────────────────────────────
+router.get("/admin/traits/:traitId/variants", async (req, res): Promise<void> => {
+  const traitId = parseInt(req.params.traitId, 10);
+  if (isNaN(traitId)) { res.status(400).json({ error: "Invalid traitId" }); return; }
+  const variants = await db
+    .select()
+    .from(traitVariantsTable)
+    .where(eq(traitVariantsTable.traitId, traitId))
+    .orderBy(asc(traitVariantsTable.sortOrder), asc(traitVariantsTable.createdAt));
+  res.json({ variants });
+});
+
+router.post("/admin/traits/:traitId/variants", async (req, res): Promise<void> => {
+  const traitId = parseInt(req.params.traitId, 10);
+  if (isNaN(traitId)) { res.status(400).json({ error: "Invalid traitId" }); return; }
+  const { name, imageUrl, mediaType, sortOrder } = req.body as {
+    name?: string; imageUrl?: string; mediaType?: string; sortOrder?: number;
+  };
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" }); return;
+  }
+  const [variant] = await db.insert(traitVariantsTable).values({
+    traitId,
+    name: name.trim(),
+    imageUrl: imageUrl ?? null,
+    mediaType: mediaType ?? "image",
+    sortOrder: sortOrder ?? 0,
+  }).returning();
+  res.json({ variant });
+});
+
+router.delete("/admin/variants/:variantId", async (req, res): Promise<void> => {
+  const variantId = parseInt(req.params.variantId, 10);
+  if (isNaN(variantId)) { res.status(400).json({ error: "Invalid variantId" }); return; }
+  await db.delete(traitVariantsTable).where(eq(traitVariantsTable.id, variantId));
+  res.json({ success: true });
 });
 
 router.get("/admin/airdrop-history", async (req, res): Promise<void> => {

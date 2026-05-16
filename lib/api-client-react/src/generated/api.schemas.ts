@@ -35,8 +35,9 @@ export interface Trait {
   category: string;
   /** Named collection/theme this trait belongs to (e.g. "Stoner Traits", "70s Vibes") */
   theme?: string | null;
-  description?: string;
-  imageUrl?: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  mediaType?: string | null;
   /** Price in ETH (as string to avoid floating point issues) */
   priceEth: string;
   /** Price in wei */
@@ -45,6 +46,7 @@ export interface Trait {
   remainingSupply: number;
   isActive: boolean;
   rarity: TraitRarity;
+  nftCollection?: string | null;
   /** Wallet addresses and their percentage share of sale proceeds */
   payoutSplits: PayoutSplit[];
   createdAt: string;
@@ -125,6 +127,23 @@ export interface RemoveTraitResponse {
   lockerItem: LockerItem;
 }
 
+export interface ConfirmTraitsBody {
+  walletAddress: string;
+}
+
+export type ConfirmTraitsResponseTraitsAppliedItem = {
+  category: string;
+  name: string;
+};
+
+export interface ConfirmTraitsResponse {
+  success: boolean;
+  /** Simulated/real on-chain transaction hash */
+  txHash: string;
+  tokenId: number;
+  traitsApplied: ConfirmTraitsResponseTraitsAppliedItem[];
+}
+
 export type StoreStatsTraitsByCategoryItem = {
   category: string;
   count: number;
@@ -142,6 +161,31 @@ export interface StoreStats {
 
 export interface ThemesResponse {
   themes: string[];
+}
+
+export interface TraitVariant {
+  id: number;
+  traitId: number;
+  name: string;
+  imageUrl?: string | null;
+  mediaType: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface TraitVariantsResponse {
+  variants: TraitVariant[];
+}
+
+export interface TraitVariantResponse {
+  variant: TraitVariant;
+}
+
+export interface CreateTraitVariantBody {
+  name: string;
+  imageUrl?: string | null;
+  mediaType?: string;
+  sortOrder?: number;
 }
 
 export type CreateTraitBodyRarity =
@@ -240,23 +284,6 @@ export interface ErrorEnvelope {
   error: string;
 }
 
-export interface ConfirmTraitsBody {
-  walletAddress: string;
-}
-
-export interface ConfirmTraitsResponseTraitsAppliedItem {
-  category: string;
-  name: string;
-}
-
-export interface ConfirmTraitsResponse {
-  success: boolean;
-  /** Simulated/real on-chain transaction hash */
-  txHash: string;
-  tokenId: number;
-  traitsApplied: ConfirmTraitsResponseTraitsAppliedItem[];
-}
-
 export type ListTraitsParams = {
   category?: string;
   /**
@@ -265,6 +292,4 @@ export type ListTraitsParams = {
   theme?: string;
   page?: number;
   limit?: number;
-  /** NFT collection: 'wegens' or 'wegenettes' */
-  nftCollection?: string;
 };

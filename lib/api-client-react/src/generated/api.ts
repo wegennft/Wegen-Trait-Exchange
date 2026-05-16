@@ -24,6 +24,7 @@ import type {
   ConfirmTraitsBody,
   ConfirmTraitsResponse,
   CreateTraitBody,
+  CreateTraitVariantBody,
   DeleteResponse,
   ErrorEnvelope,
   HealthStatus,
@@ -38,6 +39,8 @@ import type {
   ThemesResponse,
   Trait,
   TraitListResponse,
+  TraitVariantResponse,
+  TraitVariantsResponse,
   UpdateTraitBody,
   UploadUrlRequest,
   UploadUrlResponse,
@@ -485,6 +488,265 @@ export function useListTraits<
 }
 
 /**
+ * @summary List variants for a trait
+ */
+export const getListTraitVariantsUrl = (traitId: number) => {
+  return `/api/traits/${traitId}/variants`;
+};
+
+export const listTraitVariants = async (
+  traitId: number,
+  options?: RequestInit,
+): Promise<TraitVariantsResponse> => {
+  return customFetch<TraitVariantsResponse>(getListTraitVariantsUrl(traitId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListTraitVariantsQueryKey = (traitId: number) => {
+  return [`/api/traits/${traitId}/variants`] as const;
+};
+
+export const getListTraitVariantsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTraitVariants>>,
+  TError = ErrorType<unknown>,
+>(
+  traitId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTraitVariants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListTraitVariantsQueryKey(traitId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listTraitVariants>>
+  > = ({ signal }) => listTraitVariants(traitId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!traitId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTraitVariants>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTraitVariantsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTraitVariants>>
+>;
+export type ListTraitVariantsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List variants for a trait
+ */
+
+export function useListTraitVariants<
+  TData = Awaited<ReturnType<typeof listTraitVariants>>,
+  TError = ErrorType<unknown>,
+>(
+  traitId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTraitVariants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTraitVariantsQueryOptions(traitId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a variant to a trait
+ */
+export const getCreateTraitVariantUrl = (traitId: number) => {
+  return `/api/admin/traits/${traitId}/variants`;
+};
+
+export const createTraitVariant = async (
+  traitId: number,
+  createTraitVariantBody: CreateTraitVariantBody,
+  options?: RequestInit,
+): Promise<TraitVariantResponse> => {
+  return customFetch<TraitVariantResponse>(getCreateTraitVariantUrl(traitId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createTraitVariantBody),
+  });
+};
+
+export const getCreateTraitVariantMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTraitVariant>>,
+    TError,
+    { traitId: number; data: BodyType<CreateTraitVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createTraitVariant>>,
+  TError,
+  { traitId: number; data: BodyType<CreateTraitVariantBody> },
+  TContext
+> => {
+  const mutationKey = ["createTraitVariant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createTraitVariant>>,
+    { traitId: number; data: BodyType<CreateTraitVariantBody> }
+  > = (props) => {
+    const { traitId, data } = props ?? {};
+
+    return createTraitVariant(traitId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateTraitVariantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createTraitVariant>>
+>;
+export type CreateTraitVariantMutationBody = BodyType<CreateTraitVariantBody>;
+export type CreateTraitVariantMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a variant to a trait
+ */
+export const useCreateTraitVariant = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTraitVariant>>,
+    TError,
+    { traitId: number; data: BodyType<CreateTraitVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createTraitVariant>>,
+  TError,
+  { traitId: number; data: BodyType<CreateTraitVariantBody> },
+  TContext
+> => {
+  return useMutation(getCreateTraitVariantMutationOptions(options));
+};
+
+/**
+ * @summary Delete a trait variant
+ */
+export const getDeleteTraitVariantUrl = (variantId: number) => {
+  return `/api/admin/variants/${variantId}`;
+};
+
+export const deleteTraitVariant = async (
+  variantId: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteTraitVariantUrl(variantId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteTraitVariantMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTraitVariant>>,
+    TError,
+    { variantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteTraitVariant>>,
+  TError,
+  { variantId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteTraitVariant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteTraitVariant>>,
+    { variantId: number }
+  > = (props) => {
+    const { variantId } = props ?? {};
+
+    return deleteTraitVariant(variantId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteTraitVariantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteTraitVariant>>
+>;
+
+export type DeleteTraitVariantMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a trait variant
+ */
+export const useDeleteTraitVariant = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTraitVariant>>,
+    TError,
+    { variantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteTraitVariant>>,
+  TError,
+  { variantId: number },
+  TContext
+> => {
+  return useMutation(getDeleteTraitVariantMutationOptions(options));
+};
+
+/**
  * @summary Get a specific trait
  */
 export const getGetTraitUrl = (traitId: number) => {
@@ -572,29 +834,27 @@ export function useGetTrait<
 /**
  * @summary List all trait categories
  */
-export const getListTraitCategoriesUrl = (nftCollection?: string) => {
-  const q = nftCollection && nftCollection !== "wegens" ? `?nftCollection=${encodeURIComponent(nftCollection)}` : "";
-  return `/api/traits/categories${q}`;
+export const getListTraitCategoriesUrl = () => {
+  return `/api/traits/categories`;
 };
 
 export const listTraitCategories = async (
-  nftCollection?: string,
   options?: RequestInit,
 ): Promise<CategoriesResponse> => {
-  return customFetch<CategoriesResponse>(getListTraitCategoriesUrl(nftCollection), {
+  return customFetch<CategoriesResponse>(getListTraitCategoriesUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListTraitCategoriesQueryKey = (nftCollection?: string) => {
-  return [`/api/traits/categories`, nftCollection] as const;
+export const getListTraitCategoriesQueryKey = () => {
+  return [`/api/traits/categories`] as const;
 };
 
 export const getListTraitCategoriesQueryOptions = <
   TData = Awaited<ReturnType<typeof listTraitCategories>>,
   TError = ErrorType<unknown>,
->(nftCollection?: string, options?: {
+>(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listTraitCategories>>,
     TError,
@@ -604,11 +864,11 @@ export const getListTraitCategoriesQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListTraitCategoriesQueryKey(nftCollection);
+  const queryKey = queryOptions?.queryKey ?? getListTraitCategoriesQueryKey();
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof listTraitCategories>>
-  > = ({ signal }) => listTraitCategories(nftCollection, { signal, ...requestOptions });
+  > = ({ signal }) => listTraitCategories({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listTraitCategories>>,
@@ -629,7 +889,7 @@ export type ListTraitCategoriesQueryError = ErrorType<unknown>;
 export function useListTraitCategories<
   TData = Awaited<ReturnType<typeof listTraitCategories>>,
   TError = ErrorType<unknown>,
->(nftCollection?: string, options?: {
+>(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listTraitCategories>>,
     TError,
@@ -637,7 +897,7 @@ export function useListTraitCategories<
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListTraitCategoriesQueryOptions(nftCollection, options);
+  const queryOptions = getListTraitCategoriesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -649,29 +909,27 @@ export function useListTraitCategories<
 /**
  * @summary List all trait themes/collections
  */
-export const getListStoreThemesUrl = (nftCollection?: string) => {
-  const q = nftCollection && nftCollection !== "wegens" ? `?nftCollection=${encodeURIComponent(nftCollection)}` : "";
-  return `/api/store/themes${q}`;
+export const getListStoreThemesUrl = () => {
+  return `/api/store/themes`;
 };
 
 export const listStoreThemes = async (
-  nftCollection?: string,
   options?: RequestInit,
 ): Promise<ThemesResponse> => {
-  return customFetch<ThemesResponse>(getListStoreThemesUrl(nftCollection), {
+  return customFetch<ThemesResponse>(getListStoreThemesUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListStoreThemesQueryKey = (nftCollection?: string) => {
-  return [`/api/store/themes`, nftCollection] as const;
+export const getListStoreThemesQueryKey = () => {
+  return [`/api/store/themes`] as const;
 };
 
 export const getListStoreThemesQueryOptions = <
   TData = Awaited<ReturnType<typeof listStoreThemes>>,
   TError = ErrorType<unknown>,
->(nftCollection?: string, options?: {
+>(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listStoreThemes>>,
     TError,
@@ -681,11 +939,11 @@ export const getListStoreThemesQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListStoreThemesQueryKey(nftCollection);
+  const queryKey = queryOptions?.queryKey ?? getListStoreThemesQueryKey();
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listStoreThemes>>> = ({
     signal,
-  }) => listStoreThemes(nftCollection, { signal, ...requestOptions });
+  }) => listStoreThemes({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listStoreThemes>>,
@@ -706,7 +964,7 @@ export type ListStoreThemesQueryError = ErrorType<unknown>;
 export function useListStoreThemes<
   TData = Awaited<ReturnType<typeof listStoreThemes>>,
   TError = ErrorType<unknown>,
->(nftCollection?: string, options?: {
+>(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listStoreThemes>>,
     TError,
@@ -714,7 +972,7 @@ export function useListStoreThemes<
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListStoreThemesQueryOptions(nftCollection, options);
+  const queryOptions = getListStoreThemesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1179,7 +1437,7 @@ export const confirmTraits = async (
 };
 
 export const getConfirmTraitsMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1209,6 +1467,7 @@ export const getConfirmTraitsMutationOptions = <
     { tokenId: number; data: BodyType<ConfirmTraitsBody> }
   > = (props) => {
     const { tokenId, data } = props ?? {};
+
     return confirmTraits(tokenId, data, requestOptions);
   };
 
@@ -1219,13 +1478,13 @@ export type ConfirmTraitsMutationResult = NonNullable<
   Awaited<ReturnType<typeof confirmTraits>>
 >;
 export type ConfirmTraitsMutationBody = BodyType<ConfirmTraitsBody>;
-export type ConfirmTraitsMutationError = ErrorType<unknown>;
+export type ConfirmTraitsMutationError = ErrorType<void>;
 
 /**
  * @summary Confirm current trait loadout and push metadata on-chain
  */
 export const useConfirmTraits = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1322,17 +1581,15 @@ export function useGetStoreStats<
 /**
  * @summary Create a new trait (admin only)
  */
-export const getCreateTraitUrl = (nftCollection?: string) => {
-  const q = nftCollection && nftCollection !== "wegens" ? `?nftCollection=${encodeURIComponent(nftCollection)}` : "";
-  return `/api/admin/traits${q}`;
+export const getCreateTraitUrl = () => {
+  return `/api/admin/traits`;
 };
 
 export const createTrait = async (
   createTraitBody: CreateTraitBody,
-  nftCollection?: string,
   options?: RequestInit,
 ): Promise<Trait> => {
-  return customFetch<Trait>(getCreateTraitUrl(nftCollection), {
+  return customFetch<Trait>(getCreateTraitUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1347,14 +1604,14 @@ export const getCreateTraitMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createTrait>>,
     TError,
-    { data: BodyType<CreateTraitBody>; nftCollection?: string },
+    { data: BodyType<CreateTraitBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof createTrait>>,
   TError,
-  { data: BodyType<CreateTraitBody>; nftCollection?: string },
+  { data: BodyType<CreateTraitBody> },
   TContext
 > => {
   const mutationKey = ["createTrait"];
@@ -1368,11 +1625,11 @@ export const getCreateTraitMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof createTrait>>,
-    { data: BodyType<CreateTraitBody>; nftCollection?: string }
+    { data: BodyType<CreateTraitBody> }
   > = (props) => {
-    const { data, nftCollection } = props ?? {};
+    const { data } = props ?? {};
 
-    return createTrait(data, nftCollection, requestOptions);
+    return createTrait(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1394,14 +1651,14 @@ export const useCreateTrait = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createTrait>>,
     TError,
-    { data: BodyType<CreateTraitBody>; nftCollection?: string },
+    { data: BodyType<CreateTraitBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof createTrait>>,
   TError,
-  { data: BodyType<CreateTraitBody>; nftCollection?: string },
+  { data: BodyType<CreateTraitBody> },
   TContext
 > => {
   return useMutation(getCreateTraitMutationOptions(options));

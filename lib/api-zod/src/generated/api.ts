@@ -57,7 +57,6 @@ export const ListTraitsQueryParams = zod.object({
     .describe("Filter traits by theme\/collection name"),
   page: zod.coerce.number().default(listTraitsQueryPageDefault),
   limit: zod.coerce.number().default(listTraitsQueryLimitDefault),
-  includeAll: zod.coerce.boolean().optional().describe("Admin: include inactive/vaulted traits"),
 });
 
 export const listTraitsResponseTraitsItemPayoutSplitsItemPercentageMin = 0;
@@ -85,7 +84,8 @@ export const ListTraitsResponse = zod.object({
       totalSupply: zod.number(),
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
-      rarity: zod.string(),
+      rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      nftCollection: zod.string().nullish(),
       payoutSplits: zod
         .array(
           zod.object({
@@ -108,6 +108,68 @@ export const ListTraitsResponse = zod.object({
   total: zod.number(),
   page: zod.number(),
   limit: zod.number(),
+});
+
+/**
+ * @summary List variants for a trait
+ */
+export const ListTraitVariantsParams = zod.object({
+  traitId: zod.coerce.number(),
+});
+
+export const ListTraitVariantsResponse = zod.object({
+  variants: zod.array(
+    zod.object({
+      id: zod.number(),
+      traitId: zod.number(),
+      name: zod.string(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Add a variant to a trait
+ */
+export const CreateTraitVariantParams = zod.object({
+  traitId: zod.coerce.number(),
+});
+
+export const createTraitVariantBodyMediaTypeDefault = `image`;
+export const createTraitVariantBodySortOrderDefault = 0;
+
+export const CreateTraitVariantBody = zod.object({
+  name: zod.string(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().default(createTraitVariantBodyMediaTypeDefault),
+  sortOrder: zod.number().default(createTraitVariantBodySortOrderDefault),
+});
+
+export const CreateTraitVariantResponse = zod.object({
+  variant: zod.object({
+    id: zod.number(),
+    traitId: zod.number(),
+    name: zod.string(),
+    imageUrl: zod.string().nullish(),
+    mediaType: zod.string(),
+    sortOrder: zod.number(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Delete a trait variant
+ */
+export const DeleteTraitVariantParams = zod.object({
+  variantId: zod.coerce.number(),
+});
+
+export const DeleteTraitVariantResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
 });
 
 /**
@@ -140,7 +202,8 @@ export const GetTraitResponse = zod.object({
   totalSupply: zod.number(),
   remainingSupply: zod.number(),
   isActive: zod.boolean(),
-  rarity: zod.string(),
+  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+  nftCollection: zod.string().nullish(),
   payoutSplits: zod
     .array(
       zod.object({
@@ -209,7 +272,8 @@ export const GetLockerResponse = zod.object({
         totalSupply: zod.number(),
         remainingSupply: zod.number(),
         isActive: zod.boolean(),
-        rarity: zod.string(),
+        rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+        nftCollection: zod.string().nullish(),
         payoutSplits: zod
           .array(
             zod.object({
@@ -272,7 +336,7 @@ export const GetUserNftsResponse = zod.object({
       tokenId: zod.number(),
       walletAddress: zod.string(),
       name: zod.string(),
-      imageUrl: zod.string().nullish(),
+      imageUrl: zod.string().optional(),
       equippedTraits: zod.array(
         zod.object({
           category: zod.string(),
@@ -299,7 +363,8 @@ export const GetUserNftsResponse = zod.object({
             totalSupply: zod.number(),
             remainingSupply: zod.number(),
             isActive: zod.boolean(),
-            rarity: zod.string(),
+            rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+            nftCollection: zod.string().nullish(),
             payoutSplits: zod
               .array(
                 zod.object({
@@ -353,7 +418,7 @@ export const ApplyTraitResponse = zod.object({
     tokenId: zod.number(),
     walletAddress: zod.string(),
     name: zod.string(),
-    imageUrl: zod.string().nullish(),
+    imageUrl: zod.string().optional(),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),
@@ -380,7 +445,8 @@ export const ApplyTraitResponse = zod.object({
           totalSupply: zod.number(),
           remainingSupply: zod.number(),
           isActive: zod.boolean(),
-          rarity: zod.string(),
+          rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          nftCollection: zod.string().nullish(),
           payoutSplits: zod
             .array(
               zod.object({
@@ -430,7 +496,8 @@ export const ApplyTraitResponse = zod.object({
       totalSupply: zod.number(),
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
-      rarity: zod.string(),
+      rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      nftCollection: zod.string().nullish(),
       payoutSplits: zod
         .array(
           zod.object({
@@ -478,36 +545,13 @@ export const removeTraitResponseNftEquippedTraitsItemTraitPayoutSplitsItemPercen
 export const removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMin = 0;
 export const removeTraitResponseLockerItemTraitPayoutSplitsItemPercentageMax = 100;
 
-/**
- * @summary Confirm current trait loadout and push metadata on-chain
- */
-export const ConfirmTraitsParams = zod.object({
-  tokenId: zod.coerce.number(),
-});
-
-export const ConfirmTraitsBody = zod.object({
-  walletAddress: zod.string(),
-});
-
-export const ConfirmTraitsResponse = zod.object({
-  success: zod.boolean(),
-  txHash: zod.string(),
-  tokenId: zod.number(),
-  traitsApplied: zod.array(
-    zod.object({
-      category: zod.string(),
-      name: zod.string(),
-    }),
-  ),
-});
-
 export const RemoveTraitResponse = zod.object({
   success: zod.boolean(),
   nft: zod.object({
     tokenId: zod.number(),
     walletAddress: zod.string(),
     name: zod.string(),
-    imageUrl: zod.string().nullish(),
+    imageUrl: zod.string().optional(),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),
@@ -534,7 +578,8 @@ export const RemoveTraitResponse = zod.object({
           totalSupply: zod.number(),
           remainingSupply: zod.number(),
           isActive: zod.boolean(),
-          rarity: zod.string(),
+          rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          nftCollection: zod.string().nullish(),
           payoutSplits: zod
             .array(
               zod.object({
@@ -584,7 +629,8 @@ export const RemoveTraitResponse = zod.object({
       totalSupply: zod.number(),
       remainingSupply: zod.number(),
       isActive: zod.boolean(),
-      rarity: zod.string(),
+      rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      nftCollection: zod.string().nullish(),
       payoutSplits: zod
         .array(
           zod.object({
@@ -612,6 +658,29 @@ export const RemoveTraitResponse = zod.object({
     purchasedAt: zod.coerce.date(),
     txHash: zod.string().nullish(),
   }),
+});
+
+/**
+ * @summary Confirm current trait loadout and push metadata on-chain
+ */
+export const ConfirmTraitsParams = zod.object({
+  tokenId: zod.coerce.number(),
+});
+
+export const ConfirmTraitsBody = zod.object({
+  walletAddress: zod.string(),
+});
+
+export const ConfirmTraitsResponse = zod.object({
+  success: zod.boolean(),
+  txHash: zod.string().describe("Simulated\/real on-chain transaction hash"),
+  tokenId: zod.number(),
+  traitsApplied: zod.array(
+    zod.object({
+      category: zod.string(),
+      name: zod.string(),
+    }),
+  ),
 });
 
 /**
@@ -647,12 +716,11 @@ export const CreateTraitBody = zod.object({
     .describe(
       'Named collection\/theme (e.g. \"Stoner Traits\", \"70s Vibes\")',
     ),
-  description: zod.string().nullish(),
-  imageUrl: zod.string().nullish(),
-  mediaType: zod.string().nullish(),
+  description: zod.string().optional(),
+  imageUrl: zod.string().optional(),
   priceEth: zod.string(),
   totalSupply: zod.number(),
-  rarity: zod.string(),
+  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
   isActive: zod.boolean().default(createTraitBodyIsActiveDefault),
   payoutSplits: zod
     .array(
@@ -683,13 +751,12 @@ export const updateTraitBodyPayoutSplitsItemPercentageMax = 100;
 
 export const UpdateTraitBody = zod.object({
   name: zod.string().optional(),
-  description: zod.string().nullish(),
-  imageUrl: zod.string().nullish(),
-  mediaType: zod.string().nullish(),
+  description: zod.string().optional(),
+  imageUrl: zod.string().optional(),
   priceEth: zod.string().optional(),
   totalSupply: zod.number().optional(),
   isActive: zod.boolean().optional(),
-  rarity: zod.string().optional(),
+  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]).optional(),
   theme: zod
     .string()
     .nullish()
@@ -736,7 +803,8 @@ export const UpdateTraitResponse = zod.object({
   totalSupply: zod.number(),
   remainingSupply: zod.number(),
   isActive: zod.boolean(),
-  rarity: zod.string(),
+  rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+  nftCollection: zod.string().nullish(),
   payoutSplits: zod
     .array(
       zod.object({

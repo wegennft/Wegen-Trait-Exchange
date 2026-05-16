@@ -50,6 +50,18 @@ export const rarityTiersTable = pgTable("rarity_tiers", {
   unique("rarity_tiers_name_collection_unique").on(table.name, table.nftCollection),
 ]);
 
+export const traitVariantsTable = pgTable("trait_variants", {
+  id: serial("id").primaryKey(),
+  traitId: integer("trait_id").notNull().references(() => traitsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  imageUrl: text("image_url"),
+  mediaType: text("media_type").notNull().default("image"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type TraitVariant = typeof traitVariantsTable.$inferSelect;
+
 export const insertTraitSchema = createInsertSchema(traitsTable).omit({
   id: true,
   createdAt: true,

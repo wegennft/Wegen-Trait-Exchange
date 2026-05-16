@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and, isNotNull } from "drizzle-orm";
-import { db, traitsTable, storeSettingsTable } from "@workspace/db";
+import { eq, sql, and, isNotNull, asc } from "drizzle-orm";
+import { db, traitsTable, storeSettingsTable, traitVariantsTable } from "@workspace/db";
 import {
   ListTraitsQueryParams,
   ListTraitsResponse,
@@ -150,6 +150,18 @@ router.get("/store/stats", async (req, res): Promise<void> => {
       recentPurchases,
     }),
   );
+});
+
+// ── GET /traits/:traitId/variants ────────────────────────────────────────────
+router.get("/traits/:traitId/variants", async (req, res): Promise<void> => {
+  const traitId = parseInt(req.params.traitId, 10);
+  if (isNaN(traitId)) { res.status(400).json({ error: "Invalid traitId" }); return; }
+  const variants = await db
+    .select()
+    .from(traitVariantsTable)
+    .where(eq(traitVariantsTable.traitId, traitId))
+    .orderBy(asc(traitVariantsTable.sortOrder), asc(traitVariantsTable.createdAt));
+  res.json({ variants });
 });
 
 // ── GET /store/config — public config for frontend (maintenance gate etc.) ────

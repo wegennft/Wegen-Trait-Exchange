@@ -755,6 +755,32 @@ router.post("/admin/airdrop", async (req, res): Promise<void> => {
 });
 
 // ── Trait Variants ────────────────────────────────────────────────────────────
+
+// GET /admin/all-trait-variants — bulk fetch all variants for a collection, grouped by traitId
+// Must be registered BEFORE /:traitId route to avoid param capture
+router.get("/admin/all-trait-variants", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const rows = await db
+    .select({
+      id: traitVariantsTable.id,
+      traitId: traitVariantsTable.traitId,
+      name: traitVariantsTable.name,
+      imageUrl: traitVariantsTable.imageUrl,
+      mediaType: traitVariantsTable.mediaType,
+      sortOrder: traitVariantsTable.sortOrder,
+    })
+    .from(traitVariantsTable)
+    .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
+    .where(eq(traitsTable.nftCollection, nftCollection))
+    .orderBy(asc(traitVariantsTable.sortOrder), asc(traitVariantsTable.createdAt));
+  const variantsByTraitId: Record<number, Array<{ id: number; name: string; imageUrl: string | null; mediaType: string }>> = {};
+  for (const v of rows) {
+    if (!variantsByTraitId[v.traitId]) variantsByTraitId[v.traitId] = [];
+    variantsByTraitId[v.traitId].push({ id: v.id, name: v.name, imageUrl: v.imageUrl, mediaType: v.mediaType });
+  }
+  res.json({ variantsByTraitId });
+});
+
 router.get("/admin/traits/:traitId/variants", async (req, res): Promise<void> => {
   const traitId = parseInt(req.params.traitId, 10);
   if (isNaN(traitId)) { res.status(400).json({ error: "Invalid traitId" }); return; }

@@ -381,6 +381,18 @@ export function Admin() {
   const [traitCollection, setTraitCollection] = useState<"wegens" | "wegenettes">(collection);
   const traitsData = traitCollection === "wegens" ? wegensTraitsData : wegenettesTraitsData;
   const isLoadingTraits = traitCollection === "wegens" ? isLoadingWegens : isLoadingWegenettes;
+
+  type TraitVariantEntry = { id: number; name: string; imageUrl: string | null; mediaType: string };
+  const { data: allVariantsData, refetch: refetchAllVariants } = useQuery({
+    queryKey: ["admin-all-trait-variants", traitCollection],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/all-trait-variants?nftCollection=${encodeURIComponent(traitCollection)}`);
+      if (!res.ok) return { variantsByTraitId: {} as Record<number, TraitVariantEntry[]> };
+      return res.json() as Promise<{ variantsByTraitId: Record<number, TraitVariantEntry[]> }>;
+    },
+    staleTime: 1000 * 30,
+  });
+  const variantsByTraitId = allVariantsData?.variantsByTraitId ?? {};
   const { data: rarityTiersData } = useQuery({
     queryKey: ["admin-rarity-tiers", collection],
     queryFn: async () => {
@@ -927,15 +939,35 @@ export function Admin() {
                     </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
-                        {trait.imageUrl ? (
-                          <div className="w-14 h-14 rounded-lg bg-secondary/50 overflow-hidden flex-shrink-0">
-                            <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" showBadge />
+                        {/* Original + variants image strip */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {/* Original */}
+                          <div className="flex flex-col items-center gap-0.5">
+                            {trait.imageUrl ? (
+                              <div className="w-14 h-14 rounded-lg bg-secondary/50 overflow-hidden ring-1 ring-primary/30">
+                                <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" showBadge />
+                              </div>
+                            ) : (
+                              <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-base font-bold ring-1 ring-border/30">
+                                {trait.name[0]}
+                              </div>
+                            )}
+                            <span className="text-[8px] font-mono text-muted-foreground/40 uppercase tracking-wide">orig</span>
                           </div>
-                        ) : (
-                          <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-base font-bold">
-                            {trait.name[0]}
-                          </div>
-                        )}
+                          {/* Variant thumbnails */}
+                          {(variantsByTraitId[trait.id] ?? []).map((v) => (
+                            <div key={v.id} className="flex flex-col items-center gap-0.5">
+                              <div className="w-10 h-10 rounded-md bg-secondary/50 overflow-hidden ring-1 ring-border/20 hover:ring-primary/40 transition-all" title={v.name}>
+                                {v.imageUrl ? (
+                                  <TraitMedia url={v.imageUrl} mediaType={v.mediaType} alt={v.name} className="w-full h-full object-contain" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 text-xs">?</div>
+                                )}
+                              </div>
+                              <span className="text-[8px] font-mono text-muted-foreground/40 w-10 text-center truncate">{v.name}</span>
+                            </div>
+                          ))}
+                        </div>
                         <div>{trait.name}</div>
                       </div>
                     </TableCell>
@@ -4169,6 +4201,8 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
       setVariantMediaType("image");
       await refetch();
       void queryClient.invalidateQueries({ queryKey: ["trait-variants"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-all-trait-variants"] });
+      void queryClient.invalidateQueries({ queryKey: ["variant-collections"] });
       toast({ title: "Variant added!" });
     } catch {
       toast({ title: "Failed to add variant", variant: "destructive" });
@@ -4181,6 +4215,8 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
       await fetch(`/api/admin/variants/${variantId}`, { method: "DELETE" });
       await refetch();
       void queryClient.invalidateQueries({ queryKey: ["trait-variants"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-all-trait-variants"] });
+      void queryClient.invalidateQueries({ queryKey: ["variant-collections"] });
       toast({ title: "Variant removed" });
     } catch {
       toast({ title: "Failed to delete variant", variant: "destructive" });

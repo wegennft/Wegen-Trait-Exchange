@@ -415,13 +415,32 @@ export function Admin() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
 
+  const pendingVariantsRef = useRef<PendingVariant[]>([]);
+
   const createTrait = useCreateTrait({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async (data) => {
         toast({ title: "Trait created successfully" });
         setIsCreateOpen(false);
         queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
         queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+        // Post any pending variant packs
+        const variants = pendingVariantsRef.current.filter((v) => v.packName.trim() && v.imageUrl);
+        pendingVariantsRef.current = [];
+        for (const v of variants) {
+          try {
+            await fetch(`/api/admin/traits/${data.id}/variants`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: v.packName.trim(), imageUrl: v.imageUrl, mediaType: v.mediaType }),
+            });
+          } catch { /* silently skip */ }
+        }
+        if (variants.length > 0) {
+          queryClient.invalidateQueries({ queryKey: ['admin-all-trait-variants'] });
+          queryClient.invalidateQueries({ queryKey: ['variant-collections'] });
+          queryClient.invalidateQueries({ queryKey: ['variant-collections-form'] });
+        }
       },
       onError: (err: unknown) => {
         const msg =
@@ -459,11 +478,12 @@ export function Admin() {
     },
   });
 
-  const handleCreate = (data: TraitFormValues) => {
+  const handleCreate = (data: TraitFormValues, variants: PendingVariant[]) => {
+    pendingVariantsRef.current = variants;
     createTrait.mutate({ data, nftCollection: traitCollection });
   };
 
-  const handleUpdate = (data: TraitFormValues) => {
+  const handleUpdate = (data: TraitFormValues, _variants?: PendingVariant[]) => {
     if (!editingTrait) return;
     updateTrait.mutate({
       traitId: editingTrait.id,
@@ -725,6 +745,7 @@ export function Admin() {
               <TraitForm
                 onSubmit={handleCreate}
                 isSubmitting={createTrait.isPending}
+                showVariantSection
               />
             </DialogContent>
           </Dialog>
@@ -3151,6 +3172,13 @@ function PayoutSplitsSummary({
 }
 
 // ── Batch Trait Upload ────────────────────────────────────────────────────────
+interface PendingVariant {
+  id: string;
+  packName: string;
+  imageUrl: string;
+  mediaType: "image" | "gif" | "video" | "audio";
+}
+
 interface BatchQueueItem {
   id: string;
   file: File;
@@ -3159,6 +3187,7 @@ interface BatchQueueItem {
   mediaType: "image" | "gif" | "video" | "audio";
   status: "ready" | "uploading" | "creating" | "done" | "error";
   error?: string;
+  variants: Record<string, { file: File | null; localUrl: string }>;
 }
 
 function detectMediaType(file: File): "image" | "gif" | "video" | "audio" {
@@ -3202,6 +3231,9 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   const [isActive, setIsActive] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [packNames, setPackNames] = useState<string[]>([]);
+  const [newPackInput, setNewPackInput] = useState("");
+  const variantFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadResolveRef = useRef<((url: string) => void) | null>(null);
@@ -3259,6 +3291,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
         name: nameFromFilename(f.name),
         mediaType: mt,
         status: "ready",
+        variants: Object.fromEntries(packNames.map((p) => [p, { file: null, localUrl: "" }])),
       });
     }
     if (rejected.length) {
@@ -3274,7 +3307,10 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   function removeItem(id: string) {
     setQueue((prev) => {
       const item = prev.find((i) => i.id === id);
-      if (item) URL.revokeObjectURL(item.localUrl);
+      if (item) {
+        URL.revokeObjectURL(item.localUrl);
+        Object.values(item.variants).forEach((v) => { if (v.localUrl) URL.revokeObjectURL(v.localUrl); });
+      }
       return prev.filter((i) => i.id !== id);
     });
   }
@@ -3287,6 +3323,46 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
     setQueue((prev) => prev.map((i) => (i.id === id ? { ...i, status, error } : i)));
   }
 
+  function addPack(name: string) {
+    const n = name.trim();
+    if (!n || packNames.includes(n)) return;
+    setPackNames((prev) => [...prev, n]);
+    setQueue((prev) => prev.map((item) => ({
+      ...item,
+      variants: { ...item.variants, [n]: { file: null, localUrl: "" } },
+    })));
+    setNewPackInput("");
+  }
+
+  function removePack(name: string) {
+    setPackNames((prev) => prev.filter((p) => p !== name));
+    setQueue((prev) => prev.map((item) => {
+      const newVariants = { ...item.variants };
+      if (newVariants[name]?.localUrl) URL.revokeObjectURL(newVariants[name].localUrl);
+      delete newVariants[name];
+      return { ...item, variants: newVariants };
+    }));
+  }
+
+  function updateVariantFile(itemId: string, packName: string, file: File) {
+    const localUrl = URL.createObjectURL(file);
+    setQueue((prev) => prev.map((item) => {
+      if (item.id !== itemId) return item;
+      const old = item.variants[packName];
+      if (old?.localUrl) URL.revokeObjectURL(old.localUrl);
+      return { ...item, variants: { ...item.variants, [packName]: { file, localUrl } } };
+    }));
+  }
+
+  function clearVariantFile(itemId: string, packName: string) {
+    setQueue((prev) => prev.map((item) => {
+      if (item.id !== itemId) return item;
+      const old = item.variants[packName];
+      if (old?.localUrl) URL.revokeObjectURL(old.localUrl);
+      return { ...item, variants: { ...item.variants, [packName]: { file: null, localUrl: "" } } };
+    }));
+  }
+
   async function uploadFileAsync(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       uploadResolveRef.current = resolve;
@@ -3295,12 +3371,12 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
     });
   }
 
-  async function createTraitAsync(data: TraitFormValues): Promise<void> {
+  async function createTraitAsync(data: TraitFormValues): Promise<number> {
     return new Promise((resolve, reject) => {
       batchCreateTrait.mutate(
         { data, nftCollection: collection },
         {
-          onSuccess: () => resolve(),
+          onSuccess: (trait) => resolve(trait.id),
           onError: (err) => reject(err),
         },
       );
@@ -3328,8 +3404,9 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
       }
 
       setItemStatus(item.id, "creating");
+      let traitId: number;
       try {
-        await createTraitAsync({
+        traitId = await createTraitAsync({
           name: item.name,
           category,
           priceEth,
@@ -3341,15 +3418,35 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
           isActive,
           payoutSplits: [],
         });
-        setItemStatus(item.id, "done");
       } catch {
         setItemStatus(item.id, "error", "Trait creation failed");
+        continue;
       }
+
+      // Upload and post variant images for this trait
+      for (const [packName, variantInfo] of Object.entries(item.variants)) {
+        if (!variantInfo.file) continue;
+        let variantUrl: string;
+        try {
+          variantUrl = await uploadFileAsync(variantInfo.file);
+          await fetch(`/api/admin/traits/${traitId}/variants`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: packName, imageUrl: variantUrl, mediaType: detectMediaType(variantInfo.file) }),
+          });
+        } catch { /* silently skip failed variant uploads */ }
+      }
+
+      setItemStatus(item.id, "done");
     }
 
     setIsProcessing(false);
     queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
     queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+    if (packNames.length > 0) {
+      queryClient.invalidateQueries({ queryKey: ['admin-all-trait-variants'] });
+      queryClient.invalidateQueries({ queryKey: ['variant-collections'] });
+    }
   }
 
   const doneCount = queue.filter((i) => i.status === "done").length;
@@ -3448,6 +3545,46 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
+      {/* Variant Packs (optional) */}
+      <div className="rounded-lg border border-border/40 bg-secondary/20 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5" />
+              Variant Packs
+              <span className="font-normal text-muted-foreground/50 normal-case tracking-normal">(optional)</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">Add pack names — then assign a variant image to each trait below.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 items-center">
+          <Input
+            value={newPackInput}
+            onChange={(e) => setNewPackInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addPack(newPackInput); } }}
+            placeholder="Pack name (e.g. Cyber Punks)"
+            className="flex-1 h-8 text-sm bg-card border-border/60"
+            disabled={isProcessing}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={() => addPack(newPackInput)} disabled={isProcessing || !newPackInput.trim()}>
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Add Pack
+          </Button>
+        </div>
+        {packNames.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {packNames.map((p) => (
+              <div key={p} className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-primary/40 bg-primary/10 text-xs font-semibold text-primary">
+                {p}
+                <button type="button" onClick={() => removePack(p)} disabled={isProcessing} className="ml-0.5 hover:text-destructive transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Drop zone */}
       <div
         className={`relative border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer ${
@@ -3515,7 +3652,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
             {queue.map((item) => (
               <div
                 key={item.id}
-                className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                className={`rounded-lg border transition-all ${
                   item.status === "done"
                     ? "bg-green-500/5 border-green-500/20"
                     : item.status === "error"
@@ -3525,76 +3662,122 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
                         : "bg-secondary/30 border-border/30"
                 }`}
               >
-                {/* Thumbnail */}
-                <div className="w-10 h-10 rounded flex-shrink-0 overflow-hidden bg-secondary/50 border border-border/30 flex items-center justify-center relative">
-                  {item.mediaType === "video" ? (
-                    <video src={item.localUrl} className="w-full h-full object-cover" muted />
-                  ) : item.mediaType === "audio" ? (
-                    <Music className="w-4 h-4 text-primary" />
-                  ) : (
-                    <img src={item.localUrl} alt={item.name} className="w-full h-full object-cover" />
-                  )}
-                  {item.mediaType !== "image" && (
-                    <span className="absolute bottom-0 inset-x-0 text-[8px] text-center font-bold uppercase text-white bg-black/60">
-                      {item.mediaType}
-                    </span>
-                  )}
-                </div>
+                {/* Main row */}
+                <div className="flex items-center gap-3 p-2.5">
+                  {/* Thumbnail */}
+                  <div className="w-10 h-10 rounded flex-shrink-0 overflow-hidden bg-secondary/50 border border-border/30 flex items-center justify-center relative">
+                    {item.mediaType === "video" ? (
+                      <video src={item.localUrl} className="w-full h-full object-cover" muted />
+                    ) : item.mediaType === "audio" ? (
+                      <Music className="w-4 h-4 text-primary" />
+                    ) : (
+                      <img src={item.localUrl} alt={item.name} className="w-full h-full object-cover" />
+                    )}
+                    {item.mediaType !== "image" && (
+                      <span className="absolute bottom-0 inset-x-0 text-[8px] text-center font-bold uppercase text-white bg-black/60">
+                        {item.mediaType}
+                      </span>
+                    )}
+                  </div>
 
-                {/* Name input */}
-                <Input
-                  value={item.name}
-                  onChange={(e) => updateName(item.id, e.target.value)}
-                  disabled={isProcessing || item.status === "done"}
-                  className="flex-1 h-8 text-sm bg-card border-border/50"
-                  placeholder="Trait name"
-                />
+                  {/* Name input */}
+                  <Input
+                    value={item.name}
+                    onChange={(e) => updateName(item.id, e.target.value)}
+                    disabled={isProcessing || item.status === "done"}
+                    className="flex-1 h-8 text-sm bg-card border-border/50"
+                    placeholder="Trait name"
+                  />
 
-                {/* Status badge */}
-                <div className="flex-shrink-0 w-24 text-right">
-                  {item.status === "ready" && (
-                    <Badge variant="outline" className="text-[10px] border-border/50 text-muted-foreground">
-                      Ready
-                    </Badge>
-                  )}
-                  {item.status === "uploading" && (
-                    <div className="flex items-center gap-1 justify-end">
-                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                      <span className="text-[10px] text-primary">Uploading</span>
-                    </div>
-                  )}
-                  {item.status === "creating" && (
-                    <div className="flex items-center gap-1 justify-end">
-                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                      <span className="text-[10px] text-primary">Creating</span>
-                    </div>
-                  )}
-                  {item.status === "done" && (
-                    <div className="flex items-center gap-1 justify-end">
-                      <CheckCircle2 className="w-3 h-3 text-green-500" />
-                      <span className="text-[10px] text-green-500">Done</span>
-                    </div>
-                  )}
-                  {item.status === "error" && (
-                    <div
-                      className="flex items-center gap-1 justify-end"
-                      title={item.error}
+                  {/* Status badge */}
+                  <div className="flex-shrink-0 w-24 text-right">
+                    {item.status === "ready" && (
+                      <Badge variant="outline" className="text-[10px] border-border/50 text-muted-foreground">
+                        Ready
+                      </Badge>
+                    )}
+                    {item.status === "uploading" && (
+                      <div className="flex items-center gap-1 justify-end">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        <span className="text-[10px] text-primary">Uploading</span>
+                      </div>
+                    )}
+                    {item.status === "creating" && (
+                      <div className="flex items-center gap-1 justify-end">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        <span className="text-[10px] text-primary">Creating</span>
+                      </div>
+                    )}
+                    {item.status === "done" && (
+                      <div className="flex items-center gap-1 justify-end">
+                        <CheckCircle2 className="w-3 h-3 text-green-500" />
+                        <span className="text-[10px] text-green-500">Done</span>
+                      </div>
+                    )}
+                    {item.status === "error" && (
+                      <div
+                        className="flex items-center gap-1 justify-end"
+                        title={item.error}
+                      >
+                        <AlertCircle className="w-3 h-3 text-destructive" />
+                        <span className="text-[10px] text-destructive">Failed</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Remove */}
+                  {!isProcessing && item.status !== "done" && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.id)}
+                      className="flex-shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors"
                     >
-                      <AlertCircle className="w-3 h-3 text-destructive" />
-                      <span className="text-[10px] text-destructive">Failed</span>
-                    </div>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
 
-                {/* Remove */}
-                {!isProcessing && item.status !== "done" && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.id)}
-                    className="flex-shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                {/* Variant slots — shown when packs are configured and item isn't done */}
+                {packNames.length > 0 && item.status !== "done" && (
+                  <div className="px-2.5 pb-2.5 flex flex-wrap gap-2 border-t border-border/20 pt-2">
+                    <span className="w-full text-[9px] font-mono uppercase tracking-widest text-muted-foreground/40">Variant images</span>
+                    {packNames.map((packName) => {
+                      const variantInfo = item.variants[packName];
+                      const inputKey = `${item.id}-${packName}`;
+                      return (
+                        <div key={packName} className="flex flex-col items-center gap-0.5">
+                          <div
+                            className="w-12 h-12 rounded border border-dashed border-border/40 overflow-hidden flex items-center justify-center cursor-pointer relative bg-secondary/30 hover:border-primary/40 transition-all"
+                            onClick={() => { if (!isProcessing) variantFileRefs.current[inputKey]?.click(); }}
+                            title={`Upload ${packName} variant`}
+                          >
+                            {variantInfo?.localUrl ? (
+                              <>
+                                <img src={variantInfo.localUrl} className="w-full h-full object-cover" alt={packName} />
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); clearVariantFile(item.id, packName); }}
+                                  className="absolute top-0 right-0 bg-black/70 rounded-bl p-0.5 text-white hover:bg-destructive transition-colors"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <Plus className="w-4 h-4 text-muted-foreground/30" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*,video/mp4,video/webm"
+                              className="hidden"
+                              ref={(el) => { variantFileRefs.current[inputKey] = el; }}
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) updateVariantFile(item.id, packName, f); e.target.value = ""; }}
+                            />
+                          </div>
+                          <span className="text-[9px] font-mono text-muted-foreground/40 w-12 text-center truncate">{packName}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             ))}
@@ -3818,11 +4001,26 @@ function TraitForm({
   defaultValues,
   onSubmit,
   isSubmitting,
+  showVariantSection = false,
 }: {
   defaultValues?: Partial<Trait>;
-  onSubmit: (data: TraitFormValues) => void;
+  onSubmit: (data: TraitFormValues, variants: PendingVariant[]) => void;
   isSubmitting: boolean;
+  showVariantSection?: boolean;
 }) {
+  const [pendingVariants, setPendingVariants] = useState<PendingVariant[]>([]);
+  const { data: collectionsData } = useQuery({
+    queryKey: ["variant-collections-form"],
+    queryFn: async () => {
+      const res = await fetch(`/api/traits/variant-collections`);
+      if (!res.ok) return { collections: [] as string[] };
+      return res.json() as Promise<{ collections: string[] }>;
+    },
+    enabled: showVariantSection,
+    staleTime: 1000 * 60 * 2,
+  });
+  const existingCollections = collectionsData?.collections ?? [];
+
   const form = useForm<TraitFormValues>({
     resolver: zodResolver(traitSchema),
     defaultValues: {
@@ -3850,7 +4048,7 @@ function TraitForm({
   const totalOk = splits.length === 0 || Math.abs(total - 100) < 0.01;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-2">
+    <form onSubmit={form.handleSubmit((data) => onSubmit(data, pendingVariants))} className="space-y-6 pt-2">
       {/* Core fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2">
@@ -4123,6 +4321,82 @@ function TraitForm({
             </p>
           )}
       </div>
+
+      {/* ── Variant Packs ─────────────────────────────────────────────── */}
+      {showVariantSection && (
+        <>
+          <Separator />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-primary" />
+                  Variant Packs
+                  <span className="text-xs font-normal text-muted-foreground ml-1">(optional)</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Add alternate skin images for different pack names (e.g. "Cyber Punks", "Chrome").
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPendingVariants((prev) => [...prev, { id: Math.random().toString(36).slice(2), packName: existingCollections[0] ?? "", imageUrl: "", mediaType: "image" }])}
+                className="shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Add Pack
+              </Button>
+            </div>
+
+            {pendingVariants.length === 0 && (
+              <div className="rounded-lg border border-dashed border-border/60 px-4 py-4 text-center text-sm text-muted-foreground">
+                No variant packs yet — click "Add Pack" to add an alternate skin.
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {pendingVariants.map((v, idx) => (
+                <div key={v.id} className="p-3 rounded-lg bg-secondary/30 border border-border/40 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Pack Name</Label>
+                      <Input
+                        value={v.packName}
+                        onChange={(e) => setPendingVariants((prev) => prev.map((p, i) => i === idx ? { ...p, packName: e.target.value } : p))}
+                        placeholder="e.g. Cyber Punks, Chrome Edition…"
+                        className="h-8 text-sm bg-card border-border/50"
+                        list={`variant-packs-${v.id}`}
+                      />
+                      {existingCollections.length > 0 && (
+                        <datalist id={`variant-packs-${v.id}`}>
+                          {existingCollections.map((c) => <option key={c} value={c} />)}
+                        </datalist>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setPendingVariants((prev) => prev.filter((_, i) => i !== idx))}
+                      className="h-8 w-8 shrink-0 mt-4 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                  <TraitImageUploader
+                    currentImageUrl={v.imageUrl || undefined}
+                    onUploadComplete={(url) => setPendingVariants((prev) => prev.map((p, i) => i === idx ? { ...p, imageUrl: url } : p))}
+                    onClear={() => setPendingVariants((prev) => prev.map((p, i) => i === idx ? { ...p, imageUrl: "", mediaType: "image" } : p))}
+                    onMediaTypeChange={(mt) => setPendingVariants((prev) => prev.map((p, i) => i === idx ? { ...p, mediaType: mt } : p))}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <Button
         type="submit"

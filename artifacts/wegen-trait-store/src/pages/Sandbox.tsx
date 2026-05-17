@@ -109,7 +109,7 @@ export function Sandbox() {
   const { accent, glow, glow2, gradient, gradient2 } = theme;
   const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
-  const [selectedVariantUrls, setSelectedVariantUrls] = useState<Record<number, string | null>>({});
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [bountyKey, setBountyKey] = useState<string>(newBountyKey);
@@ -200,19 +200,31 @@ export function Sandbox() {
   const selectedCount = Object.values(selected).filter(Boolean).length;
   const activeCatSelectedTrait = selected[activeCategory] ?? null;
 
-  /* ── Variants for the selected trait in the active category ──────────── */
-  const { data: variantsData } = useQuery({
-    queryKey: ["trait-variants", activeCatSelectedTrait?.id ?? null],
+  /* ── Variant pack names available for this nft collection ────────────── */
+  const { data: collectionsData } = useQuery({
+    queryKey: ["variant-collections", collection],
     queryFn: async () => {
-      if (!activeCatSelectedTrait) return { variants: [] as Array<{ id: number; name: string; imageUrl: string | null; mediaType: string }> };
-      const res = await fetch(`/api/traits/${activeCatSelectedTrait.id}/variants`);
-      if (!res.ok) return { variants: [] as Array<{ id: number; name: string; imageUrl: string | null; mediaType: string }> };
-      return res.json() as Promise<{ variants: Array<{ id: number; name: string; imageUrl: string | null; mediaType: string }> }>;
+      const res = await fetch(`/api/traits/variant-collections?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) return { collections: [] as string[] };
+      return res.json() as Promise<{ collections: string[] }>;
     },
-    enabled: !!activeCatSelectedTrait,
     staleTime: 1000 * 60 * 5,
   });
-  const activeTraitVariants = variantsData?.variants ?? [];
+  const variantCollections = collectionsData?.collections ?? [];
+
+  /* ── Variant image map for the active pack ────────────────────────────── */
+  const { data: variantMapData } = useQuery({
+    queryKey: ["variants-by-collection", collection, selectedCollection],
+    queryFn: async () => {
+      if (!selectedCollection) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
+      const res = await fetch(`/api/traits/variants/by-collection?nftCollection=${encodeURIComponent(collection)}&name=${encodeURIComponent(selectedCollection)}`);
+      if (!res.ok) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
+      return res.json() as Promise<{ variantMap: Record<number, { imageUrl: string | null; mediaType: string }> }>;
+    },
+    enabled: true,
+    staleTime: 1000 * 60 * 5,
+  });
+  const variantMap = variantMapData?.variantMap ?? {};
 
   function selectTrait(cat: string, trait: TraitItem | null) {
     setSelected((prev) => ({ ...prev, [cat]: trait }));
@@ -469,8 +481,8 @@ export function Sandbox() {
                 const zIndex = totalLayers - layerIdx;
                 const trait = selected[cat];
                 if (!trait) return null;
-                const variantOverride = selectedVariantUrls[trait.id];
-                const effectiveUrl = typeof variantOverride === 'string' ? variantOverride : trait.imageUrl;
+                const variantEntry = selectedCollection ? variantMap[trait.id] : undefined;
+                const effectiveUrl = variantEntry?.imageUrl ?? trait.imageUrl;
                 if (!effectiveUrl) return null;
                 return (
                   <div key={cat} className="absolute inset-0" style={{ zIndex }}>
@@ -570,6 +582,37 @@ export function Sandbox() {
 
           {/* ── Right: Trait Selector ─────────────────────────────────── */}
           <div className="flex-1 min-w-0">
+            {/* ── Variant Pack Tabs ─────────────────────────────────────── */}
+            {variantCollections.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b" style={{ borderColor: `${accent}22` }}>
+                <button
+                  onClick={() => setSelectedCollection(null)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
+                  style={
+                    !selectedCollection
+                      ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
+                      : { border: "1px solid rgba(255,255,255,0.1)", color: "hsl(var(--muted-foreground))" }
+                  }
+                >
+                  ◈ ORIGINAL
+                </button>
+                {variantCollections.map((col) => (
+                  <button
+                    key={col}
+                    onClick={() => setSelectedCollection(col)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
+                    style={
+                      selectedCollection === col
+                        ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
+                        : { border: "1px solid rgba(255,255,255,0.1)", color: "hsl(var(--muted-foreground))" }
+                    }
+                  >
+                    {col}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Category tabs */}
             <div className="flex flex-wrap gap-2 mb-4">
               {CATEGORIES.map((cat) => {
@@ -758,68 +801,6 @@ export function Sandbox() {
                 </div>
               )}
 
-              {/* ── Variant Picker ─────────────────────────────────────────── */}
-              {activeCatSelectedTrait && activeTraitVariants.length > 0 && (
-                <div className="mt-4 pt-4 border-t" style={{ borderColor: `${accent}22` }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-bold" style={{ ...BANGERS, color: accent }}>◈ VARIANTS</span>
-                    <span className="text-[10px] font-mono text-muted-foreground/40">
-                      {activeTraitVariants.length} alternate version{activeTraitVariants.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {/* Default option */}
-                    <button
-                      onClick={() => setSelectedVariantUrls(prev => ({ ...prev, [activeCatSelectedTrait.id]: null }))}
-                      className="flex flex-col items-center gap-1.5 p-1.5 rounded-xl border transition-all"
-                      style={{
-                        background: !(selectedVariantUrls[activeCatSelectedTrait.id]) ? gradient2 : 'hsl(272 20% 9%)',
-                        border: !(selectedVariantUrls[activeCatSelectedTrait.id]) ? `1px solid ${accent}80` : '1px solid rgba(255,255,255,0.07)',
-                        boxShadow: !(selectedVariantUrls[activeCatSelectedTrait.id]) ? `0 0 10px ${glow2}` : undefined,
-                      }}
-                    >
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-black/40">
-                        {activeCatSelectedTrait.imageUrl ? (
-                          <TraitMedia url={activeCatSelectedTrait.imageUrl} mediaType={activeCatSelectedTrait.mediaType ?? undefined} alt="Default" className="w-full h-full object-contain" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 text-xs">—</div>
-                        )}
-                      </div>
-                      <span className="text-[9px] font-mono w-16 text-center truncate" style={{ color: !(selectedVariantUrls[activeCatSelectedTrait.id]) ? accent : 'hsl(var(--muted-foreground))' }}>
-                        Default
-                      </span>
-                    </button>
-
-                    {/* Variant options */}
-                    {activeTraitVariants.map(v => {
-                      const isActiveV = selectedVariantUrls[activeCatSelectedTrait.id] === v.imageUrl;
-                      return (
-                        <button
-                          key={v.id}
-                          onClick={() => setSelectedVariantUrls(prev => ({ ...prev, [activeCatSelectedTrait.id]: v.imageUrl ?? null }))}
-                          className="flex flex-col items-center gap-1.5 p-1.5 rounded-xl border transition-all"
-                          style={{
-                            background: isActiveV ? gradient2 : 'hsl(272 20% 9%)',
-                            border: isActiveV ? `1px solid ${accent}80` : '1px solid rgba(255,255,255,0.07)',
-                            boxShadow: isActiveV ? `0 0 10px ${glow2}` : undefined,
-                          }}
-                        >
-                          <div className="w-14 h-14 rounded-lg overflow-hidden bg-black/40">
-                            {v.imageUrl ? (
-                              <TraitMedia url={v.imageUrl} mediaType={v.mediaType} alt={v.name} className="w-full h-full object-contain" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 text-lg">📦</div>
-                            )}
-                          </div>
-                          <span className="text-[9px] font-mono w-16 text-center truncate" style={{ color: isActiveV ? accent : 'hsl(var(--muted-foreground))' }}>
-                            {v.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

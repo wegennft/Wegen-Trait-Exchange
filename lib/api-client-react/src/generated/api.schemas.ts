@@ -173,6 +173,21 @@ export interface TraitVariant {
   createdAt: string;
 }
 
+export interface VariantCollectionsResponse {
+  collections: string[];
+}
+
+export type VariantsByCollectionResponseVariantMap = {
+  [key: string]: {
+    imageUrl?: string | null;
+    mediaType: string;
+  };
+};
+
+export interface VariantsByCollectionResponse {
+  variantMap: VariantsByCollectionResponseVariantMap;
+}
+
 export interface TraitVariantsResponse {
   variants: TraitVariant[];
 }
@@ -292,4 +307,13 @@ export type ListTraitsParams = {
   theme?: string;
   page?: number;
   limit?: number;
+};
+
+export type ListVariantCollectionsParams = {
+  nftCollection?: string;
+};
+
+export type GetVariantsByCollectionParams = {
+  nftCollection?: string;
+  name: string;
 };

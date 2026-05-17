@@ -80,6 +80,44 @@ router.get("/traits", async (req, res): Promise<void> => {
   res.json(ListTraitsResponse.parse({ traits, total, page, limit }));
 });
 
+// ── GET /traits/variant-collections — static; must come before /:traitId ─────
+router.get("/traits/variant-collections", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const rows = await db
+    .selectDistinct({ name: traitVariantsTable.name })
+    .from(traitVariantsTable)
+    .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
+    .where(eq(traitsTable.nftCollection, nftCollection))
+    .orderBy(asc(traitVariantsTable.name));
+  res.json({ collections: rows.map((r) => r.name) });
+});
+
+// ── GET /traits/variants/by-collection — static; must come before /:traitId ──
+router.get("/traits/variants/by-collection", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const name = typeof req.query.name === "string" ? req.query.name : "";
+  if (!name) { res.json({ variantMap: {} }); return; }
+  const rows = await db
+    .select({
+      traitId: traitVariantsTable.traitId,
+      imageUrl: traitVariantsTable.imageUrl,
+      mediaType: traitVariantsTable.mediaType,
+    })
+    .from(traitVariantsTable)
+    .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
+    .where(
+      and(
+        eq(traitsTable.nftCollection, nftCollection),
+        eq(traitVariantsTable.name, name),
+      ),
+    );
+  const variantMap: Record<number, { imageUrl: string | null; mediaType: string }> = {};
+  for (const r of rows) {
+    variantMap[r.traitId] = { imageUrl: r.imageUrl, mediaType: r.mediaType };
+  }
+  res.json({ variantMap });
+});
+
 router.get("/traits/:traitId", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.traitId)
     ? req.params.traitId[0]

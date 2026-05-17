@@ -150,6 +150,47 @@ paths:
               schema:
                 $ref: "#/components/schemas/TraitListResponse"
 
+  /traits/variant-collections:
+    get:
+      operationId: listVariantCollections
+      tags: [traits]
+      summary: List all unique variant pack names for a collection
+      parameters:
+        - name: nftCollection
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of variant collection names
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantCollectionsResponse"
+
+  /traits/variants/by-collection:
+    get:
+      operationId: getVariantsByCollection
+      tags: [traits]
+      summary: Get variant image map for all traits in a named pack
+      parameters:
+        - name: nftCollection
+          in: query
+          schema:
+            type: string
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Map of traitId to variant info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantsByCollectionResponse"
+
   /traits/{traitId}/variants:
     get:
       operationId: listTraitVariants
@@ -871,6 +912,34 @@ components:
         - mediaType
         - sortOrder
         - createdAt
+
+    VariantCollectionsResponse:
+      type: object
+      properties:
+        collections:
+          type: array
+          items:
+            type: string
+      required:
+        - collections
+
+    VariantsByCollectionResponse:
+      type: object
+      properties:
+        variantMap:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              imageUrl:
+                type: string
+                nullable: true
+              mediaType:
+                type: string
+            required:
+              - mediaType
+      required:
+        - variantMap
 
     TraitVariantsResponse:
       type: object

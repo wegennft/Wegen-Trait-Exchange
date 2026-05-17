@@ -27,8 +27,10 @@ import type {
   CreateTraitVariantBody,
   DeleteResponse,
   ErrorEnvelope,
+  GetVariantsByCollectionParams,
   HealthStatus,
   ListTraitsParams,
+  ListVariantCollectionsParams,
   LockerItem,
   LockerResponse,
   NftListResponse,
@@ -44,6 +46,8 @@ import type {
   UpdateTraitBody,
   UploadUrlRequest,
   UploadUrlResponse,
+  VariantCollectionsResponse,
+  VariantsByCollectionResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -479,6 +483,218 @@ export function useListTraits<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListTraitsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all unique variant pack names for a collection
+ */
+export const getListVariantCollectionsUrl = (
+  params?: ListVariantCollectionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/traits/variant-collections?${stringifiedParams}`
+    : `/api/traits/variant-collections`;
+};
+
+export const listVariantCollections = async (
+  params?: ListVariantCollectionsParams,
+  options?: RequestInit,
+): Promise<VariantCollectionsResponse> => {
+  return customFetch<VariantCollectionsResponse>(
+    getListVariantCollectionsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListVariantCollectionsQueryKey = (
+  params?: ListVariantCollectionsParams,
+) => {
+  return [
+    `/api/traits/variant-collections`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListVariantCollectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listVariantCollections>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVariantCollectionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVariantCollections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListVariantCollectionsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listVariantCollections>>
+  > = ({ signal }) =>
+    listVariantCollections(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listVariantCollections>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListVariantCollectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listVariantCollections>>
+>;
+export type ListVariantCollectionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all unique variant pack names for a collection
+ */
+
+export function useListVariantCollections<
+  TData = Awaited<ReturnType<typeof listVariantCollections>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVariantCollectionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVariantCollections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListVariantCollectionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get variant image map for all traits in a named pack
+ */
+export const getGetVariantsByCollectionUrl = (
+  params: GetVariantsByCollectionParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/traits/variants/by-collection?${stringifiedParams}`
+    : `/api/traits/variants/by-collection`;
+};
+
+export const getVariantsByCollection = async (
+  params: GetVariantsByCollectionParams,
+  options?: RequestInit,
+): Promise<VariantsByCollectionResponse> => {
+  return customFetch<VariantsByCollectionResponse>(
+    getGetVariantsByCollectionUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetVariantsByCollectionQueryKey = (
+  params?: GetVariantsByCollectionParams,
+) => {
+  return [
+    `/api/traits/variants/by-collection`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetVariantsByCollectionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getVariantsByCollection>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetVariantsByCollectionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVariantsByCollection>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetVariantsByCollectionQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getVariantsByCollection>>
+  > = ({ signal }) =>
+    getVariantsByCollection(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getVariantsByCollection>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetVariantsByCollectionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getVariantsByCollection>>
+>;
+export type GetVariantsByCollectionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get variant image map for all traits in a named pack
+ */
+
+export function useGetVariantsByCollection<
+  TData = Awaited<ReturnType<typeof getVariantsByCollection>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetVariantsByCollectionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVariantsByCollection>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetVariantsByCollectionQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

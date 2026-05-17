@@ -4107,7 +4107,9 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
   const [variantMediaType, setVariantMediaType] = useState<"image" | "gif" | "video" | "audio">("image");
   const [isAdding, setIsAdding] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const variantFileRef = useRef<HTMLInputElement>(null);
+  const { collection } = useCollection();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-trait-variants", traitId],
@@ -4118,6 +4120,20 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
     },
   });
   const variants = data?.variants ?? [];
+
+  const { data: collectionsData } = useQuery({
+    queryKey: ["variant-collections", collection],
+    queryFn: async () => {
+      const res = await fetch(`/api/traits/variant-collections?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) return { collections: [] as string[] };
+      return res.json() as Promise<{ collections: string[] }>;
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+  const existingCollections = collectionsData?.collections ?? [];
+  const filteredSuggestions = existingCollections.filter(
+    (c) => c.toLowerCase().includes(variantName.toLowerCase()) && c !== variantName
+  );
 
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (response) => {
@@ -4211,19 +4227,73 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
 
       {/* Add new variant */}
       <div className="space-y-2 p-3 rounded-lg border border-border/20 bg-secondary/10">
-        <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Add Variant</p>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Add to Variant Pack</p>
+          {existingCollections.length > 0 && (
+            <span className="text-[10px] font-mono text-muted-foreground/40">
+              {existingCollections.length} pack{existingCollections.length !== 1 ? "s" : ""} exist
+            </span>
+          )}
+        </div>
+
+        {/* Existing pack quick-select chips */}
+        {existingCollections.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {existingCollections.map((col) => (
+              <button
+                key={col}
+                type="button"
+                onClick={() => setVariantName(col)}
+                className="px-2 py-0.5 rounded text-[10px] font-mono border transition-all"
+                style={
+                  variantName === col
+                    ? { background: "hsl(272 60% 20%)", border: "1px solid hsl(272 100% 62% / 0.6)", color: "hsl(272 100% 75%)" }
+                    : { border: "1px solid rgba(255,255,255,0.1)", color: "hsl(var(--muted-foreground))" }
+                }
+              >
+                {col}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setVariantName("")}
+              className="px-2 py-0.5 rounded text-[10px] font-mono border border-dashed border-border/30 text-muted-foreground/40 hover:border-primary/40 hover:text-primary/60 transition-all"
+            >
+              + new pack
+            </button>
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <Input
-            value={variantName}
-            onChange={e => setVariantName(e.target.value)}
-            placeholder="e.g. Chrome, Pink, Dark Mode"
-            className="bg-secondary/50 text-sm h-8 flex-1"
-            onKeyDown={e => e.key === "Enter" && void handleAddVariant()}
-          />
-          <Button type="button" size="sm" variant="outline" onClick={() => variantFileRef.current?.click()} disabled={isUploading} className="h-8 px-3 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10">
+          <div className="relative flex-1">
+            <Input
+              value={variantName}
+              onChange={e => { setVariantName(e.target.value); setShowSuggestions(true); }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              placeholder="Pack name (e.g. Cyber Punks, Chrome)"
+              className="bg-secondary/50 text-sm h-8"
+              onKeyDown={e => e.key === "Enter" && void handleAddVariant()}
+            />
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border/40 bg-background shadow-xl overflow-hidden">
+                {filteredSuggestions.map((col) => (
+                  <button
+                    key={col}
+                    type="button"
+                    onMouseDown={() => setVariantName(col)}
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-secondary/60 font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {col}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <Button type="button" size="sm" variant="outline" onClick={() => variantFileRef.current?.click()} disabled={isUploading} className="h-8 px-3 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10 flex-shrink-0">
             {isUploading ? <><Loader2 className="w-3 h-3 animate-spin" />{progress}%</> : <><ImageIcon className="w-3 h-3" />Image</>}
           </Button>
-          <Button type="button" size="sm" onClick={handleAddVariant} disabled={isAdding || !variantName.trim()} className="h-8 px-3 text-xs gap-1.5">
+          <Button type="button" size="sm" onClick={handleAddVariant} disabled={isAdding || !variantName.trim()} className="h-8 px-3 text-xs gap-1.5 flex-shrink-0">
             {isAdding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
             Add
           </Button>
@@ -4233,7 +4303,7 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
             <div className="w-10 h-10 rounded overflow-hidden bg-black/30 flex-shrink-0">
               <TraitMedia url={variantImageUrl} mediaType={variantMediaType} alt="preview" className="w-full h-full object-contain" />
             </div>
-            <span className="text-[10px] text-muted-foreground/60 font-mono truncate flex-1">Image ready</span>
+            <span className="text-[10px] text-muted-foreground/60 font-mono truncate flex-1">Image ready — click Add to save</span>
             <button type="button" onClick={() => setVariantImageUrl("")} className="text-muted-foreground/40 hover:text-destructive"><X className="w-3 h-3" /></button>
           </div>
         )}

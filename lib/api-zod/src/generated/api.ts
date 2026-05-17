@@ -111,6 +111,35 @@ export const ListTraitsResponse = zod.object({
 });
 
 /**
+ * @summary List all unique variant pack names for a collection
+ */
+export const ListVariantCollectionsQueryParams = zod.object({
+  nftCollection: zod.coerce.string().optional(),
+});
+
+export const ListVariantCollectionsResponse = zod.object({
+  collections: zod.array(zod.string()),
+});
+
+/**
+ * @summary Get variant image map for all traits in a named pack
+ */
+export const GetVariantsByCollectionQueryParams = zod.object({
+  nftCollection: zod.coerce.string().optional(),
+  name: zod.coerce.string(),
+});
+
+export const GetVariantsByCollectionResponse = zod.object({
+  variantMap: zod.record(
+    zod.string(),
+    zod.object({
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string(),
+    }),
+  ),
+});
+
+/**
  * @summary List variants for a trait
  */
 export const ListTraitVariantsParams = zod.object({

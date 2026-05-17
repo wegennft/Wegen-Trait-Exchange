@@ -504,6 +504,39 @@ export function Sandbox() {
               </div>
             </div>
 
+            {/* ── Variant Pack Tabs ─────────────────────────────────────── */}
+            {variantCollections.length > 0 && (
+              <div className="w-full" style={{ maxWidth: 380 }}>
+                <div className="flex flex-wrap gap-2 py-3">
+                  <button
+                    onClick={() => setSelectedCollection(null)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
+                    style={
+                      !selectedCollection
+                        ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
+                        : { border: "1px solid rgba(255,255,255,0.12)", color: "hsl(var(--muted-foreground))" }
+                    }
+                  >
+                    ◈ Original
+                  </button>
+                  {variantCollections.map((col) => (
+                    <button
+                      key={col}
+                      onClick={() => setSelectedCollection(col)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
+                      style={
+                        selectedCollection === col
+                          ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
+                          : { border: "1px solid rgba(255,255,255,0.12)", color: "hsl(var(--muted-foreground))" }
+                      }
+                    >
+                      {col}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Action buttons */}
             <div className="flex flex-col gap-2 w-full" style={{ maxWidth: 380 }}>
               <div className="flex gap-2">
@@ -582,37 +615,6 @@ export function Sandbox() {
 
           {/* ── Right: Trait Selector ─────────────────────────────────── */}
           <div className="flex-1 min-w-0">
-            {/* ── Variant Pack Tabs ─────────────────────────────────────── */}
-            {variantCollections.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b" style={{ borderColor: `${accent}22` }}>
-                <button
-                  onClick={() => setSelectedCollection(null)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
-                  style={
-                    !selectedCollection
-                      ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
-                      : { border: "1px solid rgba(255,255,255,0.1)", color: "hsl(var(--muted-foreground))" }
-                  }
-                >
-                  ◈ ORIGINAL
-                </button>
-                {variantCollections.map((col) => (
-                  <button
-                    key={col}
-                    onClick={() => setSelectedCollection(col)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
-                    style={
-                      selectedCollection === col
-                        ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
-                        : { border: "1px solid rgba(255,255,255,0.1)", color: "hsl(var(--muted-foreground))" }
-                    }
-                  >
-                    {col}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* Category tabs */}
             <div className="flex flex-wrap gap-2 mb-4">
               {CATEGORIES.map((cat) => {

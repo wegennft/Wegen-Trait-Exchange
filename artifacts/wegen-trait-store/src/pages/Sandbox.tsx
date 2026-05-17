@@ -504,38 +504,42 @@ export function Sandbox() {
               </div>
             </div>
 
-            {/* ── Variant Pack Tabs ─────────────────────────────────────── */}
-            {variantCollections.length > 0 && (
-              <div className="w-full" style={{ maxWidth: 380 }}>
-                <div className="flex flex-wrap gap-2 py-3">
+            {/* ── Variant Pack Tabs — always visible ────────────────────── */}
+            <div className="w-full" style={{ maxWidth: 380 }}>
+              <div className="flex flex-wrap items-center gap-2 py-3 border-t border-b" style={{ borderColor: `${accent}18` }}>
+                <span className="text-[9px] font-mono uppercase tracking-widest mr-1" style={{ color: `${accent}60` }}>SKIN</span>
+                <button
+                  onClick={() => setSelectedCollection(null)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
+                  style={
+                    !selectedCollection
+                      ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
+                      : { border: "1px solid rgba(255,255,255,0.12)", color: "hsl(var(--muted-foreground))" }
+                  }
+                >
+                  ◈ Original
+                </button>
+                {variantCollections.map((col) => (
                   <button
-                    onClick={() => setSelectedCollection(null)}
+                    key={col}
+                    onClick={() => setSelectedCollection(col)}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
                     style={
-                      !selectedCollection
+                      selectedCollection === col
                         ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
                         : { border: "1px solid rgba(255,255,255,0.12)", color: "hsl(var(--muted-foreground))" }
                     }
                   >
-                    ◈ Original
+                    {col}
                   </button>
-                  {variantCollections.map((col) => (
-                    <button
-                      key={col}
-                      onClick={() => setSelectedCollection(col)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
-                      style={
-                        selectedCollection === col
-                          ? { background: gradient2, border: `1px solid ${accent}80`, boxShadow: `0 0 10px ${glow2}`, color: accent }
-                          : { border: "1px solid rgba(255,255,255,0.12)", color: "hsl(var(--muted-foreground))" }
-                      }
-                    >
-                      {col}
-                    </button>
-                  ))}
-                </div>
+                ))}
+                {variantCollections.length === 0 && (
+                  <span className="text-[10px] font-mono text-muted-foreground/30 italic">
+                    add variant packs in Admin → Edit Trait
+                  </span>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2 w-full" style={{ maxWidth: 380 }}>

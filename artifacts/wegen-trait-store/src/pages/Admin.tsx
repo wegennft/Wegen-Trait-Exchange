@@ -967,6 +967,13 @@ export function Admin() {
                               <span className="text-[8px] font-mono text-muted-foreground/40 w-10 text-center truncate">{v.name}</span>
                             </div>
                           ))}
+                          {/* No variants yet — show a muted add-hint */}
+                          {(variantsByTraitId[trait.id] ?? []).length === 0 && (
+                            <div className="flex flex-col items-center gap-0.5 opacity-30 hover:opacity-60 transition-opacity cursor-pointer" title="Add variants in Edit Trait" onClick={() => setEditingTrait(trait)}>
+                              <div className="w-10 h-10 rounded-md border border-dashed border-border/40 flex items-center justify-center text-muted-foreground text-base">+</div>
+                              <span className="text-[8px] font-mono text-muted-foreground/40 w-10 text-center">variants</span>
+                            </div>
+                          )}
                         </div>
                         <div>{trait.name}</div>
                       </div>

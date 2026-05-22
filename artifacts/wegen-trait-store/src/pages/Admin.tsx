@@ -130,7 +130,7 @@ const traitSchema = z.object({
   priceEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 0.05"),
   totalSupply: z.coerce.number().min(1, "Supply must be at least 1"),
   rarity: z.enum(RARITIES).default("common"),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().default(false),
   payoutSplits: z.array(payoutSplitSchema).default([]),
 }).superRefine((data, ctx) => {
   if (data.payoutSplits.length > 0) {
@@ -899,21 +899,25 @@ export function Admin() {
           <Table>
             <TableHeader>
               <TableRow className="border-border/50 hover:bg-transparent">
-                <TableHead className="w-10 pr-0 pl-4">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border border-border/60 bg-secondary/50 accent-primary cursor-pointer"
-                    checked={allFilteredSelected}
-                    ref={el => { if (el) el.indeterminate = someFilteredSelected; }}
-                    onChange={() => {
-                      if (allFilteredSelected) {
-                        setSelectedIds(new Set());
-                      } else {
-                        setSelectedIds(new Set(filteredTraitsForDisplay.map(t => t.id)));
-                      }
-                    }}
-                    title={allFilteredSelected ? "Deselect all" : "Select all visible"}
-                  />
+                <TableHead className="pr-0 pl-4" style={{ width: "7rem" }}>
+                  <label className="flex items-center gap-2 cursor-pointer select-none group w-fit">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border border-border/60 bg-secondary/50 accent-primary cursor-pointer"
+                      checked={allFilteredSelected}
+                      ref={el => { if (el) el.indeterminate = someFilteredSelected; }}
+                      onChange={() => {
+                        if (allFilteredSelected) {
+                          setSelectedIds(new Set());
+                        } else {
+                          setSelectedIds(new Set(filteredTraitsForDisplay.map(t => t.id)));
+                        }
+                      }}
+                    />
+                    <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground/60 group-hover:text-muted-foreground transition-colors whitespace-nowrap">
+                      {allFilteredSelected ? "Deselect" : "Select All"}
+                    </span>
+                  </label>
                 </TableHead>
                 <TableHead>Trait</TableHead>
                 <TableHead>Category</TableHead>
@@ -3228,7 +3232,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   const [totalSupply, setTotalSupply] = useState(100);
   const [theme, setTheme] = useState("");
   const [rarity, setRarity] = useState<Rarity>("common");
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [packNames, setPackNames] = useState<string[]>([]);
@@ -4033,7 +4037,7 @@ function TraitForm({
       priceEth: defaultValues?.priceEth ?? "0.01",
       totalSupply: defaultValues?.totalSupply ?? 100,
       rarity: (defaultValues?.rarity as Rarity) ?? "common",
-      isActive: defaultValues?.isActive ?? true,
+      isActive: defaultValues?.isActive ?? false,
       payoutSplits: (defaultValues?.payoutSplits as TraitFormValues["payoutSplits"]) ?? [],
     },
   });

@@ -726,7 +726,7 @@ export function Admin() {
               <DialogHeader>
                 <DialogTitle>Batch Upload Traits</DialogTitle>
               </DialogHeader>
-              <BatchTraitUploadDialog onClose={() => setIsBatchOpen(false)} />
+              <BatchTraitUploadDialog onClose={() => setIsBatchOpen(false)} activeCollection={traitCollection} />
             </DialogContent>
           </Dialog>
 
@@ -3225,7 +3225,7 @@ function getImageDimensions(file: File): Promise<{ width: number; height: number
   });
 }
 
-function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
+function BatchTraitUploadDialog({ onClose, activeCollection }: { onClose: () => void; activeCollection: "wegens" | "wegenettes" }) {
   const [queue, setQueue] = useState<BatchQueueItem[]>([]);
   const [category, setCategory] = useState("");
   const [priceEth, setPriceEth] = useState("0.01");
@@ -3378,7 +3378,7 @@ function BatchTraitUploadDialog({ onClose }: { onClose: () => void }) {
   async function createTraitAsync(data: TraitFormValues): Promise<number> {
     return new Promise((resolve, reject) => {
       batchCreateTrait.mutate(
-        { data, nftCollection: collection },
+        { data, nftCollection: activeCollection },
         {
           onSuccess: (trait) => resolve(trait.id),
           onError: (err) => reject(err),

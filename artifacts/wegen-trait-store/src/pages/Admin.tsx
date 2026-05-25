@@ -163,7 +163,7 @@ const LAYER_ICONS: Record<string, string> = {
 function LayerOrderSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { collection } = useCollection();
+  const collection = "wegens" as const; // settings are shared across collections
   const [layers, setLayers] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -1294,7 +1294,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function StoreSettingsTab() {
   const { toast } = useToast();
-  const { collection } = useCollection();
+  const collection = "wegens" as const; // settings are shared across collections
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<StoreSettingsData>({
     storeName: "Wegen Trait Store",
@@ -1983,7 +1983,7 @@ type RarityTierItem = {
 
 function RarityTiersSettings() {
   const { toast } = useToast();
-  const { collection } = useCollection();
+  const collection = "wegens" as const; // settings are shared across collections
   const [tiers, setTiers] = useState<RarityTierItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -2562,7 +2562,7 @@ type FeeFormValues = z.infer<typeof feeSchema>;
 function FeesSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { collection } = useCollection();
+  const collection = "wegens" as const; // settings are shared across collections
 
   const { data: fees, isLoading } = useQuery<FeeSettings>({
     queryKey: ["admin-fees", collection],
@@ -4653,7 +4653,7 @@ type GameSettings = {
 function GamesTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { collection } = useCollection();
+  const collection = "wegens" as const; // settings are shared across collections
 
   const { data: gameSettings, isLoading } = useQuery<GameSettings>({
     queryKey: ["admin-game-settings", collection],

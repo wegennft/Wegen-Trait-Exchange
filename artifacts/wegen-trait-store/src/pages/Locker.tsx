@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCollection } from "@/contexts/CollectionContext";
@@ -128,6 +128,10 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const [demoNfts, setDemoNfts]           = useState<DemoNft[]>(() => SAMPLE_NFTS.map(n => ({ ...n, equippedTraits: n.equippedTraits.map(e => ({ ...e })) })));
   const [demoItems, setDemoItems]         = useState<DemoItem[]>(() => DEMO_LOCKER_ITEMS.map(i => ({ ...i })));
   const [demoEquipping, setDemoEquipping] = useState<number | null>(null);
+
+  const [draggingItemId, setDraggingItemId] = useState<number | null>(null);
+  const [dragOverPreview, setDragOverPreview] = useState(false);
+  const dragEnterCount = useRef(0);
 
   const lockerQueryKey = [...getGetLockerQueryKey(walletAddress || ""), collection];
   const nftsQueryKey   = [...getGetUserNftsQueryKey(walletAddress || ""), collection];
@@ -349,10 +353,29 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
         {activeNft ? (
           <div className="flex items-start gap-4 px-4 py-3">
 
-            {/* Composited preview image */}
+            {/* Composited preview image — drop target */}
             <div
-              className="relative flex-shrink-0 overflow-hidden"
-              style={{ width: 280, height: 280, background: '#0a0612', border: '1px solid rgba(157,0,255,0.25)' }}
+              className="relative flex-shrink-0 overflow-hidden transition-all"
+              style={{
+                width: 280, height: 280, background: '#0a0612',
+                border: dragOverPreview
+                  ? '2px solid rgba(157,0,255,0.9)'
+                  : '1px solid rgba(157,0,255,0.25)',
+                boxShadow: dragOverPreview
+                  ? '0 0 24px rgba(157,0,255,0.5), inset 0 0 20px rgba(157,0,255,0.08)'
+                  : 'none',
+              }}
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+              onDragEnter={() => { dragEnterCount.current++; setDragOverPreview(true); }}
+              onDragLeave={() => { dragEnterCount.current--; if (dragEnterCount.current <= 0) { dragEnterCount.current = 0; setDragOverPreview(false); } }}
+              onDrop={(e) => {
+                e.preventDefault();
+                dragEnterCount.current = 0;
+                setDragOverPreview(false);
+                setDraggingItemId(null);
+                const id = Number(e.dataTransfer.getData("lockerItemId"));
+                if (!isNaN(id) && id !== 0) handleEquip(id);
+              }}
             >
               {/* Base NFT image */}
               {activeNft.imageUrl && (
@@ -375,11 +398,24 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
               )}
 
               {/* Empty state */}
-              {!activeNft.imageUrl && activeNft.equippedTraits.length === 0 && !hoverTrait && (
+              {!activeNft.imageUrl && activeNft.equippedTraits.length === 0 && !hoverTrait && !dragOverPreview && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <Gem className="w-14 h-14 text-primary/20 mx-auto mb-2" />
-                    <p className="text-[10px] font-mono text-muted-foreground/40 uppercase">// hover a trait to preview //</p>
+                    <p className="text-[10px] font-mono text-muted-foreground/40 uppercase">// hover or drag a trait to preview //</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Drag-over overlay */}
+              {dragOverPreview && (
+                <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+                  style={{ background: 'rgba(157,0,255,0.08)' }}>
+                  <div className="text-center">
+                    <div className="text-3xl mb-2">◈</div>
+                    <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: 'hsl(272 100% 78%)' }}>
+                      Drop to equip
+                    </p>
                   </div>
                 </div>
               )}
@@ -635,6 +671,9 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   onHoverEnd={() => setHoverTrait(null)}
                   isEquipping={demo ? demoEquipping === item.id : (applyTrait.isPending && (applyTrait.variables?.data as { lockerItemId?: number })?.lockerItemId === item.id)}
                   isHovered={hoverTrait?.name === item.trait.name && hoverTrait?.category === item.trait.category}
+                  onDragStart={(id) => setDraggingItemId(id)}
+                  onDragEnd={() => setDraggingItemId(null)}
+                  isDragging={draggingItemId === item.id}
                 />
               ))}
             </div>
@@ -731,23 +770,36 @@ interface StashCardProps {
   onHoverEnd: () => void;
   isEquipping: boolean;
   isHovered?: boolean;
+  onDragStart: (id: number) => void;
+  onDragEnd: () => void;
+  isDragging?: boolean;
 }
 
-function StashCard({ item, activeNft, onEquip, onHover, onHoverEnd, isEquipping, isHovered }: StashCardProps) {
+function StashCard({ item, activeNft, onEquip, onHover, onHoverEnd, isEquipping, isHovered, onDragStart, onDragEnd, isDragging }: StashCardProps) {
   const isEquipped       = item.equippedToTokenId !== null;
   const equippedToActive = activeNft && item.equippedToTokenId === activeNft.tokenId;
   const sameCategory     = activeNft?.equippedTraits.some(et => et.category === item.trait.category);
   const { pill, glow }   = getRarityColor(item.trait.rarity);
+  const canDrag          = activeNft && !equippedToActive;
 
   return (
     <div
-      className="group relative overflow-hidden transition-all cursor-pointer"
+      className="group relative overflow-hidden transition-all cursor-grab active:cursor-grabbing"
+      draggable={!!canDrag}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("lockerItemId", String(item.id));
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart(item.id);
+      }}
+      onDragEnd={() => onDragEnd()}
       style={{
         background: 'linear-gradient(160deg,#1c1228,#100b18)',
         border: isHovered
           ? '1px solid rgba(157,0,255,0.7)'
           : isEquipped ? '1px solid rgba(255,200,0,0.3)' : '1px solid rgba(157,0,255,0.18)',
         boxShadow: isHovered ? `0 0 20px ${glow}` : '0 0 0 rgba(157,0,255,0)',
+        opacity: isDragging ? 0.45 : 1,
+        transform: isDragging ? 'scale(0.97)' : undefined,
       }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 16px ${glow}`;

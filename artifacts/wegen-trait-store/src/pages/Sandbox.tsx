@@ -33,7 +33,6 @@ const LAYER_ICONS: Record<string, string> = {
 };
 
 const DEFAULT_LAYER_ORDER = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
-const CATEGORIES = ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
 
 type TraitItem = {
   id: number;
@@ -107,7 +106,7 @@ type GameSettings = {
 export function Sandbox() {
   const { collection, theme } = useCollection();
   const { accent, glow, glow2, gradient, gradient2 } = theme;
-  const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
+  const [activeCategory, setActiveCategory] = useState<string>("");
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -150,21 +149,35 @@ export function Sandbox() {
     return map;
   }, [traits]);
 
+  /* ── Dynamic category list: layerOrder first, then any extras ─────────── */
+  const displayCategories = useMemo(() => {
+    const ordered = layerOrder.filter((c) => byCategory[c]);
+    const extras = Object.keys(byCategory).filter((c) => !layerOrder.includes(c));
+    return [...ordered, ...extras];
+  }, [layerOrder, byCategory]);
+
+  /* ── Reset activeCategory when collection/categories change ──────────── */
+  useEffect(() => {
+    if (displayCategories.length > 0 && !displayCategories.includes(activeCategory)) {
+      setActiveCategory(displayCategories[0]);
+    }
+  }, [displayCategories, activeCategory]);
+
   /* ── Bounty target: pick one trait per category using seeded key ──────── */
   const bountyTraits = useMemo<Record<string, TraitItem | null>>(() => {
     const picks: Record<string, TraitItem | null> = {};
-    for (const cat of CATEGORIES) {
+    for (const cat of displayCategories) {
       const pool = byCategory[cat] ?? [];
       if (pool.length === 0) { picks[cat] = null; continue; }
       const idx = Math.floor(seededRand(bountyKey + "|" + cat) * pool.length);
       picks[cat] = pool[Math.min(idx, pool.length - 1)];
     }
     return picks;
-  }, [byCategory, bountyKey]);
+  }, [byCategory, bountyKey, displayCategories]);
 
   const bountyCats = useMemo(
-    () => CATEGORIES.filter((c) => bountyTraits[c] !== null),
-    [bountyTraits],
+    () => displayCategories.filter((c) => bountyTraits[c] !== null),
+    [bountyTraits, displayCategories],
   );
 
   const bountyMatchCount = useMemo(
@@ -234,7 +247,7 @@ export function Sandbox() {
 
   function randomize() {
     const next: Record<string, TraitItem | null> = {};
-    for (const cat of CATEGORIES) {
+    for (const cat of displayCategories) {
       const pool = byCategory[cat] ?? [];
       next[cat] = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
     }
@@ -621,7 +634,7 @@ export function Sandbox() {
           <div className="flex-1 min-w-0">
             {/* Category tabs */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {CATEGORIES.map((cat) => {
+              {displayCategories.map((cat) => {
                 const isActive = activeCategory === cat;
                 const sel = selected[cat];
                 const hasBountyForCat = bountyTraits[cat] !== null;

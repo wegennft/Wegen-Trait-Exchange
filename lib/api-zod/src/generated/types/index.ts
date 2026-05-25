@@ -23,6 +23,7 @@ export * from "./deleteResponse";
 export * from "./errorEnvelope";
 export * from "./getVariantsByCollectionParams";
 export * from "./healthStatus";
+export * from "./listTraitsNftCollection";
 export * from "./listTraitsParams";
 export * from "./listVariantCollectionsParams";
 export * from "./lockerItem";

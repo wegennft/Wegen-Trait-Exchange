@@ -5,6 +5,7 @@
  * Wegen NFT Trait Store API
  * OpenAPI spec version: 0.1.0
  */
+import type { ListTraitsNftCollection } from "./listTraitsNftCollection";
 
 export type ListTraitsParams = {
   category?: string;
@@ -14,4 +15,12 @@ export type ListTraitsParams = {
   theme?: string;
   page?: number;
   limit?: number;
+  /**
+   * If true, include inactive (vault) traits as well
+   */
+  includeAll?: boolean;
+  /**
+   * Which NFT collection to list traits for
+   */
+  nftCollection?: ListTraitsNftCollection;
 };

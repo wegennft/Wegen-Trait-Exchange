@@ -320,7 +320,23 @@ export type ListTraitsParams = {
   theme?: string;
   page?: number;
   limit?: number;
+  /**
+   * If true, include inactive (vault) traits as well
+   */
+  includeAll?: boolean;
+  /**
+   * Which NFT collection to list traits for
+   */
+  nftCollection?: ListTraitsNftCollection;
 };
+
+export type ListTraitsNftCollection =
+  (typeof ListTraitsNftCollection)[keyof typeof ListTraitsNftCollection];
+
+export const ListTraitsNftCollection = {
+  wegens: "wegens",
+  wegenettes: "wegenettes",
+} as const;
 
 export type ListVariantCollectionsParams = {
   nftCollection?: string;

@@ -48,6 +48,8 @@ export const GetStorageObjectParams = zod.object({
  */
 export const listTraitsQueryPageDefault = 1;
 export const listTraitsQueryLimitDefault = 20;
+export const listTraitsQueryIncludeAllDefault = false;
+export const listTraitsQueryNftCollectionDefault = `wegens`;
 
 export const ListTraitsQueryParams = zod.object({
   category: zod.coerce.string().optional(),
@@ -57,6 +59,14 @@ export const ListTraitsQueryParams = zod.object({
     .describe("Filter traits by theme\/collection name"),
   page: zod.coerce.number().default(listTraitsQueryPageDefault),
   limit: zod.coerce.number().default(listTraitsQueryLimitDefault),
+  includeAll: zod.coerce
+    .boolean()
+    .default(listTraitsQueryIncludeAllDefault)
+    .describe("If true, include inactive (vault) traits as well"),
+  nftCollection: zod
+    .enum(["wegens", "wegenettes"])
+    .default(listTraitsQueryNftCollectionDefault)
+    .describe("Which NFT collection to list traits for"),
 });
 
 export const listTraitsResponseTraitsItemPayoutSplitsItemPercentageMin = 0;

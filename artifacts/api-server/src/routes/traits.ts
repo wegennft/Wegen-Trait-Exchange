@@ -77,6 +77,7 @@ router.get("/traits", async (req, res): Promise<void> => {
   ]);
 
   const total = countResult[0]?.count ?? 0;
+  res.set("Cache-Control", "no-store");
   res.json(ListTraitsResponse.parse({ traits, total, page, limit }));
 });
 

@@ -213,6 +213,17 @@ export const CreateTraitBodyRarity = {
   legendary: "legendary",
 } as const;
 
+/**
+ * Which NFT collection this trait belongs to
+ */
+export type CreateTraitBodyNftCollection =
+  (typeof CreateTraitBodyNftCollection)[keyof typeof CreateTraitBodyNftCollection];
+
+export const CreateTraitBodyNftCollection = {
+  wegens: "wegens",
+  wegenettes: "wegenettes",
+} as const;
+
 export interface CreateTraitBody {
   name: string;
   category: string;
@@ -224,6 +235,8 @@ export interface CreateTraitBody {
   totalSupply: number;
   rarity: CreateTraitBodyRarity;
   isActive?: boolean;
+  /** Which NFT collection this trait belongs to */
+  nftCollection?: CreateTraitBodyNftCollection;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }

@@ -5,6 +5,7 @@
  * Wegen NFT Trait Store API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateTraitBodyNftCollection } from "./createTraitBodyNftCollection";
 import type { CreateTraitBodyRarity } from "./createTraitBodyRarity";
 import type { PayoutSplit } from "./payoutSplit";
 
@@ -19,6 +20,8 @@ export interface CreateTraitBody {
   totalSupply: number;
   rarity: CreateTraitBodyRarity;
   isActive?: boolean;
+  /** Which NFT collection this trait belongs to */
+  nftCollection?: CreateTraitBodyNftCollection;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }

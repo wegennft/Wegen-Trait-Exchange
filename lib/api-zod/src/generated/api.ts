@@ -733,6 +733,7 @@ export const GetStoreStatsResponse = zod.object({
  * @summary Create a new trait (admin only)
  */
 export const createTraitBodyIsActiveDefault = true;
+export const createTraitBodyNftCollectionDefault = `wegens`;
 export const createTraitBodyPayoutSplitsItemPercentageMin = 0;
 export const createTraitBodyPayoutSplitsItemPercentageMax = 100;
 
@@ -751,6 +752,10 @@ export const CreateTraitBody = zod.object({
   totalSupply: zod.number(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
   isActive: zod.boolean().default(createTraitBodyIsActiveDefault),
+  nftCollection: zod
+    .enum(["wegens", "wegenettes"])
+    .default(createTraitBodyNftCollectionDefault)
+    .describe("Which NFT collection this trait belongs to"),
   payoutSplits: zod
     .array(
       zod.object({

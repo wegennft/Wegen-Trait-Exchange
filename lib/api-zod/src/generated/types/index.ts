@@ -16,6 +16,7 @@ export * from "./confirmTraitsBody";
 export * from "./confirmTraitsResponse";
 export * from "./confirmTraitsResponseTraitsAppliedItem";
 export * from "./createTraitBody";
+export * from "./createTraitBodyNftCollection";
 export * from "./createTraitBodyRarity";
 export * from "./createTraitVariantBody";
 export * from "./deleteResponse";

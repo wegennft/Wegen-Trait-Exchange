@@ -1001,6 +1001,11 @@ components:
         isActive:
           type: boolean
           default: true
+        nftCollection:
+          type: string
+          enum: [wegens, wegenettes]
+          default: wegens
+          description: Which NFT collection this trait belongs to
         payoutSplits:
           type: array
           items:

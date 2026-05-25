@@ -480,7 +480,7 @@ export function Admin() {
 
   const handleCreate = (data: TraitFormValues, variants: PendingVariant[]) => {
     pendingVariantsRef.current = variants;
-    createTrait.mutate({ data, nftCollection: traitCollection });
+    createTrait.mutate({ data: { ...data, nftCollection: traitCollection } });
   };
 
   const handleUpdate = (data: TraitFormValues, _variants?: PendingVariant[]) => {
@@ -3378,7 +3378,7 @@ function BatchTraitUploadDialog({ onClose, activeCollection }: { onClose: () => 
   async function createTraitAsync(data: TraitFormValues): Promise<number> {
     return new Promise((resolve, reject) => {
       batchCreateTrait.mutate(
-        { data, nftCollection: activeCollection },
+        { data: { ...data, nftCollection: activeCollection } },
         {
           onSuccess: (trait) => resolve(trait.id),
           onError: (err) => reject(err),

@@ -160,10 +160,9 @@ const LAYER_ICONS: Record<string, string> = {
   Headgear: "🎩",
 };
 
-function LayerOrderSettings() {
+function LayerOrderSettings({ collection }: { collection: "wegens" | "wegenettes" }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const collection = "wegens" as const; // settings are shared across collections
   const [layers, setLayers] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -1214,7 +1213,7 @@ export function Admin() {
         </TabsContent>
 
         <TabsContent value="layers" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
-          <LayerOrderSettings />
+          <LayerOrderSettings collection={traitCollection} />
         </TabsContent>
 
         <TabsContent value="rarities" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">

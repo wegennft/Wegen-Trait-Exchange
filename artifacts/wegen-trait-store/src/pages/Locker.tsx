@@ -125,7 +125,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const [confirmOpen, setConfirmOpen]   = useState(false);
   const [confirmedTx, setConfirmedTx]   = useState<string | null>(null);
 
-  // Demo-mode local interactive state — fully mutable without wallet
   const [demoNfts, setDemoNfts]           = useState<DemoNft[]>(() => SAMPLE_NFTS.map(n => ({ ...n, equippedTraits: n.equippedTraits.map(e => ({ ...e })) })));
   const [demoItems, setDemoItems]         = useState<DemoItem[]>(() => DEMO_LOCKER_ITEMS.map(i => ({ ...i })));
   const [demoEquipping, setDemoEquipping] = useState<number | null>(null);
@@ -192,7 +191,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
 
   const handleConfirm = () => {
     if (demo) {
-      // Demo simulation — fake tx hash
       setTimeout(() => {
         const fakeTx = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
         setConfirmedTx(fakeTx);
@@ -205,9 +203,9 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     confirmTraits.mutate({ tokenId: activeNft.tokenId, data: { walletAddress } });
   };
 
-  const nfts       = demo ? demoNfts  : (nftsData?.nfts ?? []);
+  const nfts        = demo ? demoNfts  : (nftsData?.nfts ?? []);
   const lockerItems = demo ? demoItems : (lockerData?.items ?? []);
-  const activeNft  = (selectedTokenId != null ? nfts.find(n => n.tokenId === selectedTokenId) : nfts[0]) ?? null;
+  const activeNft   = (selectedTokenId != null ? nfts.find(n => n.tokenId === selectedTokenId) : nfts[0]) ?? null;
 
   const allLayers   = useMemo(() => Array.from(new Set(lockerItems.map(i => i.trait.category))).sort(), [lockerItems]);
   const allRarities = ["legendary", "rare", "uncommon", "common"];
@@ -229,7 +227,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const handleEquip = (lockerItemId: number) => {
     if (!activeNft) return;
     if (demo) {
-      // Capture item synchronously before any async delay
       const item = demoItems.find(i => i.id === lockerItemId);
       if (!item) return;
       const tokenId = activeNft.tokenId;
@@ -258,7 +255,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const handleRemove = (category: string) => {
     if (!activeNft) return;
     if (demo) {
-      // Fully interactive demo — update local state
       setDemoNfts(prev => prev.map(n =>
         n.tokenId === activeNft.tokenId
           ? { ...n, equippedTraits: n.equippedTraits.filter(et => et.category !== category) }
@@ -345,284 +341,304 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
         </button>
       </div>
 
-      {/* ── Workspace ── */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* ── NFT Preview Panel ── */}
+      <div
+        className="flex-shrink-0 border-b"
+        style={{ background: 'linear-gradient(180deg,rgba(22,14,34,0.98),rgba(16,11,24,0.97))', borderColor: 'rgba(157,0,255,0.18)' }}
+      >
+        {activeNft ? (
+          <div className="flex items-start gap-4 px-4 py-3">
 
-        {/* ══ LEFT: NFT Compositor ══ */}
-        <div
-          className="flex-shrink-0 flex flex-col border-r"
-          style={{ width: 320, background: 'linear-gradient(180deg,rgba(22,14,34,0.98),rgba(14,9,22,0.98))', borderColor: 'rgba(157,0,255,0.18)' }}
-        >
-          {activeNft ? (
-            <>
-              {/* Composited preview */}
-              <div className="relative flex-shrink-0" style={{ aspectRatio: '1/1', width: '100%', maxHeight: 300 }}>
-                {/* Base NFT image */}
-                {activeNft.imageUrl && (
-                  <img src={activeNft.imageUrl} alt={activeNft.name} className="absolute inset-0 w-full h-full object-cover" />
-                )}
+            {/* Composited preview image */}
+            <div
+              className="relative flex-shrink-0 overflow-hidden"
+              style={{ width: 280, height: 280, background: '#0a0612', border: '1px solid rgba(157,0,255,0.25)' }}
+            >
+              {/* Base NFT image */}
+              {activeNft.imageUrl && (
+                <img src={activeNft.imageUrl} alt={activeNft.name} className="absolute inset-0 w-full h-full object-cover" />
+              )}
 
-                {/* Equipped trait layers (skip hovered category) */}
-                {activeNft.equippedTraits
-                  .filter(et => !hoverTrait || et.category !== hoverTrait.category)
-                  .map(et => et.trait.imageUrl ? (
-                    <img key={et.category} src={et.trait.imageUrl} alt={et.trait.name}
-                      className="absolute inset-0 w-full h-full object-cover" />
-                  ) : null)}
+              {/* Equipped trait layers (skip hovered category) */}
+              {activeNft.equippedTraits
+                .filter(et => !hoverTrait || et.category !== hoverTrait.category)
+                .map(et => et.trait.imageUrl ? (
+                  <img key={et.category} src={et.trait.imageUrl} alt={et.trait.name}
+                    className="absolute inset-0 w-full h-full object-cover" />
+                ) : null)}
 
-                {/* Hover preview layer */}
-                {hoverTrait?.imageUrl && (
-                  <img src={hoverTrait.imageUrl} alt={hoverTrait.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ outline: '2px solid rgba(157,0,255,0.6)' }} />
-                )}
+              {/* Hover preview layer */}
+              {hoverTrait?.imageUrl && (
+                <img src={hoverTrait.imageUrl} alt={hoverTrait.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ outline: '2px solid rgba(157,0,255,0.6)' }} />
+              )}
 
-                {/* Empty state */}
-                {!activeNft.imageUrl && activeNft.equippedTraits.length === 0 && !hoverTrait && (
-                  <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(10,6,18,0.9)' }}>
-                    <div className="text-center">
-                      <Gem className="w-14 h-14 text-primary/20 mx-auto mb-2" />
-                      <p className="text-xs font-mono text-muted-foreground/40 uppercase">// hover a trait to preview //</p>
-                    </div>
+              {/* Empty state */}
+              {!activeNft.imageUrl && activeNft.equippedTraits.length === 0 && !hoverTrait && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <Gem className="w-14 h-14 text-primary/20 mx-auto mb-2" />
+                    <p className="text-[10px] font-mono text-muted-foreground/40 uppercase">// hover a trait to preview //</p>
                   </div>
-                )}
-
-                {/* Dark bg if no images yet but has slots */}
-                {!activeNft.imageUrl && (activeNft.equippedTraits.length > 0 || hoverTrait) && (
-                  <div className="absolute inset-0 -z-10" style={{ background: '#0a0612' }} />
-                )}
-
-                {/* Preview badge */}
-                {hoverTrait && (
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <div className="px-2 py-1 text-[10px] font-mono text-center truncate"
-                      style={{ background: 'rgba(0,0,0,0.85)', border: '1px solid rgba(157,0,255,0.4)', color: 'hsl(272 100% 78%)' }}>
-                      ◈ {hoverTrait.category.toUpperCase()}: {hoverTrait.name}
-                    </div>
-                  </div>
-                )}
-
-                {/* Token label */}
-                <div className="absolute top-2 left-2">
-                  <span className="text-xs font-mono px-1.5 py-0.5" style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(157,0,255,0.3)', color: 'hsl(272 100% 72%)' }}>
-                    #{activeNft.tokenId}
-                  </span>
                 </div>
+              )}
+
+              {/* Token label */}
+              <div className="absolute top-2 left-2">
+                <span className="text-xs font-mono px-1.5 py-0.5" style={{ background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(157,0,255,0.3)', color: 'hsl(272 100% 72%)' }}>
+                  #{activeNft.tokenId}
+                </span>
               </div>
 
-              {/* NFT name */}
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(157,0,255,0.15)' }}>
-                <div className="text-sm font-bold" style={BANGERS}>{activeNft.name}</div>
-                <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
+              {/* Preview badge */}
+              {hoverTrait && (
+                <div className="absolute bottom-2 left-2 right-2">
+                  <div className="px-2 py-1 text-[10px] font-mono text-center truncate"
+                    style={{ background: 'rgba(0,0,0,0.85)', border: '1px solid rgba(157,0,255,0.5)', color: 'hsl(272 100% 78%)' }}>
+                    ◈ PREVIEW · {hoverTrait.category.toUpperCase()}: {hoverTrait.name}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right side: NFT info + equipped strip + confirm */}
+            <div className="flex-1 min-w-0 flex flex-col gap-2.5 py-1" style={{ minHeight: 280 }}>
+
+              {/* NFT name + equipped count */}
+              <div>
+                <div className="text-lg font-bold leading-tight" style={BANGERS}>{activeNft.name}</div>
+                <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
                   {activeNft.equippedTraits.length} trait{activeNft.equippedTraits.length !== 1 ? 's' : ''} equipped
                   {hoverTrait && <span className="ml-1.5 text-primary">· previewing {hoverTrait.category}</span>}
                 </div>
               </div>
 
-              {/* Equipped traits list */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest mb-2">Equipped</div>
+              {/* Equipped traits strip */}
+              <div className="flex-1 flex flex-col gap-1.5 min-h-0">
+                <div className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Equipped Traits</div>
+
                 {activeNft.equippedTraits.length === 0 ? (
-                  <div className="text-center py-6">
-                    <Package className="w-8 h-8 text-muted-foreground/15 mx-auto mb-2" />
-                    <p className="text-[10px] font-mono text-muted-foreground/40 uppercase">// hover a trait to preview //</p>
+                  <div className="flex items-center gap-2 py-2">
+                    <Package className="w-4 h-4 text-muted-foreground/20" />
+                    <span className="text-[10px] font-mono text-muted-foreground/35 uppercase">// nothing equipped yet — hover a trait below to preview //</span>
                   </div>
                 ) : (
-                  activeNft.equippedTraits.map(et => (
-                    <div key={et.category} className="flex items-center gap-2 p-2 group/et rounded"
-                      style={{ background: 'rgba(157,0,255,0.06)', border: '1px solid rgba(157,0,255,0.15)' }}>
-                      {et.trait.imageUrl ? (
-                        <div className="w-8 h-8 flex-shrink-0 rounded overflow-hidden bg-black/40">
-                          <TraitMedia url={et.trait.imageUrl} mediaType={(et.trait as Record<string,unknown>).mediaType as string}
-                            alt={et.trait.name} className="w-full h-full object-cover" />
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeNft.equippedTraits.map(et => (
+                      <div
+                        key={et.category}
+                        className="group/et flex items-center gap-1.5 px-2 py-1 transition-all"
+                        style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.2)' }}
+                      >
+                        {et.trait.imageUrl ? (
+                          <div className="w-6 h-6 flex-shrink-0 overflow-hidden bg-black/40">
+                            <TraitMedia url={et.trait.imageUrl} mediaType={(et.trait as Record<string,unknown>).mediaType as string}
+                              alt={et.trait.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-primary"
+                            style={{ background: 'rgba(157,0,255,0.2)' }}>
+                            {et.category[0]}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold truncate max-w-[100px]">{et.trait.name}</div>
+                          <div className="text-[8px] font-mono text-primary/50 uppercase">{et.category}</div>
                         </div>
-                      ) : (
-                        <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-xs font-bold text-primary rounded"
-                          style={{ background: 'rgba(157,0,255,0.2)' }}>
-                          {et.category[0]}
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold truncate">{et.trait.name}</div>
-                        <div className="text-[9px] font-mono text-primary/60 uppercase">{et.category}</div>
+                        <button
+                          onClick={() => handleRemove(et.category)}
+                          disabled={removeTrait.isPending}
+                          className="ml-0.5 w-4 h-4 flex items-center justify-center transition-all flex-shrink-0 opacity-40 group-hover/et:opacity-100 hover:text-red-400 text-muted-foreground"
+                        >
+                          {removeTrait.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                        </button>
                       </div>
-                      <button onClick={() => handleRemove(et.category)}
-                        disabled={removeTrait.isPending}
-                        className="opacity-0 group-hover/et:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-red-400/70 hover:text-red-400 flex-shrink-0">
-                        {removeTrait.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                      </button>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* ── Confirm Trait Swap button ── */}
-              {activeNft.equippedTraits.length > 0 && (
-                <div className="flex-shrink-0 p-3 border-t" style={{ borderColor: 'rgba(157,0,255,0.2)' }}>
-                  {/* Last confirmed tx badge */}
-                  {confirmedTx && (
-                    <div className="flex items-center gap-1.5 mb-2 px-2 py-1 text-[9px] font-mono rounded"
-                      style={{ background: 'rgba(0,200,100,0.08)', border: '1px solid rgba(0,200,100,0.25)', color: 'hsl(145 70% 55%)' }}>
-                      <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">Confirmed: {confirmedTx.slice(0,10)}…{confirmedTx.slice(-6)}</span>
-                      <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 ml-auto" />
-                    </div>
-                  )}
+              {/* Controls row: Confirm button + tx badge */}
+              <div className="flex items-center gap-2 flex-wrap mt-auto">
+                {activeNft.equippedTraits.length > 0 && (
                   <button
                     onClick={() => setConfirmOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold uppercase transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase transition-all"
                     style={{
                       ...BANGERS,
-                      background: 'linear-gradient(90deg,rgba(157,0,255,0.25),rgba(255,200,0,0.15),rgba(157,0,255,0.25))',
-                      border: '1px solid rgba(255,200,0,0.55)',
-                      boxShadow: '0 0 18px rgba(255,200,0,0.2), inset 0 0 10px rgba(157,0,255,0.1)',
+                      background: 'linear-gradient(90deg,rgba(255,200,0,0.15),rgba(157,0,255,0.15))',
+                      border: '1px solid rgba(255,200,0,0.5)',
                       color: 'hsl(43 100% 65%)',
+                      boxShadow: '0 0 10px rgba(255,200,0,0.08)',
                     }}
                   >
-                    <Zap className="w-4 h-4" />
-                    CONFIRM TRAIT SWAP
+                    <Zap className="w-3.5 h-3.5" />
+                    CONFIRM ON-CHAIN
                   </button>
-                  <p className="text-[9px] font-mono text-muted-foreground/40 text-center mt-1.5">
-                    pushes metadata to Ethereum mainnet
-                  </p>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center p-6">
-                <Gem className="w-12 h-12 text-primary/15 mx-auto mb-3" />
-                <p className="text-xs font-mono text-muted-foreground/40 uppercase tracking-widest">// select a {collectionLabel.replace(/s$/, "")} above //</p>
+                )}
+
+                {confirmedTx && (
+                  <a
+                    href={`https://etherscan.io/tx/${confirmedTx}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-2 py-1.5 text-[10px] font-mono transition-all"
+                    style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', color: 'hsl(142 60% 55%)' }}
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
+                    {confirmedTx.slice(0, 8)}…
+                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                  </a>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* ══ RIGHT: Stash ══ */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-
-          {/* Stash filter/sort bar */}
-          <div className="flex-shrink-0 flex flex-wrap items-center gap-2 px-4 py-2 border-b"
-            style={{ background: 'rgba(16,11,24,0.95)', borderColor: 'rgba(157,0,255,0.15)' }}>
-
-            {/* Title */}
-            <span className="text-sm text-foreground font-bold flex-shrink-0" style={BANGERS}>
-              STASH
-              <span className="ml-2 text-accent text-xs">{lockerItems.length} items</span>
-            </span>
-
-            <div className="flex items-center gap-2 ml-auto flex-wrap">
-              {/* Layer filter */}
-              <div className="relative">
-                <SlidersHorizontal className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-                <select
-                  value={filterLayer}
-                  onChange={e => setFilterLayer(e.target.value)}
-                  className="pl-6 pr-6 py-1 text-xs font-mono appearance-none cursor-pointer"
-                  style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 100% 72%)', outline: 'none' }}
-                >
-                  <option value="all">All Layers</option>
-                  {allLayers.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-              </div>
-
-              {/* Rarity filter */}
-              <div className="relative">
-                <select
-                  value={filterRarity}
-                  onChange={e => setFilterRarity(e.target.value)}
-                  className="pl-3 pr-6 py-1 text-xs font-mono appearance-none cursor-pointer"
-                  style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 100% 72%)', outline: 'none' }}
-                >
-                  <option value="all">All Rarities</option>
-                  {allRarities.map(r => <option key={r} value={r} className="capitalize">{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-              </div>
-
-              {/* Sort */}
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                  className="pl-3 pr-6 py-1 text-xs font-mono appearance-none cursor-pointer"
-                  style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 100% 72%)', outline: 'none' }}
-                >
-                  <option value="rarity-desc">Rarity ↓</option>
-                  <option value="rarity-asc">Rarity ↑</option>
-                  <option value="name">Name A–Z</option>
-                  <option value="date">Newest first</option>
-                </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-              </div>
-
-              {/* Active filter pills */}
-              {filterLayer !== "all" && (
-                <button onClick={() => setFilterLayer("all")}
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded-full"
-                  style={{ background: 'rgba(157,0,255,0.15)', border: '1px solid rgba(157,0,255,0.4)', color: 'hsl(272 100% 72%)' }}>
-                  {filterLayer} <X className="w-2.5 h-2.5" />
-                </button>
-              )}
-              {filterRarity !== "all" && (
-                <button onClick={() => setFilterRarity("all")}
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded-full capitalize"
-                  style={{ background: 'rgba(157,0,255,0.15)', border: '1px solid rgba(157,0,255,0.4)', color: 'hsl(272 100% 72%)' }}>
-                  {filterRarity} <X className="w-2.5 h-2.5" />
-                </button>
-              )}
             </div>
           </div>
-
-          {/* Stash grid */}
-          <div className="flex-1 overflow-y-auto p-3">
-            {!isOpen ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center py-10">
-                  <Lock className="w-12 h-12 text-primary/20 mx-auto mb-3"
-                    style={{ filter: 'drop-shadow(0 0 10px rgba(157,0,255,0.3))' }} />
-                  <p className="text-xs font-mono text-muted-foreground/60 uppercase tracking-widest">
-                    // locker sealed — tap OPEN to reveal your stash //
-                  </p>
-                </div>
-              </div>
-            ) : isLoadingLocker ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-                {[1,2,3,4,5,6,8].map(i => <Skeleton key={i} className="aspect-square" />)}
-              </div>
-            ) : filteredStash.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center py-10">
-                  <Package className="w-10 h-10 text-muted-foreground/15 mx-auto mb-3" />
-                  <p className="text-xs font-mono text-muted-foreground/40 uppercase">
-                    {lockerItems.length === 0 ? "// no traits in stash //" : "// no traits match filters //"}
-                  </p>
-                  {(filterLayer !== "all" || filterRarity !== "all") && (
-                    <button onClick={() => { setFilterLayer("all"); setFilterRarity("all"); }}
-                      className="mt-3 text-xs text-primary/60 font-mono underline hover:text-primary">
-                      clear filters
-                    </button>
-                  )}
+        ) : (
+          /* No NFT state */
+          <div className="flex items-center justify-center py-6 px-4">
+            {isLoadingNfts ? (
+              <div className="flex gap-3">
+                <Skeleton className="w-[280px] h-[280px]" />
+                <div className="flex flex-col gap-2 py-1">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-48 mt-2" />
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-                {filteredStash.map((item, idx) => (
-                  <StashCard
-                    key={item.id}
-                    item={item}
-                    index={idx}
-                    activeNft={activeNft}
-                    onEquip={() => handleEquip(item.id)}
-                    onHover={() => item.trait.imageUrl && setHoverTrait({ imageUrl: item.trait.imageUrl, name: item.trait.name, category: item.trait.category })}
-                    onHoverEnd={() => setHoverTrait(null)}
-                    isEquipping={demo ? demoEquipping === item.id : (applyTrait.isPending && (applyTrait.variables?.data as { lockerItemId?: number })?.lockerItemId === item.id)}
-                  />
-                ))}
+              <div className="text-center">
+                <Gem className="w-12 h-12 text-primary/15 mx-auto mb-2" />
+                <p className="text-xs font-mono text-muted-foreground/40 uppercase">// no {collectionLabel} found in your wallet //</p>
               </div>
             )}
           </div>
+        )}
+      </div>
+
+      {/* ── Traits Grid Section ── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Filter/sort bar */}
+        <div className="flex-shrink-0 flex flex-wrap items-center gap-2 px-4 py-2 border-b"
+          style={{ background: 'rgba(14,9,22,0.98)', borderColor: 'rgba(157,0,255,0.12)' }}>
+
+          <span className="text-sm text-foreground font-bold flex-shrink-0" style={BANGERS}>
+            STASH
+            <span className="ml-2 text-accent text-xs">{lockerItems.length} items</span>
+          </span>
+
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            {/* Layer filter */}
+            <div className="relative">
+              <SlidersHorizontal className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+              <select
+                value={filterLayer}
+                onChange={e => setFilterLayer(e.target.value)}
+                className="pl-6 pr-6 py-1 text-xs font-mono appearance-none cursor-pointer"
+                style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 100% 72%)', outline: 'none' }}
+              >
+                <option value="all">All Layers</option>
+                {allLayers.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+            </div>
+
+            {/* Rarity filter */}
+            <div className="relative">
+              <select
+                value={filterRarity}
+                onChange={e => setFilterRarity(e.target.value)}
+                className="pl-3 pr-6 py-1 text-xs font-mono appearance-none cursor-pointer"
+                style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 100% 72%)', outline: 'none' }}
+              >
+                <option value="all">All Rarities</option>
+                {allRarities.map(r => <option key={r} value={r} className="capitalize">{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+            </div>
+
+            {/* Sort */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                className="pl-3 pr-6 py-1 text-xs font-mono appearance-none cursor-pointer"
+                style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 100% 72%)', outline: 'none' }}
+              >
+                <option value="rarity-desc">Rarity ↓</option>
+                <option value="rarity-asc">Rarity ↑</option>
+                <option value="name">Name A–Z</option>
+                <option value="date">Newest first</option>
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+            </div>
+
+            {/* Active filter pills */}
+            {filterLayer !== "all" && (
+              <button onClick={() => setFilterLayer("all")}
+                className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded-full"
+                style={{ background: 'rgba(157,0,255,0.15)', border: '1px solid rgba(157,0,255,0.4)', color: 'hsl(272 100% 72%)' }}>
+                {filterLayer} <X className="w-2.5 h-2.5" />
+              </button>
+            )}
+            {filterRarity !== "all" && (
+              <button onClick={() => setFilterRarity("all")}
+                className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono rounded-full capitalize"
+                style={{ background: 'rgba(157,0,255,0.15)', border: '1px solid rgba(157,0,255,0.4)', color: 'hsl(272 100% 72%)' }}>
+                {filterRarity} <X className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Stash grid */}
+        <div className="flex-1 overflow-y-auto p-3">
+          {!isOpen ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center py-10">
+                <Lock className="w-12 h-12 text-primary/20 mx-auto mb-3"
+                  style={{ filter: 'drop-shadow(0 0 10px rgba(157,0,255,0.3))' }} />
+                <p className="text-xs font-mono text-muted-foreground/60 uppercase tracking-widest">
+                  // locker sealed — tap OPEN to reveal your stash //
+                </p>
+              </div>
+            </div>
+          ) : isLoadingLocker ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+              {[1,2,3,4,5,6,8].map(i => <Skeleton key={i} className="aspect-square" />)}
+            </div>
+          ) : filteredStash.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center py-10">
+                <Package className="w-10 h-10 text-muted-foreground/15 mx-auto mb-3" />
+                <p className="text-xs font-mono text-muted-foreground/40 uppercase">
+                  {lockerItems.length === 0 ? "// no traits in stash //" : "// no traits match filters //"}
+                </p>
+                {(filterLayer !== "all" || filterRarity !== "all") && (
+                  <button onClick={() => { setFilterLayer("all"); setFilterRarity("all"); }}
+                    className="mt-3 text-xs text-primary/60 font-mono underline hover:text-primary">
+                    clear filters
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+              {filteredStash.map((item, idx) => (
+                <StashCard
+                  key={item.id}
+                  item={item}
+                  index={idx}
+                  activeNft={activeNft}
+                  onEquip={() => handleEquip(item.id)}
+                  onHover={() => item.trait.imageUrl && setHoverTrait({ imageUrl: item.trait.imageUrl, name: item.trait.name, category: item.trait.category })}
+                  onHoverEnd={() => setHoverTrait(null)}
+                  isEquipping={demo ? demoEquipping === item.id : (applyTrait.isPending && (applyTrait.variables?.data as { lockerItemId?: number })?.lockerItemId === item.id)}
+                  isHovered={hoverTrait?.name === item.trait.name && hoverTrait?.category === item.trait.category}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -648,7 +664,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   to Ethereum mainnet and update its on-chain metadata.
                 </p>
 
-                {/* Traits list */}
                 {activeNft && activeNft.equippedTraits.length > 0 && (
                   <div className="mt-3 space-y-1.5">
                     <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest mb-2">Traits being applied:</p>
@@ -715,21 +730,24 @@ interface StashCardProps {
   onHover: () => void;
   onHoverEnd: () => void;
   isEquipping: boolean;
+  isHovered?: boolean;
 }
 
-function StashCard({ item, activeNft, onEquip, onHover, onHoverEnd, isEquipping }: StashCardProps) {
-  const isEquipped      = item.equippedToTokenId !== null;
+function StashCard({ item, activeNft, onEquip, onHover, onHoverEnd, isEquipping, isHovered }: StashCardProps) {
+  const isEquipped       = item.equippedToTokenId !== null;
   const equippedToActive = activeNft && item.equippedToTokenId === activeNft.tokenId;
-  const sameCategory    = activeNft?.equippedTraits.some(et => et.category === item.trait.category);
-  const { pill, glow }  = getRarityColor(item.trait.rarity);
+  const sameCategory     = activeNft?.equippedTraits.some(et => et.category === item.trait.category);
+  const { pill, glow }   = getRarityColor(item.trait.rarity);
 
   return (
     <div
       className="group relative overflow-hidden transition-all cursor-pointer"
       style={{
         background: 'linear-gradient(160deg,#1c1228,#100b18)',
-        border: isEquipped ? '1px solid rgba(255,200,0,0.3)' : '1px solid rgba(157,0,255,0.18)',
-        boxShadow: `0 0 0 rgba(157,0,255,0)`,
+        border: isHovered
+          ? '1px solid rgba(157,0,255,0.7)'
+          : isEquipped ? '1px solid rgba(255,200,0,0.3)' : '1px solid rgba(157,0,255,0.18)',
+        boxShadow: isHovered ? `0 0 20px ${glow}` : '0 0 0 rgba(157,0,255,0)',
       }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 16px ${glow}`;
@@ -749,6 +767,14 @@ function StashCard({ item, activeNft, onEquip, onHover, onHoverEnd, isEquipping 
             style={{ background: 'hsl(43 100% 52%)', color: '#000' }}>
             {equippedToActive ? 'On' : 'Used'}
           </div>
+        </div>
+      )}
+
+      {/* Hover preview badge overlay */}
+      {isHovered && (
+        <div className="absolute top-0 left-0 right-0 z-10 px-1.5 py-0.5 text-center"
+          style={{ background: 'rgba(157,0,255,0.85)' }}>
+          <span className="text-[8px] font-bold uppercase tracking-widest text-white">◈ Previewing</span>
         </div>
       )}
 

@@ -88,7 +88,12 @@ router.get("/traits/variant-collections", async (req, res): Promise<void> => {
     .selectDistinct({ name: traitVariantsTable.name })
     .from(traitVariantsTable)
     .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
-    .where(eq(traitsTable.nftCollection, nftCollection))
+    .where(
+      and(
+        eq(traitsTable.nftCollection, nftCollection),
+        eq(traitVariantsTable.isEnabled, true),
+      ),
+    )
     .orderBy(asc(traitVariantsTable.name));
   res.json({ collections: rows.map((r) => r.name) });
 });
@@ -110,6 +115,7 @@ router.get("/traits/variants/by-collection", async (req, res): Promise<void> => 
       and(
         eq(traitsTable.nftCollection, nftCollection),
         eq(traitVariantsTable.name, name),
+        eq(traitVariantsTable.isEnabled, true),
       ),
     );
   const variantMap: Record<number, { imageUrl: string | null; mediaType: string }> = {};
@@ -198,7 +204,7 @@ router.get("/traits/:traitId/variants", async (req, res): Promise<void> => {
   const variants = await db
     .select()
     .from(traitVariantsTable)
-    .where(eq(traitVariantsTable.traitId, traitId))
+    .where(and(eq(traitVariantsTable.traitId, traitId), eq(traitVariantsTable.isEnabled, true)))
     .orderBy(asc(traitVariantsTable.sortOrder), asc(traitVariantsTable.createdAt));
   res.json({ variants });
 });

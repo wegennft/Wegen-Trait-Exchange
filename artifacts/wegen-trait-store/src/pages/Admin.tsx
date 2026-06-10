@@ -4432,7 +4432,7 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
     queryFn: async () => {
       const res = await fetch(`/api/admin/traits/${traitId}/variants`);
       if (!res.ok) throw new Error("Failed to load variants");
-      return res.json() as Promise<{ variants: Array<{ id: number; name: string; imageUrl: string | null; mediaType: string; sortOrder: number }> }>;
+      return res.json() as Promise<{ variants: Array<{ id: number; name: string; imageUrl: string | null; mediaType: string; sortOrder: number; isEnabled: boolean }> }>;
     },
   });
   const variants = data?.variants ?? [];
@@ -4507,6 +4507,23 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
     } finally { setIsDeletingId(null); }
   };
 
+  const handleToggleVariant = async (variantId: number, isEnabled: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/variants/${variantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isEnabled }),
+      });
+      if (!res.ok) throw new Error("Failed to update variant");
+      await refetch();
+      void queryClient.invalidateQueries({ queryKey: ["trait-variants"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-all-trait-variants"] });
+      void queryClient.invalidateQueries({ queryKey: ["variant-collections"] });
+    } catch {
+      toast({ title: "Failed to update variant", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-4 pt-2">
       <Separator />
@@ -4524,7 +4541,14 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
       ) : (
         <div className="flex flex-wrap gap-2">
           {variants.map(v => (
-            <div key={v.id} className="group relative flex flex-col items-center gap-1 p-1.5 rounded-lg border border-border/30 bg-secondary/20 hover:border-border/60 transition-all">
+            <div
+              key={v.id}
+              className={`group relative flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all ${
+                v.isEnabled
+                  ? "border-border/30 bg-secondary/20 hover:border-border/60"
+                  : "border-border/15 bg-secondary/8 opacity-50"
+              }`}
+            >
               <div className="w-14 h-14 rounded overflow-hidden bg-black/30">
                 {v.imageUrl ? (
                   <TraitMedia url={v.imageUrl} mediaType={v.mediaType} alt={v.name} className="w-full h-full object-contain" />
@@ -4533,6 +4557,11 @@ function TraitVariantsManager({ traitId }: { traitId: number }) {
                 )}
               </div>
               <span className="text-[9px] font-mono w-14 text-center truncate text-muted-foreground/70">{v.name}</span>
+              <Switch
+                checked={v.isEnabled}
+                onCheckedChange={(checked) => void handleToggleVariant(v.id, checked)}
+                className="scale-75"
+              />
               <button
                 onClick={() => handleDeleteVariant(v.id)}
                 disabled={isDeletingId === v.id}

@@ -768,17 +768,32 @@ router.get("/admin/all-trait-variants", async (req, res): Promise<void> => {
       imageUrl: traitVariantsTable.imageUrl,
       mediaType: traitVariantsTable.mediaType,
       sortOrder: traitVariantsTable.sortOrder,
+      isEnabled: traitVariantsTable.isEnabled,
     })
     .from(traitVariantsTable)
     .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
     .where(eq(traitsTable.nftCollection, nftCollection))
     .orderBy(asc(traitVariantsTable.sortOrder), asc(traitVariantsTable.createdAt));
-  const variantsByTraitId: Record<number, Array<{ id: number; name: string; imageUrl: string | null; mediaType: string }>> = {};
+  const variantsByTraitId: Record<number, Array<{ id: number; name: string; imageUrl: string | null; mediaType: string; isEnabled: boolean }>> = {};
   for (const v of rows) {
     if (!variantsByTraitId[v.traitId]) variantsByTraitId[v.traitId] = [];
-    variantsByTraitId[v.traitId].push({ id: v.id, name: v.name, imageUrl: v.imageUrl, mediaType: v.mediaType });
+    variantsByTraitId[v.traitId].push({ id: v.id, name: v.name, imageUrl: v.imageUrl, mediaType: v.mediaType, isEnabled: v.isEnabled });
   }
   res.json({ variantsByTraitId });
+});
+
+router.patch("/admin/variants/:variantId", async (req, res): Promise<void> => {
+  const variantId = parseInt(req.params.variantId, 10);
+  if (isNaN(variantId)) { res.status(400).json({ error: "Invalid variantId" }); return; }
+  const { isEnabled } = req.body as { isEnabled?: boolean };
+  if (typeof isEnabled !== "boolean") { res.status(400).json({ error: "isEnabled (boolean) is required" }); return; }
+  const [updated] = await db
+    .update(traitVariantsTable)
+    .set({ isEnabled })
+    .where(eq(traitVariantsTable.id, variantId))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Variant not found" }); return; }
+  res.json({ variant: updated });
 });
 
 router.get("/admin/traits/:traitId/variants", async (req, res): Promise<void> => {

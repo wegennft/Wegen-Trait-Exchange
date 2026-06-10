@@ -57,6 +57,7 @@ export const traitVariantsTable = pgTable("trait_variants", {
   imageUrl: text("image_url"),
   mediaType: text("media_type").notNull().default("image"),
   sortOrder: integer("sort_order").notNull().default(0),
+  isEnabled: boolean("is_enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

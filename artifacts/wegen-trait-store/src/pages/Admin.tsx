@@ -160,6 +160,158 @@ const LAYER_ICONS: Record<string, string> = {
   Headgear: "🎩",
 };
 
+function VariantPacksManager({ collection }: { collection: "wegens" | "wegenettes" }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
+  const [masterToggling, setMasterToggling] = useState(false);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin-variant-packs", collection],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/variant-packs?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) throw new Error("Failed to load variant packs");
+      return res.json() as Promise<{ packs: Array<{ name: string; total: number; enabled: number }> }>;
+    },
+  });
+  const packs = data?.packs ?? [];
+  const allEnabled = packs.length > 0 && packs.every((p) => p.enabled === p.total);
+  const anyEnabled = packs.some((p) => p.enabled > 0);
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin-variant-packs"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin-all-trait-variants"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin-trait-variants"] });
+    void queryClient.invalidateQueries({ queryKey: ["variant-collections"] });
+  };
+
+  const togglePack = async (name: string, isEnabled: boolean) => {
+    setToggling((prev) => new Set(prev).add(name));
+    try {
+      const res = await fetch(`/api/admin/variant-packs?nftCollection=${encodeURIComponent(collection)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, isEnabled }),
+      });
+      if (!res.ok) throw new Error("Failed to update pack");
+      await refetch();
+      invalidate();
+    } catch {
+      toast({ title: `Failed to update ${name}`, variant: "destructive" });
+    } finally {
+      setToggling((prev) => { const s = new Set(prev); s.delete(name); return s; });
+    }
+  };
+
+  const toggleAll = async (isEnabled: boolean) => {
+    setMasterToggling(true);
+    try {
+      await Promise.all(packs.map((p) =>
+        fetch(`/api/admin/variant-packs?nftCollection=${encodeURIComponent(collection)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: p.name, isEnabled }),
+        })
+      ));
+      await refetch();
+      invalidate();
+      toast({ title: isEnabled ? "All variant packs enabled" : "All variant packs disabled" });
+    } catch {
+      toast({ title: "Failed to update all packs", variant: "destructive" });
+    } finally {
+      setMasterToggling(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold mb-1">Variant Packs</h2>
+          <p className="text-sm text-muted-foreground max-w-md">
+            Turn entire variant packs on or off. Disabled packs are hidden from the Sandbox and store.
+          </p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground/50 py-8">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading packs…
+        </div>
+      ) : packs.length === 0 ? (
+        <p className="text-sm text-muted-foreground/40 font-mono py-8">// no variant packs yet — add variants to traits first //</p>
+      ) : (
+        <div className="space-y-3 max-w-lg">
+          {/* Master toggle */}
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-primary/30 bg-primary/5">
+            <div className="flex items-center gap-3">
+              <Layers className="w-4 h-4 text-primary" />
+              <div>
+                <div className="font-semibold text-sm">All Variant Packs</div>
+                <div className="text-[10px] text-muted-foreground/60">
+                  {packs.length} pack{packs.length !== 1 ? "s" : ""} · {packs.reduce((s, p) => s + p.total, 0)} total variants
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {masterToggling && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+              <Switch
+                checked={allEnabled}
+                onCheckedChange={(checked) => void toggleAll(checked)}
+                disabled={masterToggling}
+              />
+            </div>
+          </div>
+
+          <Separator className="opacity-20" />
+
+          {/* Per-pack rows */}
+          {packs.map((pack) => {
+            const isPackEnabled = pack.enabled === pack.total;
+            const isPartial = pack.enabled > 0 && pack.enabled < pack.total;
+            const isTogglingThis = toggling.has(pack.name);
+            return (
+              <div
+                key={pack.name}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+                  isPackEnabled
+                    ? "border-border/40 bg-card"
+                    : "border-border/20 bg-card/50 opacity-60"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Package className="w-4 h-4 text-muted-foreground/50" />
+                  <div>
+                    <div className="font-semibold text-sm">{pack.name}</div>
+                    <div className="text-[10px] text-muted-foreground/50 font-mono">
+                      {isPartial
+                        ? `${pack.enabled} / ${pack.total} enabled`
+                        : `${pack.total} variant${pack.total !== 1 ? "s" : ""}`}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isPartial && (
+                    <span className="text-[10px] font-mono text-yellow-500/70 px-1.5 py-0.5 rounded border border-yellow-500/20 bg-yellow-500/5">
+                      partial
+                    </span>
+                  )}
+                  {isTogglingThis && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                  <Switch
+                    checked={isPackEnabled || isPartial}
+                    onCheckedChange={(checked) => void togglePack(pack.name, checked)}
+                    disabled={isTogglingThis || masterToggling}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LayerOrderSettings({ collection }: { collection: "wegens" | "wegenettes" }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -622,6 +774,9 @@ export function Admin() {
           </TabsTrigger>
           <TabsTrigger value="airdrop" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Gift className="w-4 h-4" /> Airdrop
+          </TabsTrigger>
+          <TabsTrigger value="variant-packs" className="flex items-center gap-2 rounded-sm px-4 py-2">
+            <Package className="w-4 h-4" /> Variant Packs
           </TabsTrigger>
         </TabsList>
 
@@ -1230,6 +1385,10 @@ export function Admin() {
 
         <TabsContent value="airdrop" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <AirdropTab />
+        </TabsContent>
+
+        <TabsContent value="variant-packs" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <VariantPacksManager collection={traitCollection} />
         </TabsContent>
       </Tabs>
     </div>

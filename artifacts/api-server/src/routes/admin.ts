@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, asc, inArray, desc } from "drizzle-orm";
+import { eq, sql, asc, inArray, desc, and } from "drizzle-orm";
 import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable, traitVariantsTable } from "@workspace/db";
 
 function getNftCollection(req: import("express").Request): string {
@@ -831,6 +831,48 @@ router.delete("/admin/variants/:variantId", async (req, res): Promise<void> => {
   if (isNaN(variantId)) { res.status(400).json({ error: "Invalid variantId" }); return; }
   await db.delete(traitVariantsTable).where(eq(traitVariantsTable.id, variantId));
   res.json({ success: true });
+});
+
+// GET /admin/variant-packs — summary of all packs for a collection (name, total, enabled count)
+router.get("/admin/variant-packs", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const rows = await db
+    .select({
+      name: traitVariantsTable.name,
+      total: sql<number>`count(*)::int`,
+      enabled: sql<number>`sum(case when ${traitVariantsTable.isEnabled} then 1 else 0 end)::int`,
+    })
+    .from(traitVariantsTable)
+    .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
+    .where(eq(traitsTable.nftCollection, nftCollection))
+    .groupBy(traitVariantsTable.name)
+    .orderBy(asc(traitVariantsTable.name));
+  res.json({ packs: rows });
+});
+
+// PATCH /admin/variant-packs — bulk-toggle all variants in a named pack for a collection
+router.patch("/admin/variant-packs", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const { name, isEnabled } = req.body as { name?: string; isEnabled?: boolean };
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" }); return;
+  }
+  if (typeof isEnabled !== "boolean") {
+    res.status(400).json({ error: "isEnabled (boolean) is required" }); return;
+  }
+  // Get trait IDs for this collection
+  const traitIds = await db
+    .select({ id: traitsTable.id })
+    .from(traitsTable)
+    .where(eq(traitsTable.nftCollection, nftCollection));
+  if (traitIds.length === 0) { res.json({ updated: 0 }); return; }
+  const ids = traitIds.map((t) => t.id);
+  const result = await db
+    .update(traitVariantsTable)
+    .set({ isEnabled })
+    .where(and(inArray(traitVariantsTable.traitId, ids), eq(traitVariantsTable.name, name.trim())))
+    .returning({ id: traitVariantsTable.id });
+  res.json({ updated: result.length });
 });
 
 router.get("/admin/airdrop-history", async (req, res): Promise<void> => {

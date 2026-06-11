@@ -177,6 +177,7 @@ function BulkVariantUploader({ collection }: { collection: "wegens" | "wegenette
   const [matches, setMatches] = useState<BulkMatch[]>([]);
   const [step, setStep] = useState<"configure" | "preview" | "uploading" | "done">("configure");
   const [uploadStats, setUploadStats] = useState({ done: 0, errors: 0, total: 0 });
+  const [isDragging, setIsDragging] = useState(false);
 
   const { data: traitsData } = useListTraits({ includeAll: true, limit: 9999, nftCollection: collection });
   const traits = (traitsData?.traits ?? []) as Array<{ id: number; name: string; category: string }>;
@@ -299,11 +300,21 @@ function BulkVariantUploader({ collection }: { collection: "wegens" | "wegenette
       {step === "configure" && (
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="max-w-sm border-2 border-dashed border-border/40 rounded-xl p-10 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group"
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
+          onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFileSelect(e.dataTransfer.files); }}
+          className={`max-w-sm border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all group ${
+            isDragging
+              ? "border-primary bg-primary/10 scale-[1.01]"
+              : "border-border/40 hover:border-primary/50 hover:bg-primary/5"
+          }`}
         >
-          <Upload className="w-10 h-10 text-primary/40 group-hover:text-primary/70 mx-auto mb-3 transition-colors" />
-          <p className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Click to select files</p>
-          <p className="text-xs text-muted-foreground/50 mt-1">PNG, GIF, JPG, WebP — select multiple at once</p>
+          <Upload className={`w-10 h-10 mx-auto mb-3 transition-colors ${isDragging ? "text-primary" : "text-primary/40 group-hover:text-primary/70"}`} />
+          <p className={`text-sm font-semibold transition-colors ${isDragging ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
+            {isDragging ? "Drop files here" : "Click or drag files here"}
+          </p>
+          <p className="text-xs text-muted-foreground/50 mt-1">PNG, GIF, JPG, WebP — multiple files at once</p>
         </div>
       )}
 

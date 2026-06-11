@@ -200,7 +200,13 @@ function BulkVariantUploader({ collection, categoryFilter, onDone }: {
   const existingCollections = collectionsData?.collections ?? [];
 
   function normalize(s: string) {
-    return s.toLowerCase().trim().replace(/\s+/g, " ");
+    return s
+      .toLowerCase()
+      .replace(/_/g, " ")           // underscores → spaces (e.g. file_name → file name)
+      .replace(/[''`]/g, "")        // strip apostrophes (Charlie'S → Charlies)
+      .replace(/[()[\]{}.!?]/g, "") // strip punctuation
+      .replace(/\s+/g, " ")         // collapse multiple spaces
+      .trim();
   }
 
   function handleFileSelect(files: FileList | null) {
@@ -209,7 +215,7 @@ function BulkVariantUploader({ collection, categoryFilter, onDone }: {
     const newMatches: BulkMatch[] = Array.from(files).map((file) => {
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
       // Strip common variant prefixes (e.g. "enhanced_Abstract Cold" → "Abstract Cold")
-      const stripped = nameWithoutExt.replace(/^enhanced_/i, "").replace(/^variant_/i, "").replace(/^var_/i, "");
+      const stripped = nameWithoutExt.replace(/^enhanced_/i, "").replace(/^variant_/i, "").replace(/^var_/i, "").replace(/_/g, " ");
       const trait = traitMap.get(normalize(stripped)) ?? null;
       return { file, nameWithoutExt: stripped, trait, imageUrl: null, status: "pending" as const };
     });

@@ -26,6 +26,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -169,7 +170,11 @@ type BulkMatch = {
   error?: string;
 };
 
-function BulkVariantUploader({ collection }: { collection: "wegens" | "wegenettes" }) {
+function BulkVariantUploader({ collection, categoryFilter, onDone }: {
+  collection: "wegens" | "wegenettes";
+  categoryFilter?: string;
+  onDone?: () => void;
+}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -180,7 +185,8 @@ function BulkVariantUploader({ collection }: { collection: "wegens" | "wegenette
   const [isDragging, setIsDragging] = useState(false);
 
   const { data: traitsData } = useListTraits({ includeAll: true, limit: 9999, nftCollection: collection });
-  const traits = (traitsData?.traits ?? []) as Array<{ id: number; name: string; category: string }>;
+  const allTraits = (traitsData?.traits ?? []) as Array<{ id: number; name: string; category: string }>;
+  const traits = categoryFilter ? allTraits.filter((t) => t.category === categoryFilter) : allTraits;
 
   const { data: collectionsData } = useQuery({
     queryKey: ["variant-collections-bulk", collection],
@@ -415,9 +421,16 @@ function BulkVariantUploader({ collection }: { collection: "wegens" | "wegenette
               {unmatched.length > 0 && <p><span className="text-yellow-400 font-semibold">{unmatched.length}</span> files had no matching trait (skipped)</p>}
             </div>
           </div>
-          <Button size="sm" onClick={reset} variant="outline" className="gap-1.5 h-8">
-            <RotateCcw className="w-3 h-3" /> Upload another batch
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={reset} variant="outline" className="gap-1.5 h-8">
+              <RotateCcw className="w-3 h-3" /> Upload another batch
+            </Button>
+            {onDone && (
+              <Button size="sm" onClick={onDone} className="gap-1.5 h-8 bg-primary text-white hover:bg-primary/90">
+                Done
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -825,6 +838,7 @@ export function Admin() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
+  const [isUploadVariantsOpen, setIsUploadVariantsOpen] = useState(false);
   const [editingTrait, setEditingTrait] = useState<Trait | null>(null);
   const [traitView, setTraitView] = useState<"all" | "in-store" | "vault">("all");
   const [traitCategory, setTraitCategory] = useState<string>("all");
@@ -1134,6 +1148,33 @@ export function Admin() {
               </button>
             )}
           </div>
+
+          {/* Upload Variants */}
+          <Dialog open={isUploadVariantsOpen} onOpenChange={setIsUploadVariantsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-primary/50 hover:bg-primary/10 gap-2">
+                <Layers className="w-4 h-4" />
+                Upload Variants{traitCategory !== "all" ? ` — ${traitCategory}` : ""}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  Bulk Upload Variants{traitCategory !== "all" ? ` — ${traitCategory}` : " — All Categories"}
+                </DialogTitle>
+                <DialogDescription>
+                  {traitCategory !== "all"
+                    ? `Files are matched to ${traitCategory} traits by filename. e.g. "Abstract Cold.png" → "Abstract Cold".`
+                    : `Files are matched to traits by filename across all categories. Filter by category first to scope the upload.`}
+                </DialogDescription>
+              </DialogHeader>
+              <BulkVariantUploader
+                collection={traitCollection}
+                categoryFilter={traitCategory === "all" ? undefined : traitCategory}
+                onDone={() => setIsUploadVariantsOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
 
           {/* Batch upload */}
           <Dialog open={isBatchOpen} onOpenChange={setIsBatchOpen}>

@@ -267,13 +267,16 @@ export function Sandbox() {
       const layersBackToFront = [...layerOrder].reverse();
       for (const cat of layersBackToFront) {
         const trait = selected[cat];
-        if (!trait?.imageUrl) continue;
+        if (!trait) continue;
+        const variantEntry = selectedCollection ? variantMap[trait.id] : undefined;
+        const imageUrl = variantEntry?.imageUrl ?? trait.imageUrl;
+        if (!imageUrl) continue;
         await new Promise<void>((resolve) => {
           const img = new Image();
           img.crossOrigin = "anonymous";
           img.onload = () => { ctx.drawImage(img, 0, 0, SIZE, SIZE); resolve(); };
           img.onerror = () => resolve();
-          img.src = trait.imageUrl!;
+          img.src = imageUrl;
         });
       }
       offscreen.toBlob((blob) => {

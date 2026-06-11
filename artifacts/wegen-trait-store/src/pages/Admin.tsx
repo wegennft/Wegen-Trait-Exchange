@@ -208,8 +208,10 @@ function BulkVariantUploader({ collection, categoryFilter, onDone }: {
     const traitMap = new Map(traits.map((t) => [normalize(t.name), t]));
     const newMatches: BulkMatch[] = Array.from(files).map((file) => {
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-      const trait = traitMap.get(normalize(nameWithoutExt)) ?? null;
-      return { file, nameWithoutExt, trait, imageUrl: null, status: "pending" as const };
+      // Strip common variant prefixes (e.g. "enhanced_Abstract Cold" → "Abstract Cold")
+      const stripped = nameWithoutExt.replace(/^enhanced_/i, "").replace(/^variant_/i, "").replace(/^var_/i, "");
+      const trait = traitMap.get(normalize(stripped)) ?? null;
+      return { file, nameWithoutExt: stripped, trait, imageUrl: null, status: "pending" as const };
     });
     setMatches(newMatches);
     setStep("preview");

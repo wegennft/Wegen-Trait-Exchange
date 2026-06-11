@@ -160,6 +160,262 @@ const LAYER_ICONS: Record<string, string> = {
   Headgear: "🎩",
 };
 
+type BulkMatch = {
+  file: File;
+  nameWithoutExt: string;
+  trait: { id: number; name: string; category: string } | null;
+  imageUrl: string | null;
+  status: "pending" | "uploading" | "done" | "error";
+  error?: string;
+};
+
+function BulkVariantUploader({ collection }: { collection: "wegens" | "wegenettes" }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [packName, setPackName] = useState("");
+  const [matches, setMatches] = useState<BulkMatch[]>([]);
+  const [step, setStep] = useState<"configure" | "preview" | "uploading" | "done">("configure");
+  const [uploadStats, setUploadStats] = useState({ done: 0, errors: 0, total: 0 });
+
+  const { data: traitsData } = useListTraits({ includeAll: true, limit: 9999, nftCollection: collection });
+  const traits = (traitsData?.traits ?? []) as Array<{ id: number; name: string; category: string }>;
+
+  const { data: collectionsData } = useQuery({
+    queryKey: ["variant-collections-bulk", collection],
+    queryFn: async () => {
+      const res = await fetch(`/api/traits/variant-collections?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) return { collections: [] as string[] };
+      return res.json() as Promise<{ collections: string[] }>;
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+  const existingCollections = collectionsData?.collections ?? [];
+
+  function normalize(s: string) {
+    return s.toLowerCase().trim().replace(/\s+/g, " ");
+  }
+
+  function handleFileSelect(files: FileList | null) {
+    if (!files || !files.length) return;
+    const traitMap = new Map(traits.map((t) => [normalize(t.name), t]));
+    const newMatches: BulkMatch[] = Array.from(files).map((file) => {
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+      const trait = traitMap.get(normalize(nameWithoutExt)) ?? null;
+      return { file, nameWithoutExt, trait, imageUrl: null, status: "pending" as const };
+    });
+    setMatches(newMatches);
+    setStep("preview");
+  }
+
+  async function startUpload() {
+    if (!packName.trim()) { toast({ title: "Enter a pack name first", variant: "destructive" }); return; }
+    const toUpload = matches.filter((m) => m.trait !== null && m.status === "pending");
+    if (!toUpload.length) { toast({ title: "No matched files to upload", variant: "destructive" }); return; }
+    setStep("uploading");
+    let done = 0;
+    let errors = 0;
+    setUploadStats({ done: 0, errors: 0, total: toUpload.length });
+
+    for (const match of toUpload) {
+      setMatches((prev) => prev.map((m) => m.file === match.file ? { ...m, status: "uploading" as const } : m));
+      try {
+        const urlRes = await fetch("/api/storage/uploads/request-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: match.file.name, size: match.file.size, contentType: match.file.type || "image/png" }),
+        });
+        if (!urlRes.ok) throw new Error("Failed to get upload URL");
+        const { uploadURL, objectPath } = await urlRes.json() as { uploadURL: string; objectPath: string };
+
+        const putRes = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": match.file.type || "image/png" }, body: match.file });
+        if (!putRes.ok) throw new Error("Upload failed");
+
+        const imageUrl = `/api/storage${objectPath}`;
+        const varRes = await fetch(`/api/admin/traits/${match.trait!.id}/variants`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: packName.trim(), imageUrl, mediaType: detectMediaType(match.file) }),
+        });
+        if (!varRes.ok) throw new Error("Failed to save variant");
+
+        done++;
+        setMatches((prev) => prev.map((m) => m.file === match.file ? { ...m, status: "done" as const, imageUrl } : m));
+      } catch (e) {
+        errors++;
+        const msg = e instanceof Error ? e.message : "Failed";
+        setMatches((prev) => prev.map((m) => m.file === match.file ? { ...m, status: "error" as const, error: msg } : m));
+      }
+      setUploadStats((prev) => ({ ...prev, done: prev.done + (errors > prev.errors ? 0 : 1), errors }));
+    }
+
+    void queryClient.invalidateQueries({ queryKey: ["admin-variant-packs"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin-all-trait-variants"] });
+    void queryClient.invalidateQueries({ queryKey: ["variant-collections"] });
+    void queryClient.invalidateQueries({ queryKey: ["variant-collections-bulk"] });
+    setUploadStats({ done, errors, total: toUpload.length });
+    setStep("done");
+  }
+
+  function reset() {
+    setMatches([]); setPackName(""); setStep("configure"); setUploadStats({ done: 0, errors: 0, total: 0 });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  const matched = matches.filter((m) => m.trait !== null);
+  const unmatched = matches.filter((m) => m.trait === null);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold mb-1">Bulk Upload Variants</h2>
+        <p className="text-sm text-muted-foreground max-w-lg">
+          Upload many images at once. Files are matched to traits by filename — e.g.{" "}
+          <span className="font-mono text-xs bg-secondary/60 px-1.5 py-0.5 rounded">Abstract Smoke.png</span> matches the trait "Abstract Smoke".
+        </p>
+      </div>
+
+      {/* Pack name — shown on configure and preview */}
+      {(step === "configure" || step === "preview") && (
+        <div className="space-y-1.5 max-w-sm">
+          <Label className="text-xs text-muted-foreground/70 uppercase tracking-widest">Pack Name</Label>
+          {existingCollections.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {existingCollections.map((c) => (
+                <button key={c} type="button" onClick={() => setPackName(c)}
+                  className="px-2 py-0.5 rounded text-[10px] font-mono border transition-all"
+                  style={packName === c
+                    ? { background: "hsl(272 60% 20%)", border: "1px solid hsl(272 100% 62% / 0.6)", color: "hsl(272 100% 75%)" }
+                    : { border: "1px solid rgba(255,255,255,0.1)", color: "hsl(var(--muted-foreground))" }
+                  }>{c}</button>
+              ))}
+            </div>
+          )}
+          <Input value={packName} onChange={(e) => setPackName(e.target.value)}
+            placeholder="e.g. Cyber Punks, Toxic Zombies" className="bg-secondary/50" />
+        </div>
+      )}
+
+      {step === "configure" && (
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="max-w-sm border-2 border-dashed border-border/40 rounded-xl p-10 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group"
+        >
+          <Upload className="w-10 h-10 text-primary/40 group-hover:text-primary/70 mx-auto mb-3 transition-colors" />
+          <p className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Click to select files</p>
+          <p className="text-xs text-muted-foreground/50 mt-1">PNG, GIF, JPG, WebP — select multiple at once</p>
+        </div>
+      )}
+
+      {step === "preview" && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-xs text-green-400 font-semibold">{matched.length} matched</span>
+            </div>
+            {unmatched.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-xs text-yellow-400 font-semibold">{unmatched.length} unmatched (will be skipped)</span>
+              </div>
+            )}
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" variant="outline" onClick={reset} className="text-xs gap-1.5 h-8">
+                <RotateCcw className="w-3 h-3" /> Start over
+              </Button>
+              <Button size="sm" onClick={() => void startUpload()} disabled={matched.length === 0 || !packName.trim()}
+                className="text-xs gap-1.5 h-8 bg-primary text-white hover:bg-primary/90">
+                <ArrowDownToLine className="w-3 h-3" />
+                Upload {matched.length} variant{matched.length !== 1 ? "s" : ""}
+              </Button>
+            </div>
+          </div>
+          {!packName.trim() && (
+            <div className="flex items-center gap-2 p-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5">
+              <AlertCircle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+              <span className="text-xs text-yellow-400">Enter a pack name above before uploading</span>
+            </div>
+          )}
+          <div className="rounded-xl border border-border/30 overflow-hidden">
+            <div className="grid grid-cols-[2fr_2fr_1fr] text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 bg-secondary/30 px-4 py-2 border-b border-border/20">
+              <span>File</span><span>Matched Trait</span><span>Category</span>
+            </div>
+            <div className="max-h-80 overflow-y-auto divide-y divide-border/10">
+              {matches.map((m, i) => (
+                <div key={i} className={`grid grid-cols-[2fr_2fr_1fr] items-center px-4 py-2 text-xs gap-2 ${!m.trait ? "opacity-40" : ""}`}>
+                  <span className="font-mono text-muted-foreground/80 truncate" title={m.file.name}>{m.file.name}</span>
+                  {m.trait ? (
+                    <span className="flex items-center gap-1.5 truncate">
+                      <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />{m.trait.name}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-muted-foreground/40">
+                      <X className="w-3 h-3 text-yellow-500/50 flex-shrink-0" />no match
+                    </span>
+                  )}
+                  <span className="text-muted-foreground/50 truncate">{m.trait?.category ?? "—"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === "uploading" && (
+        <div className="space-y-4 max-w-lg">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <span className="text-sm font-semibold">
+              Uploading {uploadStats.done + uploadStats.errors} / {uploadStats.total}…
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-secondary/40 overflow-hidden">
+            <div className="h-full bg-primary rounded-full transition-all duration-200"
+              style={{ width: `${uploadStats.total > 0 ? ((uploadStats.done + uploadStats.errors) / uploadStats.total) * 100 : 0}%` }} />
+          </div>
+          <div className="rounded-xl border border-border/30 overflow-hidden max-h-72 overflow-y-auto divide-y divide-border/10">
+            {matches.filter((m) => m.trait !== null).map((m, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2 text-xs">
+                <span className="flex-shrink-0 w-4">
+                  {m.status === "uploading" && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+                  {m.status === "done" && <CheckCircle2 className="w-3 h-3 text-green-400" />}
+                  {m.status === "error" && <X className="w-3 h-3 text-destructive" />}
+                  {m.status === "pending" && <span className="w-2 h-2 rounded-full bg-border/40 inline-block" />}
+                </span>
+                <span className="font-mono text-muted-foreground/70 truncate flex-1">{m.trait?.name}</span>
+                {m.error && <span className="text-destructive/70 text-[10px] flex-shrink-0">{m.error}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {step === "done" && (
+        <div className="space-y-4 max-w-sm">
+          <div className="p-5 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-400" />
+              <span className="font-semibold">Upload complete</span>
+            </div>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p><span className="text-green-400 font-semibold">{uploadStats.done}</span> variants created in "{packName}"</p>
+              {uploadStats.errors > 0 && <p><span className="text-destructive font-semibold">{uploadStats.errors}</span> uploads failed</p>}
+              {unmatched.length > 0 && <p><span className="text-yellow-400 font-semibold">{unmatched.length}</span> files had no matching trait (skipped)</p>}
+            </div>
+          </div>
+          <Button size="sm" onClick={reset} variant="outline" className="gap-1.5 h-8">
+            <RotateCcw className="w-3 h-3" /> Upload another batch
+          </Button>
+        </div>
+      )}
+
+      <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,audio/*" className="hidden"
+        onChange={(e) => handleFileSelect(e.target.files)} />
+    </div>
+  );
+}
+
 function VariantPacksManager({ collection }: { collection: "wegens" | "wegenettes" }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1388,7 +1644,11 @@ export function Admin() {
         </TabsContent>
 
         <TabsContent value="variant-packs" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
-          <VariantPacksManager collection={traitCollection} />
+          <div className="space-y-12">
+            <BulkVariantUploader collection={traitCollection} />
+            <Separator className="opacity-20" />
+            <VariantPacksManager collection={traitCollection} />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

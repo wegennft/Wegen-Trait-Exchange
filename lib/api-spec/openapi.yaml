@@ -471,6 +471,232 @@ paths:
               schema:
                 $ref: "#/components/schemas/StoreStats"
 
+  /legends:
+    get:
+      operationId: listLegends
+      tags: [traits]
+      summary: List active legends for a collection
+      parameters:
+        - name: nftCollection
+          in: query
+          schema:
+            type: string
+            enum: [wegens, wegenettes]
+            default: wegens
+      responses:
+        "200":
+          description: List of legends
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListLegendsResponse"
+
+  /legends/all:
+    get:
+      operationId: listAllLegends
+      tags: [admin]
+      summary: List all legends (including inactive) for admin
+      parameters:
+        - name: nftCollection
+          in: query
+          schema:
+            type: string
+            enum: [wegens, wegenettes]
+            default: wegens
+      responses:
+        "200":
+          description: All legends
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListLegendsResponse"
+
+  /legends/variant-collections:
+    get:
+      operationId: listLegendVariantCollections
+      tags: [traits]
+      summary: List enabled variant pack names for legends
+      parameters:
+        - name: nftCollection
+          in: query
+          schema:
+            type: string
+            enum: [wegens, wegenettes]
+            default: wegens
+      responses:
+        "200":
+          description: Pack names
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantCollectionsResponse"
+
+  /legends/variants/by-collection:
+    get:
+      operationId: getLegendVariantsByCollection
+      tags: [traits]
+      summary: Get legend variant images for a named pack
+      parameters:
+        - name: nftCollection
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Legend variant map
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantsByCollectionResponse"
+
+  /legends/{id}/variants:
+    get:
+      operationId: getLegendVariants
+      tags: [admin]
+      summary: Get all variants for a specific legend
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Variants list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  variants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LegendVariant"
+                required: [variants]
+
+  /admin/legends:
+    post:
+      operationId: createLegend
+      tags: [admin]
+      summary: Create a new legend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLegendBody"
+      responses:
+        "201":
+          description: Legend created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  legend:
+                    $ref: "#/components/schemas/LegendItem"
+                required: [legend]
+
+  /admin/legends/{id}:
+    put:
+      operationId: updateLegend
+      tags: [admin]
+      summary: Update a legend
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLegendBody"
+      responses:
+        "200":
+          description: Legend updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  legend:
+                    $ref: "#/components/schemas/LegendItem"
+                required: [legend]
+    delete:
+      operationId: deleteLegend
+      tags: [admin]
+      summary: Delete a legend
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /admin/legends/{id}/variants:
+    post:
+      operationId: createLegendVariant
+      tags: [admin]
+      summary: Add a variant image to a legend
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLegendVariantBody"
+      responses:
+        "200":
+          description: Variant added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  variant:
+                    $ref: "#/components/schemas/LegendVariant"
+                required: [variant]
+
+  /admin/legend-variants/{variantId}:
+    delete:
+      operationId: deleteLegendVariant
+      tags: [admin]
+      summary: Delete a legend variant
+      parameters:
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
   /admin/traits:
     post:
       operationId: createTrait
@@ -1115,6 +1341,133 @@ components:
         - outOfStockTraits
         - topSellingTraits
         - recentActivity
+
+    LegendItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nftCollection:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        mediaType:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - nftCollection
+        - mediaType
+        - isActive
+        - sortOrder
+        - createdAt
+
+    LegendVariant:
+      type: object
+      properties:
+        id:
+          type: integer
+        legendId:
+          type: integer
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        mediaType:
+          type: string
+        isEnabled:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - legendId
+        - name
+        - mediaType
+        - isEnabled
+        - sortOrder
+        - createdAt
+
+    ListLegendsResponse:
+      type: object
+      properties:
+        legends:
+          type: array
+          items:
+            $ref: "#/components/schemas/LegendItem"
+      required:
+        - legends
+
+    CreateLegendBody:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        nftCollection:
+          type: string
+          enum: [wegens, wegenettes]
+        imageUrl:
+          type: string
+          nullable: true
+        mediaType:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    UpdateLegendBody:
+      type: object
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        mediaType:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    CreateLegendVariantBody:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        mediaType:
+          type: string
+        sortOrder:
+          type: integer
 
     DeleteResponse:
       type: object

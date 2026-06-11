@@ -8,7 +8,15 @@ import {
   useDeleteTrait,
   getListTraitsQueryKey,
   getGetAdminStatsQueryKey,
+  useListAllLegends,
+  useCreateLegend,
+  useUpdateLegend,
+  useDeleteLegend,
+  useCreateLegendVariant,
+  useDeleteLegendVariant,
+  getListAllLegendsQueryKey,
 } from "@workspace/api-client-react";
+import type { LegendItem } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +104,7 @@ import {
   Gift,
   History,
   ArrowLeftRight,
+  Crown,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -1067,6 +1076,9 @@ export function Admin() {
           <TabsTrigger value="variant-packs" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Package className="w-4 h-4" /> Variant Packs
           </TabsTrigger>
+          <TabsTrigger value="legends" className="flex items-center gap-2 rounded-sm px-4 py-2">
+            <Crown className="w-4 h-4" /> Legends
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
@@ -1709,6 +1721,10 @@ export function Admin() {
             <Separator className="opacity-20" />
             <VariantPacksManager collection={traitCollection} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="legends" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <LegendsAdminTab collection={traitCollection} />
         </TabsContent>
       </Tabs>
     </div>
@@ -5890,6 +5906,416 @@ function AirdropTab() {
             </table>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Legends Admin Tab ──────────────────────────────────────────────────────────
+
+type LegendVariantRow = {
+  id: number;
+  legendId: number;
+  name: string;
+  imageUrl: string | null;
+  mediaType: string;
+  sortOrder: number | null;
+  isEnabled: boolean;
+};
+
+function LegendsAdminTab({ collection }: { collection: NftCollection }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const upload = useUpload();
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editLegend, setEditLegend] = useState<LegendItem | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formImageUrl, setFormImageUrl] = useState("");
+  const [formActive, setFormActive] = useState(true);
+  const [formSortOrder, setFormSortOrder] = useState(0);
+  const [formUploading, setFormUploading] = useState(false);
+
+  const { data, isLoading } = useListAllLegends({ nftCollection: collection });
+  const legends = data?.legends ?? [];
+
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: getListAllLegendsQueryKey() });
+
+  const createMutation = useCreateLegend({
+    mutation: {
+      onSuccess: () => { invalidate(); setCreateOpen(false); toast({ title: "Legend created" }); },
+      onError: () => toast({ title: "Failed to create legend", variant: "destructive" }),
+    },
+  });
+
+  const updateMutation = useUpdateLegend({
+    mutation: {
+      onSuccess: () => { invalidate(); setEditLegend(null); toast({ title: "Legend updated" }); },
+      onError: () => toast({ title: "Failed to update legend", variant: "destructive" }),
+    },
+  });
+
+  const deleteMutation = useDeleteLegend({
+    mutation: {
+      onSuccess: () => { invalidate(); setDeletingId(null); toast({ title: "Legend deleted" }); },
+      onError: () => toast({ title: "Failed to delete legend", variant: "destructive" }),
+    },
+  });
+
+  const resetForm = () => {
+    setFormName(""); setFormDesc(""); setFormImageUrl(""); setFormActive(true); setFormSortOrder(0);
+  };
+
+  const openEdit = (legend: LegendItem) => {
+    setEditLegend(legend);
+    setFormName(legend.name);
+    setFormDesc(legend.description ?? "");
+    setFormImageUrl(legend.imageUrl ?? "");
+    setFormActive(legend.isActive);
+    setFormSortOrder(legend.sortOrder ?? 0);
+  };
+
+  const handleUpload = async (file: File) => {
+    setFormUploading(true);
+    try { const url = await upload(file); setFormImageUrl(url); }
+    catch { toast({ title: "Upload failed", variant: "destructive" }); }
+    finally { setFormUploading(false); }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2" style={{ fontFamily: "'Bungee', Impact, sans-serif" }}>
+            <Crown className="w-6 h-6 text-yellow-400" /> LEGENDS
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">1-of-1 NFTs for the <span className="capitalize">{collection}</span> collection</p>
+        </div>
+        <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
+          <Plus className="w-4 h-4" /> Add Legend
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+      ) : legends.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-border/30 rounded-xl">
+          <Crown className="w-14 h-14 mx-auto mb-4 text-yellow-400/20" />
+          <p className="text-muted-foreground text-sm">No Legends yet — add your first 1-of-1!</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border/30 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-14"></TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-16">Order</TableHead>
+                <TableHead className="text-right w-48">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {legends.map((legend) => (
+                <>
+                  <TableRow key={legend.id}>
+                    <TableCell>
+                      {legend.imageUrl ? (
+                        <img src={legend.imageUrl} alt={legend.name} className="w-10 h-10 rounded object-cover border border-border/30" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
+                          <Crown className="w-5 h-5 text-yellow-400/30" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-semibold">{legend.name}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-xs truncate">{legend.description ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={legend.isActive ? "default" : "secondary"}
+                        className={legend.isActive ? "bg-green-600/20 text-green-400 border-green-600/30" : "opacity-50"}>
+                        {legend.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{legend.sortOrder ?? 0}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1"
+                          onClick={() => setExpandedId(expandedId === legend.id ? null : legend.id)}>
+                          <Layers className="w-3 h-3" />
+                          {expandedId === legend.id ? "Hide" : "Variants"}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(legend)}>
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => setDeletingId(legend.id)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {expandedId === legend.id && (
+                    <TableRow key={`variants-${legend.id}`}>
+                      <TableCell colSpan={6} className="p-0 bg-secondary/5">
+                        <LegendVariantsManager legendId={legend.id} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Create Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-yellow-400" /> Add Legend
+            </DialogTitle>
+            <DialogDescription>Create a new 1-of-1 Legend NFT for the {collection} collection.</DialogDescription>
+          </DialogHeader>
+          <LegendForm
+            name={formName} setName={setFormName}
+            desc={formDesc} setDesc={setFormDesc}
+            imageUrl={formImageUrl} setImageUrl={setFormImageUrl}
+            active={formActive} setActive={setFormActive}
+            sortOrder={formSortOrder} setSortOrder={setFormSortOrder}
+            uploading={formUploading} onUpload={handleUpload}
+            onSubmit={() => createMutation.mutate({ data: {
+              name: formName, nftCollection: collection,
+              imageUrl: formImageUrl || undefined,
+              description: formDesc || undefined,
+              isActive: formActive, sortOrder: formSortOrder,
+            }})}
+            isPending={createMutation.isPending}
+            submitLabel="Create Legend"
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editLegend} onOpenChange={(o) => { if (!o) setEditLegend(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-yellow-400" /> Edit Legend
+            </DialogTitle>
+            <DialogDescription>Update this 1-of-1 Legend.</DialogDescription>
+          </DialogHeader>
+          {editLegend && (
+            <LegendForm
+              name={formName} setName={setFormName}
+              desc={formDesc} setDesc={setFormDesc}
+              imageUrl={formImageUrl} setImageUrl={setFormImageUrl}
+              active={formActive} setActive={setFormActive}
+              sortOrder={formSortOrder} setSortOrder={setFormSortOrder}
+              uploading={formUploading} onUpload={handleUpload}
+              onSubmit={() => updateMutation.mutate({ id: editLegend.id, data: {
+                name: formName,
+                imageUrl: formImageUrl || null,
+                description: formDesc || null,
+                isActive: formActive, sortOrder: formSortOrder,
+              }})}
+              isPending={updateMutation.isPending}
+              submitLabel="Save Changes"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <Dialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Legend</DialogTitle>
+            <DialogDescription>This permanently deletes the legend and all its variant images. Cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end mt-4">
+            <Button variant="outline" onClick={() => setDeletingId(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteMutation.isPending}
+              onClick={() => { if (deletingId !== null) deleteMutation.mutate({ id: deletingId }); }}>
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Legend Form ────────────────────────────────────────────────────────────────
+
+function LegendForm({
+  name, setName, desc, setDesc, imageUrl, setImageUrl,
+  active, setActive, sortOrder, setSortOrder,
+  uploading, onUpload, onSubmit, isPending, submitLabel,
+}: {
+  name: string; setName: (v: string) => void;
+  desc: string; setDesc: (v: string) => void;
+  imageUrl: string; setImageUrl: (v: string) => void;
+  active: boolean; setActive: (v: boolean) => void;
+  sortOrder: number; setSortOrder: (v: number) => void;
+  uploading: boolean; onUpload: (file: File) => void;
+  onSubmit: () => void; isPending: boolean; submitLabel: string;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-4 mt-2">
+      <div className="space-y-1.5">
+        <Label>Name *</Label>
+        <Input value={name} onChange={e => setName(e.target.value)} placeholder="Legend name" />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Description</Label>
+        <Textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional description" rows={2} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Image</Label>
+        <div className="flex gap-2">
+          <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="Paste URL or upload" className="flex-1" />
+          <Button type="button" variant="outline" size="sm" className="shrink-0"
+            onClick={() => fileRef.current?.click()} disabled={uploading}>
+            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          </Button>
+          <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
+        </div>
+        {imageUrl && (
+          <img src={imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded border border-border/30 mt-1" />
+        )}
+      </div>
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+          <Switch checked={active} onCheckedChange={setActive} id="lf-active" />
+          <Label htmlFor="lf-active">Active</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label>Sort Order</Label>
+          <Input type="number" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value) || 0)} className="w-20" />
+        </div>
+      </div>
+      <div className="flex justify-end pt-2">
+        <Button onClick={onSubmit} disabled={!name.trim() || isPending}>
+          {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+          {submitLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Legend Variants Manager ────────────────────────────────────────────────────
+
+function LegendVariantsManager({ legendId }: { legendId: number }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const upload = useUpload();
+
+  const [packName, setPackName] = useState("");
+  const [variantUrl, setVariantUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const qKey = ["admin-legend-variants", legendId];
+
+  const { data, isLoading } = useQuery({
+    queryKey: qKey,
+    queryFn: async () => {
+      const res = await fetch(`/api/legends/${legendId}/variants`);
+      return res.json() as Promise<{ variants: LegendVariantRow[] }>;
+    },
+  });
+  const variants = data?.variants ?? [];
+
+  const addVariant = useCreateLegendVariant({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: qKey });
+        setPackName(""); setVariantUrl("");
+        toast({ title: "Variant added" });
+      },
+      onError: () => toast({ title: "Failed to add variant", variant: "destructive" }),
+    },
+  });
+
+  const removeVariant = useDeleteLegendVariant({
+    mutation: {
+      onSuccess: () => { void queryClient.invalidateQueries({ queryKey: qKey }); toast({ title: "Variant removed" }); },
+      onError: () => toast({ title: "Failed to remove variant", variant: "destructive" }),
+    },
+  });
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try { const url = await upload(file); setVariantUrl(url); }
+    catch { toast({ title: "Upload failed", variant: "destructive" }); }
+    finally { setUploading(false); }
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
+        <Layers className="w-3.5 h-3.5" /> Variant Images
+      </div>
+
+      {isLoading ? (
+        <Skeleton className="h-16 w-full" />
+      ) : variants.length === 0 ? (
+        <p className="text-xs text-muted-foreground/40 italic">No variant images yet.</p>
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          {variants.map((v) => (
+            <div key={v.id} className="relative group flex flex-col items-center gap-1">
+              {v.imageUrl ? (
+                <img src={v.imageUrl} alt={v.name} className="w-16 h-16 object-cover rounded border border-border/30" />
+              ) : (
+                <div className="w-16 h-16 rounded bg-secondary flex items-center justify-center">
+                  <ImageIcon className="w-5 h-5 text-muted-foreground/30" />
+                </div>
+              )}
+              <span className="text-[10px] text-muted-foreground truncate max-w-[64px]">{v.name}</span>
+              <button
+                onClick={() => removeVariant.mutate({ variantId: v.id })}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add variant row */}
+      <div className="flex gap-2 items-end pt-3 border-t border-border/15">
+        <div className="space-y-1 flex-1 min-w-0">
+          <Label className="text-xs">Pack Name</Label>
+          <Input value={packName} onChange={e => setPackName(e.target.value)} placeholder="e.g. Chromatic" className="h-8 text-sm" />
+        </div>
+        <div className="space-y-1 flex-1 min-w-0">
+          <Label className="text-xs">Image</Label>
+          <div className="flex gap-1">
+            <Input value={variantUrl} onChange={e => setVariantUrl(e.target.value)} placeholder="URL" className="h-8 text-sm" />
+            <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"
+              onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+            </Button>
+            <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden"
+              onChange={async e => { const f = e.target.files?.[0]; if (f) await handleUpload(f); e.target.value = ""; }} />
+          </div>
+        </div>
+        <Button size="sm" className="h-8 shrink-0 gap-1"
+          disabled={!packName.trim() || addVariant.isPending}
+          onClick={() => addVariant.mutate({ id: legendId, data: { name: packName, imageUrl: variantUrl || undefined } })}>
+          {addVariant.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Add
+        </Button>
       </div>
     </div>
   );

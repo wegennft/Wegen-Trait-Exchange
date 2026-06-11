@@ -12,8 +12,10 @@ import {
   getListTraitsQueryKey,
   getGetStoreStatsQueryKey,
   getGetUserNftsQueryKey,
+  useListLegends,
 } from "@workspace/api-client-react";
-import type { Trait, WegenNft } from "@workspace/api-client-react";
+import type { Trait, WegenNft, LegendItem } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -51,6 +53,8 @@ import {
   Zap,
   Archive,
   Lock,
+  Crown,
+  Star,
 } from "lucide-react";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -436,6 +440,8 @@ export function Store() {
   const [cartOpen, setCartOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutProgress, setCheckoutProgress] = useState<{ done: number; total: number } | null>(null);
+  const [storeMode, setStoreMode] = useState<"traits" | "legends">("traits");
+  const [legendPack, setLegendPack] = useState<string | undefined>();
 
   const { walletAddress, isConnected, connect } = useWallet();
   const { collection, theme } = useCollection();
@@ -474,6 +480,35 @@ export function Store() {
   const { data: storeStats } = useGetStoreStats();
   const { data: themesData } = useListStoreThemes(collection);
   const { data: categoriesData, isLoading: isLoadingCategories } = useListTraitCategories(collection);
+
+  // ── Legends data ──
+  const { data: legendsData, isLoading: isLoadingLegends } = useListLegends(
+    { nftCollection: collection as "wegens" | "wegenettes" },
+    { query: { queryKey: [`/api/legends`, { nftCollection: collection }] } }
+  );
+  const legends = legendsData?.legends ?? [];
+
+  const { data: legendPacksData } = useQuery({
+    queryKey: ["legend-variant-collections", collection],
+    queryFn: async () => {
+      const res = await fetch(`/api/legends/variant-collections?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) return { collections: [] as string[] };
+      return res.json() as Promise<{ collections: string[] }>;
+    },
+  });
+  const legendPacks = legendPacksData?.collections ?? [];
+
+  const { data: legendVariantMapData } = useQuery({
+    queryKey: ["legend-variants-by-collection", collection, legendPack],
+    queryFn: async () => {
+      if (!legendPack) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
+      const res = await fetch(`/api/legends/variants/by-collection?nftCollection=${encodeURIComponent(collection)}&name=${encodeURIComponent(legendPack)}`);
+      if (!res.ok) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
+      return res.json() as Promise<{ variantMap: Record<number, { imageUrl: string | null; mediaType: string }> }>;
+    },
+  });
+  const legendVariantMap = legendVariantMapData?.variantMap ?? {};
+
   const { data: traitsData, isLoading: isLoadingTraits } = useListTraits(
     { category: selectedCategory, theme: selectedTheme, limit: 9999, nftCollection: collection },
     {
@@ -806,7 +841,36 @@ export function Store() {
         </Card>
       </div>
 
-      {/* ── NFT Preview Banner ── */}
+      {/* ── Mode Toggle: TRAITS / LEGENDS ── */}
+      <div className="flex gap-0 rounded-xl overflow-hidden border border-border/40" style={{ background: 'rgba(0,0,0,0.3)' }}>
+        {([
+          { key: "traits" as const, label: "TRAIT STORE", icon: <Package className="w-4 h-4" />, desc: "Browse & purchase traits" },
+          { key: "legends" as const, label: "LEGENDS", icon: <Crown className="w-4 h-4" />, desc: `${legends.length > 0 ? `${legends.length} 1-of-1s` : "1-of-1 NFTs"}` },
+        ]).map(({ key, label, icon, desc }) => (
+          <button
+            key={key}
+            onClick={() => setStoreMode(key)}
+            className="flex-1 flex items-center gap-3 px-5 py-3 transition-all duration-200 relative"
+            style={{
+              background: storeMode === key ? `${accent}18` : 'transparent',
+              borderBottom: storeMode === key ? `2px solid ${accent}` : '2px solid transparent',
+            }}
+          >
+            <span style={{ color: storeMode === key ? accent : 'rgba(255,255,255,0.35)' }}>{icon}</span>
+            <div className="text-left">
+              <div className="text-xs font-black tracking-widest uppercase leading-none" style={{ fontFamily: "'Bungee', Impact, sans-serif", color: storeMode === key ? accent : 'rgba(255,255,255,0.35)', textShadow: storeMode === key ? `0 0 12px ${accent}` : 'none' }}>
+                {label}
+              </div>
+              <div className="text-[11px] font-mono mt-0.5" style={{ color: storeMode === key ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)' }}>
+                {desc}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* ── NFT Preview Banner (traits mode only) ── */}
+      {storeMode === "traits" && (
       <NftPreviewBanner
         walletAddress={walletAddress}
         isConnected={isConnected}
@@ -814,6 +878,140 @@ export function Store() {
         previewTrait={previewTrait}
         ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
       />
+      )}
+
+      {/* ── LEGENDS MODE ── */}
+      {storeMode === "legends" && (
+        <div className="space-y-6">
+          {/* Legends header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-black tracking-widest" style={{ fontFamily: "'Bungee', Impact, sans-serif", color: accent, textShadow: `0 0 20px ${accent}` }}>
+                LEGENDS
+              </h2>
+              <p className="text-xs text-muted-foreground/60 mt-1 uppercase tracking-widest" style={BANGERS}>
+                // One-of-one NFTs — not made of traits //
+              </p>
+            </div>
+            {legendPacks.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-mono">Style:</span>
+                <div className="flex gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setLegendPack(undefined)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                    style={{
+                      background: !legendPack ? `${accent}20` : 'transparent',
+                      border: !legendPack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
+                      color: !legendPack ? accent : 'rgba(255,255,255,0.4)',
+                    }}
+                  >
+                    Original
+                  </button>
+                  {legendPacks.map((pack) => (
+                    <button
+                      key={pack}
+                      onClick={() => setLegendPack(pack)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      style={{
+                        background: legendPack === pack ? `${accent}20` : 'transparent',
+                        border: legendPack === pack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
+                        color: legendPack === pack ? accent : 'rgba(255,255,255,0.4)',
+                      }}
+                    >
+                      {pack}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Legends grid */}
+          {isLoadingLegends ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {[1,2,3,4].map((i) => (
+                <Card key={i} className="overflow-hidden bg-card border-border/50">
+                  <div className="aspect-square"><Skeleton className="w-full h-full" /></div>
+                  <CardContent className="p-4"><Skeleton className="h-5 w-3/4" /></CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : legends.length === 0 ? (
+            <div className="text-center py-24 border border-dashed rounded-xl" style={{ background: 'rgba(0,0,0,0.4)', borderColor: `${accent}30` }}>
+              <Crown className="w-14 h-14 mx-auto mb-4" style={{ color: `${accent}40` }} />
+              <h3 className="text-xl font-black tracking-widest mb-2" style={{ fontFamily: "'Bungee', Impact, sans-serif", color: `${accent}60` }}>
+                NO LEGENDS YET
+              </h3>
+              <p className="text-sm text-muted-foreground/40 font-mono">// Legends will appear here when added //</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {legends.map((legend, index) => {
+                const variantEntry = legendPack ? legendVariantMap[legend.id] : undefined;
+                const imageUrl = variantEntry?.imageUrl ?? legend.imageUrl;
+                const mediaType = variantEntry?.mediaType ?? legend.mediaType ?? "image";
+                return (
+                  <Card
+                    key={legend.id}
+                    className="bg-card/95 border-border/60 overflow-hidden group transition-all duration-200 flex flex-col"
+                    style={{
+                      animationDelay: `${index * 50}ms`,
+                      boxShadow: `0 0 0 1px rgba(255,255,255,0.04)`,
+                    }}
+                  >
+                    <div className="relative aspect-square overflow-hidden bg-black flex items-center justify-center">
+                      {imageUrl ? (
+                        <TraitMedia
+                          url={imageUrl}
+                          mediaType={mediaType}
+                          alt={legend.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-card to-black">
+                          <Crown className="w-16 h-16" style={{ color: `${accent}40` }} />
+                          <span className="text-xs font-mono text-muted-foreground/30 uppercase tracking-widest">No Image</span>
+                        </div>
+                      )}
+                      {/* Legend badge */}
+                      <div className="absolute top-3 right-3">
+                        <Badge
+                          variant="outline"
+                          className="uppercase tracking-wider text-[10px] font-bold px-2 py-1 bg-yellow-500/20 text-yellow-400 border-yellow-500/50"
+                          style={{ boxShadow: '0 0 10px rgba(234,179,8,0.4)' }}
+                        >
+                          <Star className="w-2.5 h-2.5 mr-1 fill-current" />
+                          Legend
+                        </Badge>
+                      </div>
+                      {/* Active pack indicator */}
+                      {legendPack && variantEntry && (
+                        <div className="absolute bottom-3 left-3">
+                          <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-bold" style={{ background: `${accent}30`, color: accent, border: `1px solid ${accent}50` }}>
+                            {legendPack}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-4 flex-1 flex flex-col">
+                      <h3 className="text-base font-black tracking-tight leading-tight" style={{ fontFamily: "'Bungee', Impact, sans-serif" }}>
+                        {legend.name}
+                      </h3>
+                      {legend.description && (
+                        <p className="text-xs text-muted-foreground/60 line-clamp-2 mt-1">{legend.description}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TRAITS MODE content ── */}
+      <div className={storeMode !== "traits" ? "hidden" : ""}>
 
       {/* ── Theme tabs ── */}
       {themes.length > 0 && (
@@ -1183,6 +1381,9 @@ export function Store() {
         </>
         );
       })()}
+
+      {/* end traits mode */}
+      </div>
 
       {/* ── Cart Sheet ── */}
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>

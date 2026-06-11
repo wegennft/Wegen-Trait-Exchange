@@ -23,12 +23,22 @@ import type {
   CategoriesResponse,
   ConfirmTraitsBody,
   ConfirmTraitsResponse,
+  CreateLegend201,
+  CreateLegendBody,
+  CreateLegendVariant200,
+  CreateLegendVariantBody,
   CreateTraitBody,
   CreateTraitVariantBody,
   DeleteResponse,
   ErrorEnvelope,
+  GetLegendVariants200,
+  GetLegendVariantsByCollectionParams,
   GetVariantsByCollectionParams,
   HealthStatus,
+  ListAllLegendsParams,
+  ListLegendVariantCollectionsParams,
+  ListLegendsParams,
+  ListLegendsResponse,
   ListTraitsParams,
   ListVariantCollectionsParams,
   LockerItem,
@@ -43,6 +53,8 @@ import type {
   TraitListResponse,
   TraitVariantResponse,
   TraitVariantsResponse,
+  UpdateLegend200,
+  UpdateLegendBody,
   UpdateTraitBody,
   UploadUrlRequest,
   UploadUrlResponse,
@@ -1793,6 +1805,927 @@ export function useGetStoreStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List active legends for a collection
+ */
+export const getListLegendsUrl = (params?: ListLegendsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/legends?${stringifiedParams}`
+    : `/api/legends`;
+};
+
+export const listLegends = async (
+  params?: ListLegendsParams,
+  options?: RequestInit,
+): Promise<ListLegendsResponse> => {
+  return customFetch<ListLegendsResponse>(getListLegendsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListLegendsQueryKey = (params?: ListLegendsParams) => {
+  return [`/api/legends`, ...(params ? [params] : [])] as const;
+};
+
+export const getListLegendsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLegends>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListLegendsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLegends>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListLegendsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listLegends>>> = ({
+    signal,
+  }) => listLegends(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLegends>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLegendsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLegends>>
+>;
+export type ListLegendsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List active legends for a collection
+ */
+
+export function useListLegends<
+  TData = Awaited<ReturnType<typeof listLegends>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListLegendsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLegends>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLegendsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all legends (including inactive) for admin
+ */
+export const getListAllLegendsUrl = (params?: ListAllLegendsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/legends/all?${stringifiedParams}`
+    : `/api/legends/all`;
+};
+
+export const listAllLegends = async (
+  params?: ListAllLegendsParams,
+  options?: RequestInit,
+): Promise<ListLegendsResponse> => {
+  return customFetch<ListLegendsResponse>(getListAllLegendsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAllLegendsQueryKey = (params?: ListAllLegendsParams) => {
+  return [`/api/legends/all`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAllLegendsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllLegends>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllLegendsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllLegends>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAllLegendsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAllLegends>>> = ({
+    signal,
+  }) => listAllLegends(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllLegends>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllLegendsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllLegends>>
+>;
+export type ListAllLegendsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all legends (including inactive) for admin
+ */
+
+export function useListAllLegends<
+  TData = Awaited<ReturnType<typeof listAllLegends>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllLegendsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllLegends>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllLegendsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List enabled variant pack names for legends
+ */
+export const getListLegendVariantCollectionsUrl = (
+  params?: ListLegendVariantCollectionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/legends/variant-collections?${stringifiedParams}`
+    : `/api/legends/variant-collections`;
+};
+
+export const listLegendVariantCollections = async (
+  params?: ListLegendVariantCollectionsParams,
+  options?: RequestInit,
+): Promise<VariantCollectionsResponse> => {
+  return customFetch<VariantCollectionsResponse>(
+    getListLegendVariantCollectionsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListLegendVariantCollectionsQueryKey = (
+  params?: ListLegendVariantCollectionsParams,
+) => {
+  return [
+    `/api/legends/variant-collections`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListLegendVariantCollectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLegendVariantCollections>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListLegendVariantCollectionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLegendVariantCollections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListLegendVariantCollectionsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listLegendVariantCollections>>
+  > = ({ signal }) =>
+    listLegendVariantCollections(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLegendVariantCollections>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLegendVariantCollectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLegendVariantCollections>>
+>;
+export type ListLegendVariantCollectionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List enabled variant pack names for legends
+ */
+
+export function useListLegendVariantCollections<
+  TData = Awaited<ReturnType<typeof listLegendVariantCollections>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListLegendVariantCollectionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLegendVariantCollections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLegendVariantCollectionsQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get legend variant images for a named pack
+ */
+export const getGetLegendVariantsByCollectionUrl = (
+  params: GetLegendVariantsByCollectionParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/legends/variants/by-collection?${stringifiedParams}`
+    : `/api/legends/variants/by-collection`;
+};
+
+export const getLegendVariantsByCollection = async (
+  params: GetLegendVariantsByCollectionParams,
+  options?: RequestInit,
+): Promise<VariantsByCollectionResponse> => {
+  return customFetch<VariantsByCollectionResponse>(
+    getGetLegendVariantsByCollectionUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetLegendVariantsByCollectionQueryKey = (
+  params?: GetLegendVariantsByCollectionParams,
+) => {
+  return [
+    `/api/legends/variants/by-collection`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetLegendVariantsByCollectionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLegendVariantsByCollection>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetLegendVariantsByCollectionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLegendVariantsByCollection>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLegendVariantsByCollectionQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLegendVariantsByCollection>>
+  > = ({ signal }) =>
+    getLegendVariantsByCollection(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLegendVariantsByCollection>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLegendVariantsByCollectionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLegendVariantsByCollection>>
+>;
+export type GetLegendVariantsByCollectionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get legend variant images for a named pack
+ */
+
+export function useGetLegendVariantsByCollection<
+  TData = Awaited<ReturnType<typeof getLegendVariantsByCollection>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetLegendVariantsByCollectionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLegendVariantsByCollection>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLegendVariantsByCollectionQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get all variants for a specific legend
+ */
+export const getGetLegendVariantsUrl = (id: number) => {
+  return `/api/legends/${id}/variants`;
+};
+
+export const getLegendVariants = async (
+  id: number,
+  options?: RequestInit,
+): Promise<GetLegendVariants200> => {
+  return customFetch<GetLegendVariants200>(getGetLegendVariantsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLegendVariantsQueryKey = (id: number) => {
+  return [`/api/legends/${id}/variants`] as const;
+};
+
+export const getGetLegendVariantsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLegendVariants>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLegendVariants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLegendVariantsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLegendVariants>>
+  > = ({ signal }) => getLegendVariants(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLegendVariants>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLegendVariantsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLegendVariants>>
+>;
+export type GetLegendVariantsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all variants for a specific legend
+ */
+
+export function useGetLegendVariants<
+  TData = Awaited<ReturnType<typeof getLegendVariants>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLegendVariants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLegendVariantsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new legend
+ */
+export const getCreateLegendUrl = () => {
+  return `/api/admin/legends`;
+};
+
+export const createLegend = async (
+  createLegendBody: CreateLegendBody,
+  options?: RequestInit,
+): Promise<CreateLegend201> => {
+  return customFetch<CreateLegend201>(getCreateLegendUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createLegendBody),
+  });
+};
+
+export const getCreateLegendMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLegend>>,
+    TError,
+    { data: BodyType<CreateLegendBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createLegend>>,
+  TError,
+  { data: BodyType<CreateLegendBody> },
+  TContext
+> => {
+  const mutationKey = ["createLegend"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createLegend>>,
+    { data: BodyType<CreateLegendBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createLegend(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateLegendMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createLegend>>
+>;
+export type CreateLegendMutationBody = BodyType<CreateLegendBody>;
+export type CreateLegendMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new legend
+ */
+export const useCreateLegend = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLegend>>,
+    TError,
+    { data: BodyType<CreateLegendBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createLegend>>,
+  TError,
+  { data: BodyType<CreateLegendBody> },
+  TContext
+> => {
+  return useMutation(getCreateLegendMutationOptions(options));
+};
+
+/**
+ * @summary Update a legend
+ */
+export const getUpdateLegendUrl = (id: number) => {
+  return `/api/admin/legends/${id}`;
+};
+
+export const updateLegend = async (
+  id: number,
+  updateLegendBody: UpdateLegendBody,
+  options?: RequestInit,
+): Promise<UpdateLegend200> => {
+  return customFetch<UpdateLegend200>(getUpdateLegendUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateLegendBody),
+  });
+};
+
+export const getUpdateLegendMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLegend>>,
+    TError,
+    { id: number; data: BodyType<UpdateLegendBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateLegend>>,
+  TError,
+  { id: number; data: BodyType<UpdateLegendBody> },
+  TContext
+> => {
+  const mutationKey = ["updateLegend"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateLegend>>,
+    { id: number; data: BodyType<UpdateLegendBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateLegend(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateLegendMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateLegend>>
+>;
+export type UpdateLegendMutationBody = BodyType<UpdateLegendBody>;
+export type UpdateLegendMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a legend
+ */
+export const useUpdateLegend = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLegend>>,
+    TError,
+    { id: number; data: BodyType<UpdateLegendBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateLegend>>,
+  TError,
+  { id: number; data: BodyType<UpdateLegendBody> },
+  TContext
+> => {
+  return useMutation(getUpdateLegendMutationOptions(options));
+};
+
+/**
+ * @summary Delete a legend
+ */
+export const getDeleteLegendUrl = (id: number) => {
+  return `/api/admin/legends/${id}`;
+};
+
+export const deleteLegend = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteLegendUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteLegendMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLegend>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteLegend>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteLegend"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteLegend>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteLegend(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteLegendMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteLegend>>
+>;
+
+export type DeleteLegendMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a legend
+ */
+export const useDeleteLegend = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLegend>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteLegend>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteLegendMutationOptions(options));
+};
+
+/**
+ * @summary Add a variant image to a legend
+ */
+export const getCreateLegendVariantUrl = (id: number) => {
+  return `/api/admin/legends/${id}/variants`;
+};
+
+export const createLegendVariant = async (
+  id: number,
+  createLegendVariantBody: CreateLegendVariantBody,
+  options?: RequestInit,
+): Promise<CreateLegendVariant200> => {
+  return customFetch<CreateLegendVariant200>(getCreateLegendVariantUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createLegendVariantBody),
+  });
+};
+
+export const getCreateLegendVariantMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLegendVariant>>,
+    TError,
+    { id: number; data: BodyType<CreateLegendVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createLegendVariant>>,
+  TError,
+  { id: number; data: BodyType<CreateLegendVariantBody> },
+  TContext
+> => {
+  const mutationKey = ["createLegendVariant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createLegendVariant>>,
+    { id: number; data: BodyType<CreateLegendVariantBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createLegendVariant(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateLegendVariantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createLegendVariant>>
+>;
+export type CreateLegendVariantMutationBody = BodyType<CreateLegendVariantBody>;
+export type CreateLegendVariantMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a variant image to a legend
+ */
+export const useCreateLegendVariant = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLegendVariant>>,
+    TError,
+    { id: number; data: BodyType<CreateLegendVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createLegendVariant>>,
+  TError,
+  { id: number; data: BodyType<CreateLegendVariantBody> },
+  TContext
+> => {
+  return useMutation(getCreateLegendVariantMutationOptions(options));
+};
+
+/**
+ * @summary Delete a legend variant
+ */
+export const getDeleteLegendVariantUrl = (variantId: number) => {
+  return `/api/admin/legend-variants/${variantId}`;
+};
+
+export const deleteLegendVariant = async (
+  variantId: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteLegendVariantUrl(variantId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteLegendVariantMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLegendVariant>>,
+    TError,
+    { variantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteLegendVariant>>,
+  TError,
+  { variantId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteLegendVariant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteLegendVariant>>,
+    { variantId: number }
+  > = (props) => {
+    const { variantId } = props ?? {};
+
+    return deleteLegendVariant(variantId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteLegendVariantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteLegendVariant>>
+>;
+
+export type DeleteLegendVariantMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a legend variant
+ */
+export const useDeleteLegendVariant = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLegendVariant>>,
+    TError,
+    { variantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteLegendVariant>>,
+  TError,
+  { variantId: number },
+  TContext
+> => {
+  return useMutation(getDeleteLegendVariantMutationOptions(options));
+};
 
 /**
  * @summary Create a new trait (admin only)

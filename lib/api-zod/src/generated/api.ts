@@ -740,6 +740,209 @@ export const GetStoreStatsResponse = zod.object({
 });
 
 /**
+ * @summary List active legends for a collection
+ */
+export const listLegendsQueryNftCollectionDefault = `wegens`;
+
+export const ListLegendsQueryParams = zod.object({
+  nftCollection: zod
+    .enum(["wegens", "wegenettes"])
+    .default(listLegendsQueryNftCollectionDefault),
+});
+
+export const ListLegendsResponse = zod.object({
+  legends: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      nftCollection: zod.string(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string(),
+      description: zod.string().nullish(),
+      isActive: zod.boolean(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary List all legends (including inactive) for admin
+ */
+export const listAllLegendsQueryNftCollectionDefault = `wegens`;
+
+export const ListAllLegendsQueryParams = zod.object({
+  nftCollection: zod
+    .enum(["wegens", "wegenettes"])
+    .default(listAllLegendsQueryNftCollectionDefault),
+});
+
+export const ListAllLegendsResponse = zod.object({
+  legends: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      nftCollection: zod.string(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string(),
+      description: zod.string().nullish(),
+      isActive: zod.boolean(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary List enabled variant pack names for legends
+ */
+export const listLegendVariantCollectionsQueryNftCollectionDefault = `wegens`;
+
+export const ListLegendVariantCollectionsQueryParams = zod.object({
+  nftCollection: zod
+    .enum(["wegens", "wegenettes"])
+    .default(listLegendVariantCollectionsQueryNftCollectionDefault),
+});
+
+export const ListLegendVariantCollectionsResponse = zod.object({
+  collections: zod.array(zod.string()),
+});
+
+/**
+ * @summary Get legend variant images for a named pack
+ */
+export const GetLegendVariantsByCollectionQueryParams = zod.object({
+  nftCollection: zod.coerce.string(),
+  name: zod.coerce.string(),
+});
+
+export const GetLegendVariantsByCollectionResponse = zod.object({
+  variantMap: zod.record(
+    zod.string(),
+    zod.object({
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get all variants for a specific legend
+ */
+export const GetLegendVariantsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetLegendVariantsResponse = zod.object({
+  variants: zod.array(
+    zod.object({
+      id: zod.number(),
+      legendId: zod.number(),
+      name: zod.string(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string(),
+      isEnabled: zod.boolean(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a new legend
+ */
+export const CreateLegendBody = zod.object({
+  name: zod.string(),
+  nftCollection: zod.enum(["wegens", "wegenettes"]).optional(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().optional(),
+  description: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a legend
+ */
+export const UpdateLegendParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateLegendBody = zod.object({
+  name: zod.string().optional(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().optional(),
+  description: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateLegendResponse = zod.object({
+  legend: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    nftCollection: zod.string(),
+    imageUrl: zod.string().nullish(),
+    mediaType: zod.string(),
+    description: zod.string().nullish(),
+    isActive: zod.boolean(),
+    sortOrder: zod.number(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Delete a legend
+ */
+export const DeleteLegendParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteLegendResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Add a variant image to a legend
+ */
+export const CreateLegendVariantParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateLegendVariantBody = zod.object({
+  name: zod.string(),
+  imageUrl: zod.string().nullish(),
+  mediaType: zod.string().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const CreateLegendVariantResponse = zod.object({
+  variant: zod.object({
+    id: zod.number(),
+    legendId: zod.number(),
+    name: zod.string(),
+    imageUrl: zod.string().nullish(),
+    mediaType: zod.string(),
+    isEnabled: zod.boolean(),
+    sortOrder: zod.number(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Delete a legend variant
+ */
+export const DeleteLegendVariantParams = zod.object({
+  variantId: zod.coerce.number(),
+});
+
+export const DeleteLegendVariantResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
  * @summary Create a new trait (admin only)
  */
 export const createTraitBodyIsActiveDefault = true;

@@ -289,6 +289,67 @@ export interface AdminStats {
   recentActivity: AdminStatsRecentActivityItem[];
 }
 
+export interface LegendItem {
+  id: number;
+  name: string;
+  nftCollection: string;
+  imageUrl?: string | null;
+  mediaType: string;
+  description?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface LegendVariant {
+  id: number;
+  legendId: number;
+  name: string;
+  imageUrl?: string | null;
+  mediaType: string;
+  isEnabled: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ListLegendsResponse {
+  legends: LegendItem[];
+}
+
+export type CreateLegendBodyNftCollection =
+  (typeof CreateLegendBodyNftCollection)[keyof typeof CreateLegendBodyNftCollection];
+
+export const CreateLegendBodyNftCollection = {
+  wegens: "wegens",
+  wegenettes: "wegenettes",
+} as const;
+
+export interface CreateLegendBody {
+  name: string;
+  nftCollection?: CreateLegendBodyNftCollection;
+  imageUrl?: string | null;
+  mediaType?: string;
+  description?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export interface UpdateLegendBody {
+  name?: string;
+  imageUrl?: string | null;
+  mediaType?: string;
+  description?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export interface CreateLegendVariantBody {
+  name: string;
+  imageUrl?: string | null;
+  mediaType?: string;
+  sortOrder?: number;
+}
+
 export interface DeleteResponse {
   success: boolean;
   message: string;
@@ -345,4 +406,61 @@ export type ListVariantCollectionsParams = {
 export type GetVariantsByCollectionParams = {
   nftCollection?: string;
   name: string;
+};
+
+export type ListLegendsParams = {
+  nftCollection?: ListLegendsNftCollection;
+};
+
+export type ListLegendsNftCollection =
+  (typeof ListLegendsNftCollection)[keyof typeof ListLegendsNftCollection];
+
+export const ListLegendsNftCollection = {
+  wegens: "wegens",
+  wegenettes: "wegenettes",
+} as const;
+
+export type ListAllLegendsParams = {
+  nftCollection?: ListAllLegendsNftCollection;
+};
+
+export type ListAllLegendsNftCollection =
+  (typeof ListAllLegendsNftCollection)[keyof typeof ListAllLegendsNftCollection];
+
+export const ListAllLegendsNftCollection = {
+  wegens: "wegens",
+  wegenettes: "wegenettes",
+} as const;
+
+export type ListLegendVariantCollectionsParams = {
+  nftCollection?: ListLegendVariantCollectionsNftCollection;
+};
+
+export type ListLegendVariantCollectionsNftCollection =
+  (typeof ListLegendVariantCollectionsNftCollection)[keyof typeof ListLegendVariantCollectionsNftCollection];
+
+export const ListLegendVariantCollectionsNftCollection = {
+  wegens: "wegens",
+  wegenettes: "wegenettes",
+} as const;
+
+export type GetLegendVariantsByCollectionParams = {
+  nftCollection: string;
+  name: string;
+};
+
+export type GetLegendVariants200 = {
+  variants: LegendVariant[];
+};
+
+export type CreateLegend201 = {
+  legend: LegendItem;
+};
+
+export type UpdateLegend200 = {
+  legend: LegendItem;
+};
+
+export type CreateLegendVariant200 = {
+  variant: LegendVariant;
 };

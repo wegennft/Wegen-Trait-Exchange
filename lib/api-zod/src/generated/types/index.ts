@@ -28,6 +28,8 @@ export * from "./deleteResponse";
 export * from "./errorEnvelope";
 export * from "./getLegendVariants200";
 export * from "./getLegendVariantsByCollectionParams";
+export * from "./getMyLegendsNftCollection";
+export * from "./getMyLegendsParams";
 export * from "./getVariantsByCollectionParams";
 export * from "./healthStatus";
 export * from "./legendItem";

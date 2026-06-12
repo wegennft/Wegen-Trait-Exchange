@@ -491,6 +491,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ListLegendsResponse"
 
+  /legends/mine:
+    get:
+      operationId: getMyLegends
+      tags: [traits]
+      summary: Get legends owned by a wallet (cross-references token IDs)
+      parameters:
+        - name: walletAddress
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: nftCollection
+          in: query
+          schema:
+            type: string
+            enum: [wegens, wegenettes]
+            default: wegens
+      responses:
+        "200":
+          description: Legends owned by this wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListLegendsResponse"
+
   /legends/all:
     get:
       operationId: listAllLegends
@@ -1351,6 +1376,9 @@ components:
           type: string
         nftCollection:
           type: string
+        tokenId:
+          type: integer
+          nullable: true
         imageUrl:
           type: string
           nullable: true
@@ -1424,6 +1452,9 @@ components:
         nftCollection:
           type: string
           enum: [wegens, wegenettes]
+        tokenId:
+          type: integer
+          nullable: true
         imageUrl:
           type: string
           nullable: true
@@ -1442,6 +1473,9 @@ components:
       properties:
         name:
           type: string
+        tokenId:
+          type: integer
+          nullable: true
         imageUrl:
           type: string
           nullable: true

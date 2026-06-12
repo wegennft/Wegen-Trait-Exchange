@@ -13,6 +13,7 @@ export const legendsTable = pgTable("legends", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   nftCollection: text("nft_collection").notNull().default("wegens"),
+  tokenId: integer("token_id"),
   imageUrl: text("image_url"),
   mediaType: text("media_type").notNull().default("image"),
   description: text("description"),

@@ -293,6 +293,7 @@ export interface LegendItem {
   id: number;
   name: string;
   nftCollection: string;
+  tokenId?: number | null;
   imageUrl?: string | null;
   mediaType: string;
   description?: string | null;
@@ -327,6 +328,7 @@ export const CreateLegendBodyNftCollection = {
 export interface CreateLegendBody {
   name: string;
   nftCollection?: CreateLegendBodyNftCollection;
+  tokenId?: number | null;
   imageUrl?: string | null;
   mediaType?: string;
   description?: string | null;
@@ -336,6 +338,7 @@ export interface CreateLegendBody {
 
 export interface UpdateLegendBody {
   name?: string;
+  tokenId?: number | null;
   imageUrl?: string | null;
   mediaType?: string;
   description?: string | null;
@@ -416,6 +419,19 @@ export type ListLegendsNftCollection =
   (typeof ListLegendsNftCollection)[keyof typeof ListLegendsNftCollection];
 
 export const ListLegendsNftCollection = {
+  wegens: "wegens",
+  wegenettes: "wegenettes",
+} as const;
+
+export type GetMyLegendsParams = {
+  walletAddress: string;
+  nftCollection?: GetMyLegendsNftCollection;
+};
+
+export type GetMyLegendsNftCollection =
+  (typeof GetMyLegendsNftCollection)[keyof typeof GetMyLegendsNftCollection];
+
+export const GetMyLegendsNftCollection = {
   wegens: "wegens",
   wegenettes: "wegenettes",
 } as const;

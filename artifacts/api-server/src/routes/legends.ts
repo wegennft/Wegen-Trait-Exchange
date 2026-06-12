@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, asc, inArray } from "drizzle-orm";
-import { db, legendsTable, legendVariantsTable } from "@workspace/db";
+import { db, legendsTable, legendVariantsTable, wegenNftsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -23,6 +23,36 @@ router.get("/legends", async (req, res): Promise<void> => {
     .select()
     .from(legendsTable)
     .where(and(eq(legendsTable.nftCollection, nftCollection), eq(legendsTable.isActive, true)))
+    .orderBy(asc(legendsTable.sortOrder), asc(legendsTable.name));
+  res.json({ legends });
+});
+
+// GET /legends/mine?walletAddress=&nftCollection= — legends owned by wallet (token ID cross-reference)
+router.get("/legends/mine", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const walletAddress = (req.query.walletAddress as string | undefined)?.toLowerCase().trim();
+  if (!walletAddress) { res.status(400).json({ error: "walletAddress is required" }); return; }
+
+  // All NFT token IDs owned by this wallet
+  const ownedNfts = await db
+    .select({ tokenId: wegenNftsTable.tokenId })
+    .from(wegenNftsTable)
+    .where(eq(wegenNftsTable.walletAddress, walletAddress));
+  const ownedTokenIds = ownedNfts.map((n) => n.tokenId);
+
+  if (ownedTokenIds.length === 0) { res.json({ legends: [] }); return; }
+
+  // Legends for this collection whose tokenId matches one of the wallet's NFTs
+  const legends = await db
+    .select()
+    .from(legendsTable)
+    .where(
+      and(
+        eq(legendsTable.nftCollection, nftCollection),
+        eq(legendsTable.isActive, true),
+        inArray(legendsTable.tokenId, ownedTokenIds),
+      )
+    )
     .orderBy(asc(legendsTable.sortOrder), asc(legendsTable.name));
   res.json({ legends });
 });
@@ -85,14 +115,15 @@ router.get("/legends/:id/variants", async (req, res): Promise<void> => {
 
 // POST /admin/legends
 router.post("/admin/legends", async (req, res): Promise<void> => {
-  const { name, nftCollection, imageUrl, mediaType, description, isActive, sortOrder } = req.body as {
-    name?: string; nftCollection?: string; imageUrl?: string; mediaType?: string;
+  const { name, nftCollection, tokenId, imageUrl, mediaType, description, isActive, sortOrder } = req.body as {
+    name?: string; nftCollection?: string; tokenId?: number | null; imageUrl?: string; mediaType?: string;
     description?: string; isActive?: boolean; sortOrder?: number;
   };
   if (!name?.trim()) { res.status(400).json({ error: "name is required" }); return; }
   const [legend] = await db.insert(legendsTable).values({
     name: name.trim(),
     nftCollection: nftCollection === "wegenettes" ? "wegenettes" : "wegens",
+    tokenId: tokenId ?? null,
     imageUrl: imageUrl ?? null,
     mediaType: mediaType ?? "image",
     description: description ?? null,
@@ -106,12 +137,13 @@ router.post("/admin/legends", async (req, res): Promise<void> => {
 router.put("/admin/legends/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { name, imageUrl, mediaType, description, isActive, sortOrder } = req.body as {
-    name?: string; imageUrl?: string | null; mediaType?: string;
+  const { name, tokenId, imageUrl, mediaType, description, isActive, sortOrder } = req.body as {
+    name?: string; tokenId?: number | null; imageUrl?: string | null; mediaType?: string;
     description?: string | null; isActive?: boolean; sortOrder?: number;
   };
   const updates: Partial<typeof legendsTable.$inferInsert> = {};
   if (name !== undefined) updates.name = name.trim();
+  if (tokenId !== undefined) updates.tokenId = tokenId;
   if (imageUrl !== undefined) updates.imageUrl = imageUrl;
   if (mediaType !== undefined) updates.mediaType = mediaType;
   if (description !== undefined) updates.description = description;

@@ -5938,6 +5938,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formActive, setFormActive] = useState(true);
   const [formSortOrder, setFormSortOrder] = useState(0);
+  const [formTokenId, setFormTokenId] = useState<number | null>(null);
   const [formUploading, setFormUploading] = useState(false);
 
   const { data, isLoading } = useListAllLegends({ nftCollection: collection });
@@ -5967,7 +5968,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
   });
 
   const resetForm = () => {
-    setFormName(""); setFormDesc(""); setFormImageUrl(""); setFormActive(true); setFormSortOrder(0);
+    setFormName(""); setFormDesc(""); setFormImageUrl(""); setFormActive(true); setFormSortOrder(0); setFormTokenId(null);
   };
 
   const openEdit = (legend: LegendItem) => {
@@ -5977,6 +5978,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
     setFormImageUrl(legend.imageUrl ?? "");
     setFormActive(legend.isActive);
     setFormSortOrder(legend.sortOrder ?? 0);
+    setFormTokenId(legend.tokenId ?? null);
   };
 
   const handleUpload = async (file: File) => {
@@ -6014,6 +6016,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
               <TableRow>
                 <TableHead className="w-14"></TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead className="w-24">Token ID</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-16">Order</TableHead>
@@ -6034,6 +6037,15 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
                       )}
                     </TableCell>
                     <TableCell className="font-semibold">{legend.name}</TableCell>
+                    <TableCell className="text-xs font-mono">
+                      {legend.tokenId != null ? (
+                        <Badge variant="outline" className="text-[10px] border-yellow-500/30 text-yellow-400 gap-1">
+                          #{legend.tokenId}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-sm max-w-xs truncate">{legend.description ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant={legend.isActive ? "default" : "secondary"}
@@ -6088,9 +6100,11 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
             imageUrl={formImageUrl} setImageUrl={setFormImageUrl}
             active={formActive} setActive={setFormActive}
             sortOrder={formSortOrder} setSortOrder={setFormSortOrder}
+            tokenId={formTokenId} setTokenId={setFormTokenId}
             uploading={formUploading} onUpload={handleUpload}
             onSubmit={() => createMutation.mutate({ data: {
               name: formName, nftCollection: collection,
+              tokenId: formTokenId,
               imageUrl: formImageUrl || undefined,
               description: formDesc || undefined,
               isActive: formActive, sortOrder: formSortOrder,
@@ -6117,9 +6131,11 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
               imageUrl={formImageUrl} setImageUrl={setFormImageUrl}
               active={formActive} setActive={setFormActive}
               sortOrder={formSortOrder} setSortOrder={setFormSortOrder}
+              tokenId={formTokenId} setTokenId={setFormTokenId}
               uploading={formUploading} onUpload={handleUpload}
               onSubmit={() => updateMutation.mutate({ id: editLegend.id, data: {
                 name: formName,
+                tokenId: formTokenId,
                 imageUrl: formImageUrl || null,
                 description: formDesc || null,
                 isActive: formActive, sortOrder: formSortOrder,
@@ -6156,6 +6172,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
 function LegendForm({
   name, setName, desc, setDesc, imageUrl, setImageUrl,
   active, setActive, sortOrder, setSortOrder,
+  tokenId, setTokenId,
   uploading, onUpload, onSubmit, isPending, submitLabel,
 }: {
   name: string; setName: (v: string) => void;
@@ -6163,6 +6180,7 @@ function LegendForm({
   imageUrl: string; setImageUrl: (v: string) => void;
   active: boolean; setActive: (v: boolean) => void;
   sortOrder: number; setSortOrder: (v: number) => void;
+  tokenId: number | null; setTokenId: (v: number | null) => void;
   uploading: boolean; onUpload: (file: File) => void;
   onSubmit: () => void; isPending: boolean; submitLabel: string;
 }) {
@@ -6172,6 +6190,23 @@ function LegendForm({
       <div className="space-y-1.5">
         <Label>Name *</Label>
         <Input value={name} onChange={e => setName(e.target.value)} placeholder="Legend name" />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="flex items-center gap-1.5">
+          Token ID
+          <span className="text-[10px] text-muted-foreground font-normal">(Ethereum NFT token ID for wallet recognition)</span>
+        </Label>
+        <Input
+          type="number"
+          value={tokenId ?? ""}
+          onChange={e => {
+            const v = e.target.value;
+            setTokenId(v === "" ? null : parseInt(v) || null);
+          }}
+          placeholder="e.g. 42"
+          className="w-40"
+          min={0}
+        />
       </div>
       <div className="space-y-1.5">
         <Label>Description</Label>

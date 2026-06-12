@@ -10,6 +10,7 @@ import type { CreateLegendBodyNftCollection } from "./createLegendBodyNftCollect
 export interface CreateLegendBody {
   name: string;
   nftCollection?: CreateLegendBodyNftCollection;
+  tokenId?: number | null;
   imageUrl?: string | null;
   mediaType?: string;
   description?: string | null;

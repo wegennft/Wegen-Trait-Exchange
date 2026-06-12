@@ -756,6 +756,36 @@ export const ListLegendsResponse = zod.object({
       id: zod.number(),
       name: zod.string(),
       nftCollection: zod.string(),
+      tokenId: zod.number().nullish(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string(),
+      description: zod.string().nullish(),
+      isActive: zod.boolean(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get legends owned by a wallet (cross-references token IDs)
+ */
+export const getMyLegendsQueryNftCollectionDefault = `wegens`;
+
+export const GetMyLegendsQueryParams = zod.object({
+  walletAddress: zod.coerce.string(),
+  nftCollection: zod
+    .enum(["wegens", "wegenettes"])
+    .default(getMyLegendsQueryNftCollectionDefault),
+});
+
+export const GetMyLegendsResponse = zod.object({
+  legends: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      nftCollection: zod.string(),
+      tokenId: zod.number().nullish(),
       imageUrl: zod.string().nullish(),
       mediaType: zod.string(),
       description: zod.string().nullish(),
@@ -783,6 +813,7 @@ export const ListAllLegendsResponse = zod.object({
       id: zod.number(),
       name: zod.string(),
       nftCollection: zod.string(),
+      tokenId: zod.number().nullish(),
       imageUrl: zod.string().nullish(),
       mediaType: zod.string(),
       description: zod.string().nullish(),
@@ -854,6 +885,7 @@ export const GetLegendVariantsResponse = zod.object({
 export const CreateLegendBody = zod.object({
   name: zod.string(),
   nftCollection: zod.enum(["wegens", "wegenettes"]).optional(),
+  tokenId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   mediaType: zod.string().optional(),
   description: zod.string().nullish(),
@@ -870,6 +902,7 @@ export const UpdateLegendParams = zod.object({
 
 export const UpdateLegendBody = zod.object({
   name: zod.string().optional(),
+  tokenId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   mediaType: zod.string().optional(),
   description: zod.string().nullish(),
@@ -882,6 +915,7 @@ export const UpdateLegendResponse = zod.object({
     id: zod.number(),
     name: zod.string(),
     nftCollection: zod.string(),
+    tokenId: zod.number().nullish(),
     imageUrl: zod.string().nullish(),
     mediaType: zod.string(),
     description: zod.string().nullish(),

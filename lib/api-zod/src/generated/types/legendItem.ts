@@ -10,6 +10,7 @@ export interface LegendItem {
   id: number;
   name: string;
   nftCollection: string;
+  tokenId?: number | null;
   imageUrl?: string | null;
   mediaType: string;
   description?: string | null;

@@ -8,6 +8,7 @@
 
 export interface UpdateLegendBody {
   name?: string;
+  tokenId?: number | null;
   imageUrl?: string | null;
   mediaType?: string;
   description?: string | null;

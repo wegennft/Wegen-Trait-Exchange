@@ -33,6 +33,7 @@ import type {
   ErrorEnvelope,
   GetLegendVariants200,
   GetLegendVariantsByCollectionParams,
+  GetMyLegendsParams,
   GetVariantsByCollectionParams,
   HealthStatus,
   ListAllLegendsParams,
@@ -1892,6 +1893,100 @@ export function useListLegends<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListLegendsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get legends owned by a wallet (cross-references token IDs)
+ */
+export const getGetMyLegendsUrl = (params: GetMyLegendsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/legends/mine?${stringifiedParams}`
+    : `/api/legends/mine`;
+};
+
+export const getMyLegends = async (
+  params: GetMyLegendsParams,
+  options?: RequestInit,
+): Promise<ListLegendsResponse> => {
+  return customFetch<ListLegendsResponse>(getGetMyLegendsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyLegendsQueryKey = (params?: GetMyLegendsParams) => {
+  return [`/api/legends/mine`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMyLegendsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyLegends>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMyLegendsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMyLegends>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyLegendsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyLegends>>> = ({
+    signal,
+  }) => getMyLegends(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyLegends>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyLegendsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyLegends>>
+>;
+export type GetMyLegendsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get legends owned by a wallet (cross-references token IDs)
+ */
+
+export function useGetMyLegends<
+  TData = Awaited<ReturnType<typeof getMyLegends>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMyLegendsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMyLegends>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyLegendsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -310,7 +310,7 @@ export function Sandbox() {
   const celebGif = gameSettings?.celebrationGifUrl ?? DEFAULT_CELEBRATION_GIF;
 
   return (
-    <div className="flex flex-col gap-5 overflow-hidden" style={{ height: 'calc(100dvh - 70px - 4rem)' }}>
+    <div className="flex flex-col gap-5">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 shrink-0">
         <div
@@ -479,15 +479,15 @@ export function Sandbox() {
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="flex flex-row gap-4 flex-1 min-h-0 items-stretch">
+        <div className="flex flex-row gap-4 items-start">
           {/* ── Left: Image + controls ──────────────────────────────── */}
-          <div className="flex flex-col gap-2 shrink-0" style={{ width: "clamp(320px, 52%, 620px)" }}>
+          <div className="flex flex-col gap-2 shrink-0" style={{ width: "620px" }}>
             {/* Canvas */}
             <div
               className="relative rounded-2xl overflow-hidden w-full"
               style={{
-                aspectRatio: "1 / 1",
-                maxHeight: "calc(100% - 60px)",
+                width: "620px",
+                height: "620px",
                 background: "radial-gradient(ellipse at 30% 30%, hsl(272 40% 12%), hsl(272 25% 6%) 70%)",
                 border: isBountyDone
                   ? "2px solid hsl(120 100% 55% / 0.7)"
@@ -640,8 +640,16 @@ export function Sandbox() {
           </div>{/* end controls */}
           </div>{/* end left column */}
 
-          {/* ── Right: Trait Selector ─────────────────────────────────── */}
-          <div className="flex flex-col min-h-0 flex-1">
+          {/* ── Right: Trait Selector (sticky panel) ─────────────────── */}
+          <div
+            className="flex flex-col flex-1 overflow-hidden"
+            style={{
+              position: "sticky",
+              top: "70px",
+              height: "calc(100dvh - 70px - 2rem)",
+              alignSelf: "flex-start",
+            }}
+          >
             {/* Category tabs + search */}
             <div
               className="flex flex-col gap-2 mb-3 shrink-0 pt-2 pb-2"

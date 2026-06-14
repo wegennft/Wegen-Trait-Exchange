@@ -696,7 +696,7 @@ export function Sandbox() {
                       No traits match "{searchQuery}".
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 gap-5">
                       {searchResults.map(({ cat, trait }) => {
                         const isSelected = selected[cat]?.id === trait.id;
                         const isBountyMatch = gameEnabled && bountyTraits[cat]?.id === trait.id && isSelected;
@@ -704,7 +704,7 @@ export function Sandbox() {
                           <button
                             key={`${cat}-${trait.id}`}
                             onClick={() => selectTrait(cat, isSelected ? null : trait)}
-                            className={`group flex flex-col items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                            className={`group flex flex-col items-center gap-3 p-4 rounded-xl border transition-all ${
                               isBountyMatch
                                 ? "daily-trait-selected border-green-500/80"
                                 : isSelected
@@ -733,10 +733,10 @@ export function Sandbox() {
                               )}
                             </div>
                             <div className="w-full text-center">
-                              <p className={`text-[11px] font-semibold truncate ${isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
+                              <p className={`text-sm font-semibold truncate ${isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
                                 {trait.name}
                               </p>
-                              <p className="text-[9px] font-mono text-muted-foreground/30 uppercase tracking-wider">{cat}</p>
+                              <p className="text-[11px] font-mono text-muted-foreground/30 uppercase tracking-wider">{cat}</p>
                             </div>
                           </button>
                         );
@@ -772,11 +772,11 @@ export function Sandbox() {
                   No {activeCategory.toLowerCase()} traits uploaded yet.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-5">
                   {/* None option */}
                   <button
                     onClick={() => selectTrait(activeCategory, null)}
-                    className={`group flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
+                    className={`group flex flex-col items-center gap-3 p-5 rounded-xl border transition-all ${
                       !selected[activeCategory]
                         ? "border-primary/60 bg-primary/10 shadow-[0_0_12px_hsl(272_100%_62%_/_0.2)]"
                         : "border-border/30 bg-secondary/20 hover:border-border hover:bg-secondary/40"
@@ -798,7 +798,7 @@ export function Sandbox() {
                       <button
                         key={trait.id}
                         onClick={() => selectTrait(activeCategory, isSelected ? null : trait)}
-                        className={`group flex flex-col items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                        className={`group flex flex-col items-center gap-3 p-4 rounded-xl border transition-all ${
                           isBountyMatch
                             ? "daily-trait-selected border-green-500/80"
                             : isSelected
@@ -861,14 +861,14 @@ export function Sandbox() {
 
                         {/* Name */}
                         <div className="w-full text-center">
-                          <p className={`text-[11px] font-semibold truncate ${
+                          <p className={`text-sm font-semibold truncate ${
                             isBountyMatch ? "text-green-400"
                             : isSelected ? "text-primary"
                             : "text-muted-foreground group-hover:text-foreground"
                           } transition-colors`}>
                             {trait.name}
                           </p>
-                          <p className="text-[10px] text-muted-foreground/40 font-mono">
+                          <p className="text-xs text-muted-foreground/40 font-mono">
                             {trait.priceEth} ETH
                             {formatUsd(trait.priceEth, ethUsd) && (
                               <span className="text-muted-foreground/30">

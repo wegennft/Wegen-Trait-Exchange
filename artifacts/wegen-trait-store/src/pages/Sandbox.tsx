@@ -481,14 +481,11 @@ export function Sandbox() {
       ) : (
         <div className="flex flex-col lg:flex-row gap-6 items-stretch flex-1 min-h-0">
           {/* ── Left: Composite Display ────────────────────────────────── */}
-          <div className="w-full lg:w-auto flex-shrink-0 flex flex-col items-center gap-4 overflow-y-auto">
+          <div className="w-full lg:w-[min(540px,45%)] flex-shrink-0 flex flex-col items-center gap-4 min-h-0">
             {/* Canvas */}
             <div
-              className="relative rounded-2xl overflow-hidden"
+              className="relative rounded-2xl overflow-hidden flex-1 min-h-0 w-full aspect-square"
               style={{
-                width: 540,
-                height: 540,
-                maxWidth: "100%",
                 background: "radial-gradient(ellipse at 30% 30%, hsl(272 40% 12%), hsl(272 25% 6%) 70%)",
                 border: isBountyDone
                   ? "2px solid hsl(120 100% 55% / 0.7)"
@@ -536,7 +533,7 @@ export function Sandbox() {
             </div>
 
             {/* ── Variant Pack Tabs — always visible ────────────────────── */}
-            <div className="w-full" style={{ maxWidth: 540 }}>
+            <div className="w-full shrink-0">
               <div className="flex flex-wrap items-center gap-2 py-3 border-t border-b" style={{ borderColor: `${accent}18` }}>
                 <span className="text-[9px] font-mono uppercase tracking-widest mr-1" style={{ color: `${accent}60` }}>SKIN</span>
                 <button
@@ -573,7 +570,7 @@ export function Sandbox() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex flex-col gap-2 w-full" style={{ maxWidth: 540 }}>
+            <div className="flex flex-col gap-2 w-full shrink-0">
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -611,7 +608,7 @@ export function Sandbox() {
 
             {/* Selected summary chips */}
             {selectedCount > 0 && (
-              <div className="w-full space-y-1.5" style={{ maxWidth: 540 }}>
+              <div className="w-full space-y-1.5 shrink-0">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
                   Current Build
                 </p>

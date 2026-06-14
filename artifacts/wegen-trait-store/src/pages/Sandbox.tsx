@@ -310,7 +310,7 @@ export function Sandbox() {
   const celebGif = gameSettings?.celebrationGifUrl ?? DEFAULT_CELEBRATION_GIF;
 
   return (
-    <div className="flex flex-col gap-5" style={{ height: 'calc(100dvh - 70px - 4rem)' }}>
+    <div className="flex flex-col gap-5 overflow-hidden" style={{ height: 'calc(100dvh - 70px - 4rem)' }}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 shrink-0">
         <div
@@ -479,7 +479,7 @@ export function Sandbox() {
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-6 items-start flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-6 items-stretch flex-1 min-h-0">
           {/* ── Left: Composite Display ────────────────────────────────── */}
           <div className="w-full lg:w-auto flex-shrink-0 flex flex-col items-center gap-4 overflow-y-auto">
             {/* Canvas */}

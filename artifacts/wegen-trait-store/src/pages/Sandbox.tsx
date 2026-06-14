@@ -348,15 +348,16 @@ export function Sandbox() {
       {/* ── Bounty Challenge Banner ───────────────────────────────────────── */}
       {!isLoading && bountyCats.length > 0 && gameEnabled && (
         <div
-          className="rounded-xl p-4 space-y-3"
+          className="rounded-xl p-4 space-y-3 sticky top-[70px] z-30"
           style={{
             background: isBountyDone
-              ? "linear-gradient(135deg, hsl(120 60% 10% / 0.9), hsl(120 40% 8% / 0.9))"
-              : "linear-gradient(135deg, hsl(272 30% 10% / 0.95), hsl(272 20% 7% / 0.95))",
+              ? "linear-gradient(135deg, hsl(120 60% 10% / 0.96), hsl(120 40% 8% / 0.96))"
+              : "linear-gradient(135deg, hsl(272 30% 10% / 0.97), hsl(272 20% 7% / 0.97))",
             border: `1px solid ${isBountyDone ? "hsl(120 100% 45% / 0.45)" : "hsl(43 100% 52% / 0.35)"}`,
             boxShadow: isBountyDone
               ? "0 0 24px hsl(120 100% 45% / 0.15)"
               : "0 0 16px hsl(43 100% 52% / 0.1)",
+            backdropFilter: "blur(16px)",
           }}
         >
           {/* Title row */}

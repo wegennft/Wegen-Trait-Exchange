@@ -696,7 +696,7 @@ export function Sandbox() {
                       No traits match "{searchQuery}".
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-5">
+                    <div className="grid grid-cols-4 gap-4">
                       {searchResults.map(({ cat, trait }) => {
                         const isSelected = selected[cat]?.id === trait.id;
                         const isBountyMatch = gameEnabled && bountyTraits[cat]?.id === trait.id && isSelected;
@@ -772,7 +772,7 @@ export function Sandbox() {
                   No {activeCategory.toLowerCase()} traits uploaded yet.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-5">
+                <div className="grid grid-cols-4 gap-4">
                   {/* None option */}
                   <button
                     onClick={() => selectTrait(activeCategory, null)}

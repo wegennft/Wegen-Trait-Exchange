@@ -345,134 +345,6 @@ export function Sandbox() {
         </div>
       </div>
 
-      {/* ── Bounty Challenge Banner ───────────────────────────────────────── */}
-      {!isLoading && bountyCats.length > 0 && gameEnabled && (
-        <div
-          className="rounded-xl p-4 space-y-3 shrink-0"
-          style={{
-            background: isBountyDone
-              ? "linear-gradient(135deg, hsl(120 60% 10% / 0.96), hsl(120 40% 8% / 0.96))"
-              : "linear-gradient(135deg, hsl(272 30% 10% / 0.97), hsl(272 20% 7% / 0.97))",
-            border: `1px solid ${isBountyDone ? "hsl(120 100% 45% / 0.45)" : "hsl(43 100% 52% / 0.35)"}`,
-            boxShadow: isBountyDone
-              ? "0 0 24px hsl(120 100% 45% / 0.15)"
-              : "0 0 16px hsl(43 100% 52% / 0.1)",
-            backdropFilter: "blur(16px)",
-          }}
-        >
-          {/* Title row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Gamepad2 className="w-4 h-4" style={{ color: "hsl(43 100% 52%)" }} />
-              <span
-                className="text-lg leading-none"
-                style={{ ...BANGERS, color: "hsl(43 100% 55%)", textShadow: "0 0 12px hsl(43 100% 52% / 0.5)" }}
-              >
-                WEGEN BOUNTY
-              </span>
-              {bountyCount > 0 && (
-                <span
-                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: `${accent}33`, color: accent, border: `1px solid ${accent}59` }}
-                >
-                  <Zap className="w-2.5 h-2.5" />
-                  #{bountyCount + 1}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {isBountyDone && (
-                <span
-                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg"
-                  style={{ background: "hsl(120 100% 45% / 0.15)", color: "hsl(120 100% 60%)", border: "1px solid hsl(120 100% 45% / 0.4)" }}
-                >
-                  <Trophy className="w-3 h-3" /> BUILT!
-                </span>
-              )}
-              <span className="text-[10px] font-mono text-muted-foreground/40">
-                {bountyMatchCount}/{bountyCats.length} matched
-              </span>
-              <button
-                onClick={advanceBounty}
-                className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all hover:opacity-100 opacity-60"
-                style={{
-                  background: "hsl(272 20% 10%)",
-                  border: `1px solid ${accent}40`,
-                  color: accent,
-                }}
-                title="Skip to next bounty"
-              >
-                <SkipForward className="w-3 h-3" />
-                Skip
-              </button>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-muted-foreground/50 font-mono">
-            // hunt through each layer — find and select the right trait to unlock it //
-          </p>
-
-          {/* Bounty target chips — hidden until matched */}
-          <div className="flex flex-wrap gap-2">
-            {bountyCats.map((cat) => {
-              const t = bountyTraits[cat];
-              const matched = selected[cat]?.id === t?.id;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all hover:opacity-100"
-                  style={{
-                    background: matched ? "hsl(120 100% 45% / 0.12)" : "hsl(272 20% 8%)",
-                    border: matched ? "1px solid hsl(120 100% 45% / 0.6)" : "1px solid hsl(272 100% 62% / 0.2)",
-                    boxShadow: matched ? "0 0 10px hsl(120 100% 45% / 0.2)" : undefined,
-                  }}
-                >
-                  {matched ? (
-                    t?.imageUrl ? (
-                      <img
-                        src={t.imageUrl}
-                        alt={t.name}
-                        className="w-5 h-5 object-contain rounded flex-shrink-0"
-                      />
-                    ) : (
-                      <span className="text-sm leading-none">{LAYER_ICONS[cat] ?? "📦"}</span>
-                    )
-                  ) : (
-                    <span className="text-sm leading-none opacity-40">{LAYER_ICONS[cat] ?? "📦"}</span>
-                  )}
-                  <span className="text-muted-foreground/50 font-mono">{cat}:</span>
-                  <span
-                    className="font-semibold max-w-[90px] truncate"
-                    style={{ color: matched ? "hsl(120 100% 65%)" : "hsl(var(--muted-foreground))", opacity: matched ? 1 : 0.35 }}
-                  >
-                    {matched ? t?.name : "???"}
-                  </span>
-                  {matched && (
-                    <span className="text-green-400 text-sm leading-none flex-shrink-0">✓</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Progress bar */}
-          <div className="space-y-1">
-            <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(272 20% 12%)" }}>
-              <div
-                className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-                style={{
-                  width: `${bountyCats.length > 0 ? (bountyMatchCount / bountyCats.length) * 100 : 0}%`,
-                  background: isBountyDone
-                    ? "linear-gradient(90deg, hsl(120 100% 45%), hsl(120 100% 65%))"
-                    : "linear-gradient(90deg, hsl(43 100% 45%), hsl(43 100% 62%))",
-                  boxShadow: isBountyDone ? "0 0 8px hsl(120 100% 50%)" : undefined,
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-32">
@@ -481,7 +353,10 @@ export function Sandbox() {
       ) : (
         <div className="flex flex-row gap-4 items-start">
           {/* ── Left: Image + controls ──────────────────────────────── */}
-          <div className="flex flex-col gap-2 shrink-0" style={{ width: "620px" }}>
+          <div
+            className="flex flex-col gap-2 shrink-0"
+            style={{ width: "620px", position: "sticky", top: "70px", alignSelf: "flex-start" }}
+          >
             {/* Canvas */}
             <div
               className="relative rounded-2xl overflow-hidden w-full"
@@ -650,7 +525,7 @@ export function Sandbox() {
               alignSelf: "flex-start",
             }}
           >
-            {/* Category tabs + search */}
+            {/* Category tabs + search + bounty bar */}
             <div
               className="flex flex-col gap-2 mb-3 shrink-0 pt-2 pb-2"
               style={{
@@ -658,6 +533,80 @@ export function Sandbox() {
                 backdropFilter: "blur(12px)",
               }}
             >
+              {/* ── Compact Bounty Bar — same height/style as trait tabs ── */}
+              {bountyCats.length > 0 && gameEnabled && (
+                <div
+                  className="flex items-center gap-2 flex-wrap px-3 py-2 rounded-xl border"
+                  style={{
+                    background: isBountyDone
+                      ? "hsl(120 60% 8% / 0.85)"
+                      : "hsl(272 25% 8% / 0.85)",
+                    border: `1px solid ${isBountyDone ? "hsl(120 100% 45% / 0.45)" : "hsl(43 100% 52% / 0.35)"}`,
+                    boxShadow: isBountyDone ? "0 0 12px hsl(120 100% 45% / 0.12)" : "0 0 8px hsl(43 100% 52% / 0.08)",
+                  }}
+                >
+                  {/* Label */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Gamepad2 className="w-3.5 h-3.5" style={{ color: "hsl(43 100% 52%)" }} />
+                    <span className="text-sm font-bold leading-none" style={{ ...BANGERS, color: "hsl(43 100% 55%)" }}>
+                      WEGEN BOUNTY
+                    </span>
+                    {isBountyDone && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "hsl(120 100% 45% / 0.15)", color: "hsl(120 100% 60%)", border: "1px solid hsl(120 100% 45% / 0.35)" }}>
+                        <Trophy className="w-2.5 h-2.5" /> BUILT!
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bounty chips */}
+                  {bountyCats.map((cat) => {
+                    const t = bountyTraits[cat];
+                    const matched = selected[cat]?.id === t?.id;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-sm font-semibold border transition-all"
+                        style={{
+                          background: matched ? "hsl(120 100% 45% / 0.12)" : "hsl(272 20% 10%)",
+                          border: matched ? "1px solid hsl(120 100% 45% / 0.6)" : "1px solid rgba(255,255,255,0.12)",
+                          boxShadow: matched ? "0 0 8px hsl(120 100% 45% / 0.2)" : undefined,
+                          color: matched ? "hsl(120 100% 65%)" : "hsl(var(--muted-foreground))",
+                        }}
+                      >
+                        <span className="text-base leading-none" style={{ opacity: matched ? 1 : 0.4 }}>{LAYER_ICONS[cat] ?? "📦"}</span>
+                        <span className="font-mono text-xs opacity-60">{cat}:</span>
+                        <span className="font-semibold max-w-[70px] truncate" style={{ opacity: matched ? 1 : 0.35 }}>
+                          {matched ? t?.name : "???"}
+                        </span>
+                        {matched && <span className="text-green-400 text-sm leading-none">✓</span>}
+                      </button>
+                    );
+                  })}
+
+                  {/* Progress + skip */}
+                  <div className="flex items-center gap-2 ml-auto shrink-0">
+                    <div className="relative w-20 h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(272 20% 18%)" }}>
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${bountyCats.length > 0 ? (bountyMatchCount / bountyCats.length) * 100 : 0}%`,
+                          background: isBountyDone ? "linear-gradient(90deg, hsl(120 100% 45%), hsl(120 100% 65%))" : "linear-gradient(90deg, hsl(43 100% 45%), hsl(43 100% 62%))",
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono text-muted-foreground/50">{bountyMatchCount}/{bountyCats.length}</span>
+                    <button
+                      onClick={advanceBounty}
+                      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1.5 rounded-lg border transition-all opacity-60 hover:opacity-100"
+                      style={{ background: "hsl(272 20% 10%)", border: `1px solid ${accent}40`, color: accent }}
+                    >
+                      <SkipForward className="w-3 h-3" /> Skip
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Search row */}
               <div className="relative w-full max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: `${accent}80` }} />
@@ -747,7 +696,7 @@ export function Sandbox() {
                       No traits match "{searchQuery}".
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                       {searchResults.map(({ cat, trait }) => {
                         const isSelected = selected[cat]?.id === trait.id;
                         const isBountyMatch = gameEnabled && bountyTraits[cat]?.id === trait.id && isSelected;
@@ -823,11 +772,11 @@ export function Sandbox() {
                   No {activeCategory.toLowerCase()} traits uploaded yet.
                 </div>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {/* None option */}
                   <button
                     onClick={() => selectTrait(activeCategory, null)}
-                    className={`group flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${
+                    className={`group flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
                       !selected[activeCategory]
                         ? "border-primary/60 bg-primary/10 shadow-[0_0_12px_hsl(272_100%_62%_/_0.2)]"
                         : "border-border/30 bg-secondary/20 hover:border-border hover:bg-secondary/40"

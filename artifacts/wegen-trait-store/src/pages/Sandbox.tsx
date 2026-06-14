@@ -481,7 +481,7 @@ export function Sandbox() {
       ) : (
         <div className="flex flex-row gap-4 flex-1 min-h-0 items-stretch">
           {/* ── Left: Image + controls ──────────────────────────────── */}
-          <div className="flex flex-col gap-2 shrink-0" style={{ width: "clamp(240px, 38%, 460px)" }}>
+          <div className="flex flex-col gap-2 shrink-0" style={{ width: "clamp(320px, 52%, 620px)" }}>
             {/* Canvas */}
             <div
               className="relative rounded-2xl overflow-hidden w-full"

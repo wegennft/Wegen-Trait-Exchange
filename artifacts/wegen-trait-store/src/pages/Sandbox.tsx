@@ -471,8 +471,8 @@ export function Sandbox() {
             <div
               className="relative rounded-2xl overflow-hidden"
               style={{
-                width: 500,
-                height: 500,
+                width: 540,
+                height: 540,
                 maxWidth: "100%",
                 background: "radial-gradient(ellipse at 30% 30%, hsl(272 40% 12%), hsl(272 25% 6%) 70%)",
                 border: isBountyDone
@@ -521,7 +521,7 @@ export function Sandbox() {
             </div>
 
             {/* ── Variant Pack Tabs — always visible ────────────────────── */}
-            <div className="w-full" style={{ maxWidth: 500 }}>
+            <div className="w-full" style={{ maxWidth: 540 }}>
               <div className="flex flex-wrap items-center gap-2 py-3 border-t border-b" style={{ borderColor: `${accent}18` }}>
                 <span className="text-[9px] font-mono uppercase tracking-widest mr-1" style={{ color: `${accent}60` }}>SKIN</span>
                 <button
@@ -558,7 +558,7 @@ export function Sandbox() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex flex-col gap-2 w-full" style={{ maxWidth: 500 }}>
+            <div className="flex flex-col gap-2 w-full" style={{ maxWidth: 540 }}>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -596,7 +596,7 @@ export function Sandbox() {
 
             {/* Selected summary chips */}
             {selectedCount > 0 && (
-              <div className="w-full space-y-1.5" style={{ maxWidth: 500 }}>
+              <div className="w-full space-y-1.5" style={{ maxWidth: 540 }}>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
                   Current Build
                 </p>
@@ -635,8 +635,14 @@ export function Sandbox() {
 
           {/* ── Right: Trait Selector ─────────────────────────────────── */}
           <div className="flex-1 min-w-0">
-            {/* Category tabs */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            {/* Category tabs — sticky */}
+            <div
+              className="flex flex-wrap gap-2 mb-4 sticky top-[90px] z-20 -mx-4 px-4 pt-3 pb-3"
+              style={{
+                background: "linear-gradient(to bottom, hsl(272 25% 4% / 0.97) 80%, transparent)",
+                backdropFilter: "blur(12px)",
+              }}
+            >
               {displayCategories.map((cat) => {
                 const isActive = activeCategory === cat;
                 const sel = selected[cat];
@@ -712,7 +718,7 @@ export function Sandbox() {
                   No {activeCategory.toLowerCase()} traits uploaded yet.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                   {/* None option */}
                   <button
                     onClick={() => selectTrait(activeCategory, null)}

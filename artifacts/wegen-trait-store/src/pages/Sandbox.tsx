@@ -479,15 +479,15 @@ export function Sandbox() {
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="flex flex-col gap-3 flex-1 min-h-0">
-          {/* ── Image: centered, large ────────────────────────────────── */}
-          <div className="flex justify-center shrink-0">
+        <div className="flex flex-row gap-4 flex-1 min-h-0 items-stretch">
+          {/* ── Left: Image + controls ──────────────────────────────── */}
+          <div className="flex flex-col gap-2 shrink-0" style={{ width: "clamp(240px, 38%, 460px)" }}>
             {/* Canvas */}
             <div
-              className="relative rounded-2xl overflow-hidden"
+              className="relative rounded-2xl overflow-hidden w-full"
               style={{
-                width: bountyCats.length > 0 && gameEnabled ? "clamp(180px, 22vh, 280px)" : "clamp(240px, 30vh, 380px)",
                 aspectRatio: "1 / 1",
+                maxHeight: "calc(100% - 60px)",
                 background: "radial-gradient(ellipse at 30% 30%, hsl(272 40% 12%), hsl(272 25% 6%) 70%)",
                 border: isBountyDone
                   ? "2px solid hsl(120 100% 55% / 0.7)"
@@ -559,10 +559,10 @@ export function Sandbox() {
                 </button>
               </div>
             </div>
-          </div>{/* end image centered */}
+          {/* end canvas */}
 
-          {/* ── Controls: skin, buttons ───────────────────────────────── */}
-          <div className="mx-auto w-full shrink-0 flex flex-col gap-2" style={{ maxWidth: bountyCats.length > 0 && gameEnabled ? "clamp(180px, 22vh, 280px)" : "clamp(240px, 30vh, 380px)" }}>
+          {/* ── Controls: skin tabs + selected summary ─────────────────── */}
+          <div className="w-full shrink-0 flex flex-col gap-2">
             {/* ── Variant Pack Tabs — always visible ────────────────────── */}
             <div className="w-full">
               <div className="flex flex-wrap items-center gap-2 py-3 border-t border-b" style={{ borderColor: `${accent}18` }}>
@@ -638,12 +638,13 @@ export function Sandbox() {
               </div>
             )}
           </div>{/* end controls */}
+          </div>{/* end left column */}
 
-          {/* ── Trait Selector ────────────────────────────────────────── */}
+          {/* ── Right: Trait Selector ─────────────────────────────────── */}
           <div className="flex flex-col min-h-0 flex-1">
             {/* Category tabs + search */}
             <div
-              className="flex flex-col gap-2 mb-3 shrink-0 -mx-4 px-4 pt-2 pb-2"
+              className="flex flex-col gap-2 mb-3 shrink-0 pt-2 pb-2"
               style={{
                 background: "linear-gradient(to bottom, hsl(272 25% 4% / 0.97) 80%, transparent)",
                 backdropFilter: "blur(12px)",

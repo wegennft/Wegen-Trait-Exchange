@@ -310,9 +310,9 @@ export function Sandbox() {
   const celebGif = gameSettings?.celebrationGifUrl ?? DEFAULT_CELEBRATION_GIF;
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5" style={{ height: 'calc(100dvh - 70px - 4rem)' }}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 shrink-0">
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{
@@ -348,7 +348,7 @@ export function Sandbox() {
       {/* ── Bounty Challenge Banner ───────────────────────────────────────── */}
       {!isLoading && bountyCats.length > 0 && gameEnabled && (
         <div
-          className="rounded-xl p-4 space-y-3 sticky top-[70px] z-30"
+          className="rounded-xl p-4 space-y-3 shrink-0"
           style={{
             background: isBountyDone
               ? "linear-gradient(135deg, hsl(120 60% 10% / 0.96), hsl(120 40% 8% / 0.96))"
@@ -479,9 +479,9 @@ export function Sandbox() {
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <div className="flex flex-col lg:flex-row gap-6 items-start flex-1 min-h-0">
           {/* ── Left: Composite Display ────────────────────────────────── */}
-          <div className="w-full lg:w-auto flex-shrink-0 flex flex-col items-center gap-4 lg:sticky lg:top-[90px]">
+          <div className="w-full lg:w-auto flex-shrink-0 flex flex-col items-center gap-4 overflow-y-auto">
             {/* Canvas */}
             <div
               className="relative rounded-2xl overflow-hidden"
@@ -649,10 +649,10 @@ export function Sandbox() {
           </div>
 
           {/* ── Right: Trait Selector ─────────────────────────────────── */}
-          <div className="flex-1 min-w-0">
-            {/* Category tabs + search — sticky */}
+          <div className="flex-1 min-w-0 flex flex-col min-h-0">
+            {/* Category tabs + search */}
             <div
-              className="flex flex-col gap-2 mb-4 sticky top-[90px] z-20 -mx-4 px-4 pt-3 pb-3"
+              className="flex flex-col gap-2 mb-4 shrink-0 -mx-4 px-4 pt-3 pb-3"
               style={{
                 background: "linear-gradient(to bottom, hsl(272 25% 4% / 0.97) 80%, transparent)",
                 backdropFilter: "blur(12px)",
@@ -727,7 +727,7 @@ export function Sandbox() {
 
             {/* Trait grid */}
             <div
-              className="rounded-xl p-4"
+              className="rounded-xl p-4 flex-1 overflow-y-auto min-h-0"
               style={{ background: "hsl(272 20% 7%)", border: `1px solid ${accent}26` }}
             >
               {trimmedSearch ? (

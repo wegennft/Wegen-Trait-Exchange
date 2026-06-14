@@ -18,6 +18,7 @@ import {
   X,
   SkipForward,
   Zap,
+  Search,
 } from "lucide-react";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
@@ -107,6 +108,7 @@ export function Sandbox() {
   const { collection, theme } = useCollection();
   const { accent, glow, glow2, gradient, gradient2 } = theme;
   const [activeCategory, setActiveCategory] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selected, setSelected] = useState<Record<string, TraitItem | null>>({});
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -212,6 +214,18 @@ export function Sandbox() {
   const activeCategoryTraits = byCategory[activeCategory] ?? [];
   const selectedCount = Object.values(selected).filter(Boolean).length;
   const activeCatSelectedTrait = selected[activeCategory] ?? null;
+
+  const trimmedSearch = searchQuery.trim().toLowerCase();
+  const searchResults = useMemo<{ cat: string; trait: TraitItem }[]>(() => {
+    if (!trimmedSearch) return [];
+    const out: { cat: string; trait: TraitItem }[] = [];
+    for (const cat of displayCategories) {
+      for (const t of byCategory[cat] ?? []) {
+        if (t.name.toLowerCase().includes(trimmedSearch)) out.push({ cat, trait: t });
+      }
+    }
+    return out;
+  }, [trimmedSearch, byCategory, displayCategories]);
 
   /* ── Variant pack names available for this nft collection ────────────── */
   const { data: collectionsData } = useQuery({
@@ -635,14 +649,35 @@ export function Sandbox() {
 
           {/* ── Right: Trait Selector ─────────────────────────────────── */}
           <div className="flex-1 min-w-0">
-            {/* Category tabs — sticky */}
+            {/* Category tabs + search — sticky */}
             <div
-              className="flex flex-wrap gap-2 mb-4 sticky top-[90px] z-20 -mx-4 px-4 pt-3 pb-3"
+              className="flex flex-col gap-2 mb-4 sticky top-[90px] z-20 -mx-4 px-4 pt-3 pb-3"
               style={{
                 background: "linear-gradient(to bottom, hsl(272 25% 4% / 0.97) 80%, transparent)",
                 backdropFilter: "blur(12px)",
               }}
             >
+              {/* Search row */}
+              <div className="relative w-full max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: `${accent}80` }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search traits…"
+                  className="w-full pl-8 pr-8 py-1.5 rounded-lg text-sm bg-secondary/40 border border-border/40 placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/60 focus:bg-secondary/60 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {/* Tabs row */}
+              <div className="flex flex-wrap gap-2">
               {displayCategories.map((cat) => {
                 const isActive = activeCategory === cat;
                 const sel = selected[cat];
@@ -686,13 +721,82 @@ export function Sandbox() {
                   </button>
                 );
               })}
-            </div>
+              </div>{/* end tabs row */}
+            </div>{/* end sticky container */}
 
             {/* Trait grid */}
             <div
               className="rounded-xl p-4"
               style={{ background: "hsl(272 20% 7%)", border: `1px solid ${accent}26` }}
             >
+              {trimmedSearch ? (
+                /* ── Search results mode ─────────────────────────────── */
+                <>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Search className="w-4 h-4" style={{ color: "hsl(var(--accent))" }} />
+                    <h3 className="text-lg leading-none" style={{ ...BANGERS, color: "hsl(var(--accent))" }}>
+                      Results
+                    </h3>
+                    <span className="text-xs text-muted-foreground/50 ml-1">
+                      {searchResults.length} trait{searchResults.length !== 1 ? "s" : ""} found
+                    </span>
+                  </div>
+                  {searchResults.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground/40 text-sm">
+                      No traits match "{searchQuery}".
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {searchResults.map(({ cat, trait }) => {
+                        const isSelected = selected[cat]?.id === trait.id;
+                        const isBountyMatch = gameEnabled && bountyTraits[cat]?.id === trait.id && isSelected;
+                        return (
+                          <button
+                            key={`${cat}-${trait.id}`}
+                            onClick={() => selectTrait(cat, isSelected ? null : trait)}
+                            className={`group flex flex-col items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                              isBountyMatch
+                                ? "daily-trait-selected border-green-500/80"
+                                : isSelected
+                                ? "border-primary/70 shadow-[0_0_14px_hsl(272_100%_62%_/_0.35)]"
+                                : "border-border/30 bg-secondary/20 hover:border-primary/40 hover:bg-secondary/50"
+                            }`}
+                            style={
+                              isBountyMatch
+                                ? { background: "linear-gradient(135deg, hsl(120 80% 12% / 0.6), hsl(120 60% 8% / 0.4))" }
+                                : isSelected
+                                ? { background: gradient2 }
+                                : {}
+                            }
+                          >
+                            <div className="w-full aspect-square rounded-lg overflow-hidden bg-secondary/50 relative">
+                              {trait.imageUrl ? (
+                                <TraitMedia url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full object-contain" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
+                              )}
+                              {!trait.isActive && (
+                                <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-secondary/80 text-muted-foreground/60 border border-border/30">Vault</div>
+                              )}
+                              {isSelected && (
+                                <div className="absolute inset-0 rounded-lg pointer-events-none" style={{ border: `2px solid ${accent}cc`, boxShadow: `inset 0 0 8px ${accent}4d` }} />
+                              )}
+                            </div>
+                            <div className="w-full text-center">
+                              <p className={`text-[11px] font-semibold truncate ${isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
+                                {trait.name}
+                              </p>
+                              <p className="text-[9px] font-mono text-muted-foreground/30 uppercase tracking-wider">{cat}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* ── Normal category mode ────────────────────────────── */
+                <>
               {/* Category header */}
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xl">{LAYER_ICONS[activeCategory] ?? "📦"}</span>
@@ -827,6 +931,8 @@ export function Sandbox() {
                     );
                   })}
                 </div>
+              )}
+              </>
               )}
 
             </div>

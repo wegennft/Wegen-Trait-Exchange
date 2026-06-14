@@ -479,13 +479,15 @@ export function Sandbox() {
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-6 items-stretch flex-1 min-h-0">
-          {/* ── Left: Composite Display ────────────────────────────────── */}
-          <div className="w-full lg:w-[min(540px,45%)] flex-shrink-0 flex flex-col items-center gap-4 min-h-0">
+        <div className="flex flex-col gap-3 flex-1 min-h-0">
+          {/* ── Image: centered, large ────────────────────────────────── */}
+          <div className="flex justify-center shrink-0">
             {/* Canvas */}
             <div
-              className="relative rounded-2xl overflow-hidden flex-1 min-h-0 w-full aspect-square"
+              className="relative rounded-2xl overflow-hidden"
               style={{
+                width: bountyCats.length > 0 && gameEnabled ? "clamp(180px, 22vh, 280px)" : "clamp(240px, 30vh, 380px)",
+                aspectRatio: "1 / 1",
                 background: "radial-gradient(ellipse at 30% 30%, hsl(272 40% 12%), hsl(272 25% 6%) 70%)",
                 border: isBountyDone
                   ? "2px solid hsl(120 100% 55% / 0.7)"
@@ -530,10 +532,39 @@ export function Sandbox() {
               >
                 {isBountyDone ? "Bounty Built!" : "Preview"}
               </div>
+              {/* ── Overlay action buttons ── */}
+              <div className="absolute bottom-0 left-0 right-0 z-50 flex gap-1 p-1.5" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}>
+                <button
+                  onClick={randomize}
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-bold border border-primary/30 bg-primary/10 hover:bg-primary/25 text-primary transition-all"
+                >
+                  <Shuffle className="w-3 h-3 flex-shrink-0" />
+                  Rand
+                </button>
+                <button
+                  onClick={clearAll}
+                  disabled={selectedCount === 0}
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-bold border border-border/30 bg-secondary/40 hover:bg-destructive/20 hover:border-destructive/40 hover:text-destructive text-muted-foreground disabled:opacity-30 transition-all"
+                >
+                  <Trash2 className="w-3 h-3 flex-shrink-0" />
+                  Clear
+                </button>
+                <button
+                  onClick={saveImage}
+                  disabled={selectedCount === 0 || isSaving}
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-bold border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 disabled:opacity-30 transition-all"
+                >
+                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" /> : <Download className="w-3 h-3 flex-shrink-0" />}
+                  Save
+                </button>
+              </div>
             </div>
+          </div>{/* end image centered */}
 
+          {/* ── Controls: skin, buttons ───────────────────────────────── */}
+          <div className="mx-auto w-full shrink-0 flex flex-col gap-2" style={{ maxWidth: bountyCats.length > 0 && gameEnabled ? "clamp(180px, 22vh, 280px)" : "clamp(240px, 30vh, 380px)" }}>
             {/* ── Variant Pack Tabs — always visible ────────────────────── */}
-            <div className="w-full shrink-0">
+            <div className="w-full">
               <div className="flex flex-wrap items-center gap-2 py-3 border-t border-b" style={{ borderColor: `${accent}18` }}>
                 <span className="text-[9px] font-mono uppercase tracking-widest mr-1" style={{ color: `${accent}60` }}>SKIN</span>
                 <button
@@ -567,43 +598,6 @@ export function Sandbox() {
                   </span>
                 )}
               </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex flex-col gap-2 w-full shrink-0">
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1 gap-2 border-primary/40 hover:bg-primary/10 hover:border-primary text-sm"
-                  onClick={randomize}
-                >
-                  <Shuffle className="w-3.5 h-3.5" />
-                  Randomize
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 gap-2 border-border/40 hover:bg-destructive/10 hover:border-destructive/60 hover:text-destructive text-sm"
-                  onClick={clearAll}
-                  disabled={selectedCount === 0}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear All
-                </Button>
-              </div>
-              <Button
-                className="w-full gap-2 text-sm font-semibold"
-                onClick={saveImage}
-                disabled={selectedCount === 0 || isSaving}
-                style={{
-                  background: selectedCount === 0 ? undefined : "linear-gradient(135deg, hsl(43 100% 52%), hsl(35 100% 50%))",
-                  color: selectedCount === 0 ? undefined : "#000",
-                  border: "none",
-                  boxShadow: selectedCount > 0 ? "0 0 18px hsl(43 100% 52% / 0.35)" : undefined,
-                }}
-              >
-                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                {isSaving ? "Saving…" : "Save Image"}
-              </Button>
             </div>
 
             {/* Selected summary chips */}
@@ -643,13 +637,13 @@ export function Sandbox() {
                 </div>
               </div>
             )}
-          </div>
+          </div>{/* end controls */}
 
-          {/* ── Right: Trait Selector ─────────────────────────────────── */}
-          <div className="flex-1 min-w-0 flex flex-col min-h-0">
+          {/* ── Trait Selector ────────────────────────────────────────── */}
+          <div className="flex flex-col min-h-0 flex-1">
             {/* Category tabs + search */}
             <div
-              className="flex flex-col gap-2 mb-4 shrink-0 -mx-4 px-4 pt-3 pb-3"
+              className="flex flex-col gap-2 mb-3 shrink-0 -mx-4 px-4 pt-2 pb-2"
               style={{
                 background: "linear-gradient(to bottom, hsl(272 25% 4% / 0.97) 80%, transparent)",
                 backdropFilter: "blur(12px)",
@@ -744,7 +738,7 @@ export function Sandbox() {
                       No traits match "{searchQuery}".
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                       {searchResults.map(({ cat, trait }) => {
                         const isSelected = selected[cat]?.id === trait.id;
                         const isBountyMatch = gameEnabled && bountyTraits[cat]?.id === trait.id && isSelected;
@@ -820,7 +814,7 @@ export function Sandbox() {
                   No {activeCategory.toLowerCase()} traits uploaded yet.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                   {/* None option */}
                   <button
                     onClick={() => selectTrait(activeCategory, null)}

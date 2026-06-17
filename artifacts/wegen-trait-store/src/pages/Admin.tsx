@@ -856,6 +856,10 @@ export function Admin() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [isUploadVariantsOpen, setIsUploadVariantsOpen] = useState(false);
+  const [isDeleteByDateOpen, setIsDeleteByDateOpen] = useState(false);
+  const [deleteByDateInput, setDeleteByDateInput] = useState(() => new Date().toISOString().split("T")[0]);
+  const [deleteByDateRunning, setDeleteByDateRunning] = useState(false);
+  const [deleteByDateProgress, setDeleteByDateProgress] = useState<{ done: number; total: number } | null>(null);
   const [editingTrait, setEditingTrait] = useState<Trait | null>(null);
   const [traitView, setTraitView] = useState<"all" | "in-store" | "vault">("all");
   const [traitCategory, setTraitCategory] = useState<string>("all");
@@ -985,6 +989,26 @@ export function Admin() {
     } finally {
       setBulkUpdating(false);
     }
+  };
+
+  const handleDeleteByDate = async (traitIds: number[]) => {
+    if (traitIds.length === 0) return;
+    setDeleteByDateRunning(true);
+    setDeleteByDateProgress({ done: 0, total: traitIds.length });
+    let done = 0;
+    for (const id of traitIds) {
+      try {
+        await fetch(`/api/admin/traits/${id}`, { method: "DELETE" });
+        done++;
+        setDeleteByDateProgress({ done, total: traitIds.length });
+      } catch { /* skip */ }
+    }
+    await queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
+    await queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+    toast({ title: `${done} trait${done !== 1 ? "s" : ""} permanently deleted` });
+    setDeleteByDateRunning(false);
+    setDeleteByDateProgress(null);
+    setIsDeleteByDateOpen(false);
   };
 
   const toggleSelectId = (id: number) => {
@@ -1193,6 +1217,102 @@ export function Admin() {
                 categoryFilter={traitCategory === "all" ? undefined : traitCategory}
                 onDone={() => setIsUploadVariantsOpen(false)}
               />
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete traits before date */}
+          <Dialog open={isDeleteByDateOpen} onOpenChange={(v) => { if (!deleteByDateRunning) setIsDeleteByDateOpen(v); }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-destructive/50 hover:bg-destructive/10 text-destructive/80 hover:text-destructive gap-2">
+                <Trash2 className="w-4 h-4" />
+                Delete Before Date
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <Trash2 className="w-4 h-4" />
+                  Delete Traits Uploaded Before Date
+                </DialogTitle>
+                <DialogDescription>
+                  Permanently removes traits from the current collection and category filter that were uploaded before the chosen date. This cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              {(() => {
+                const cutoff = deleteByDateInput ? new Date(deleteByDateInput + "T00:00:00") : null;
+                const matched = (traitsData?.traits ?? []).filter(t => {
+                  if (!cutoff) return false;
+                  const created = new Date((t as Trait & { createdAt?: string }).createdAt ?? "");
+                  if (isNaN(created.getTime())) return false;
+                  if (traitCategory !== "all" && t.category !== traitCategory) return false;
+                  return created < cutoff;
+                });
+                return (
+                  <div className="space-y-5 pt-2">
+                    <div className="space-y-2">
+                      <Label>Delete traits uploaded before</Label>
+                      <Input
+                        type="date"
+                        value={deleteByDateInput}
+                        onChange={e => setDeleteByDateInput(e.target.value)}
+                        disabled={deleteByDateRunning}
+                        className="bg-secondary/40 border-border/50"
+                      />
+                    </div>
+
+                    <div className="rounded-lg border border-border/40 bg-secondary/20 px-4 py-3 space-y-1">
+                      <p className="text-sm font-semibold">
+                        {matched.length === 0 ? (
+                          <span className="text-muted-foreground">No traits match these filters.</span>
+                        ) : (
+                          <span className="text-destructive">{matched.length} trait{matched.length !== 1 ? "s" : ""} will be permanently deleted</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground/60">
+                        Collection: <span className="text-muted-foreground">{traitCollection}</span>
+                        {traitCategory !== "all" && <> · Category: <span className="text-muted-foreground">{traitCategory}</span></>}
+                        {cutoff && <> · Before: <span className="text-muted-foreground">{cutoff.toLocaleDateString()}</span></>}
+                      </p>
+                    </div>
+
+                    {deleteByDateProgress && (
+                      <div className="space-y-1.5">
+                        <div className="relative h-1.5 rounded-full overflow-hidden bg-secondary">
+                          <div
+                            className="absolute inset-y-0 left-0 rounded-full bg-destructive transition-all duration-300"
+                            style={{ width: `${(deleteByDateProgress.done / deleteByDateProgress.total) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground/60 text-center">
+                          Deleting… {deleteByDateProgress.done} / {deleteByDateProgress.total}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsDeleteByDateOpen(false)}
+                        disabled={deleteByDateRunning}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={matched.length === 0 || deleteByDateRunning}
+                        onClick={() => handleDeleteByDate(matched.map(t => t.id))}
+                        className="gap-2"
+                      >
+                        {deleteByDateRunning ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Deleting…</>
+                        ) : (
+                          <><Trash2 className="w-4 h-4" /> Delete {matched.length} Trait{matched.length !== 1 ? "s" : ""}</>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()}
             </DialogContent>
           </Dialog>
 

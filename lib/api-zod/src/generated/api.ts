@@ -376,6 +376,9 @@ export const GetUserNftsResponse = zod.object({
       walletAddress: zod.string(),
       name: zod.string(),
       imageUrl: zod.string().optional(),
+      metadataTxHash: zod.string().nullish(),
+      metadataUpdatedAt: zod.string().nullish(),
+      variantPack: zod.string().nullish(),
       equippedTraits: zod.array(
         zod.object({
           category: zod.string(),
@@ -458,6 +461,9 @@ export const ApplyTraitResponse = zod.object({
     walletAddress: zod.string(),
     name: zod.string(),
     imageUrl: zod.string().optional(),
+    metadataTxHash: zod.string().nullish(),
+    metadataUpdatedAt: zod.string().nullish(),
+    variantPack: zod.string().nullish(),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),
@@ -591,6 +597,9 @@ export const RemoveTraitResponse = zod.object({
     walletAddress: zod.string(),
     name: zod.string(),
     imageUrl: zod.string().optional(),
+    metadataTxHash: zod.string().nullish(),
+    metadataUpdatedAt: zod.string().nullish(),
+    variantPack: zod.string().nullish(),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),
@@ -708,6 +717,7 @@ export const ConfirmTraitsParams = zod.object({
 
 export const ConfirmTraitsBody = zod.object({
   walletAddress: zod.string(),
+  variantPack: zod.string().nullish(),
 });
 
 export const ConfirmTraitsResponse = zod.object({

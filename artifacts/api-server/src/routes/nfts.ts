@@ -290,10 +290,20 @@ router.post("/nfts/:tokenId/confirm-traits", async (req, res): Promise<void> => 
       Math.floor(Math.random() * 16).toString(16),
     ).join("");
 
+  // Optional variant pack from body (not in Zod schema — read directly)
+  const variantPack =
+    typeof req.body.variantPack === "string" && req.body.variantPack.length > 0
+      ? req.body.variantPack
+      : null;
+
   // Record the metadata confirmation on the NFT row
   await db
     .update(wegenNftsTable)
-    .set({ metadataTxHash: txHash, metadataUpdatedAt: new Date() })
+    .set({
+      metadataTxHash: txHash,
+      metadataUpdatedAt: new Date(),
+      ...(variantPack !== undefined ? { variantPack } : {}),
+    })
     .where(eq(wegenNftsTable.tokenId, tokenId));
 
   res.json(

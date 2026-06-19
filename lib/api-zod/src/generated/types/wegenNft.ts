@@ -12,5 +12,8 @@ export interface WegenNft {
   walletAddress: string;
   name: string;
   imageUrl?: string;
+  metadataTxHash?: string | null;
+  metadataUpdatedAt?: string | null;
+  variantPack?: string | null;
   equippedTraits: NftTrait[];
 }

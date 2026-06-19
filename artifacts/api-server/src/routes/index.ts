@@ -8,6 +8,7 @@ import storageRouter from "./storage";
 import swapRouter from "./swap";
 import marketRouter from "./market";
 import legendsRouter from "./legends";
+import metadataRouter from "./metadata";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(adminRouter);
 router.use(swapRouter);
 router.use(marketRouter);
 router.use(legendsRouter);
+router.use(metadataRouter);
 
 export default router;

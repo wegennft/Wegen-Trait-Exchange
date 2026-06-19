@@ -8,4 +8,5 @@
 
 export interface ConfirmTraitsBody {
   walletAddress: string;
+  variantPack?: string | null;
 }

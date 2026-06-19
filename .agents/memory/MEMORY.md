@@ -1,0 +1,1 @@
+- [On-Chain Metadata Flow](on-chain-metadata.md) — confirm-traits stores variantPack + txHash in wegen_nfts; metadata endpoints at /api/metadata/:collection/:tokenId[/image] serve ERC-721 JSON + sharp-composited PNG.

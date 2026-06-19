@@ -21,6 +21,7 @@
     "google-auth-library": "^10.6.2",
     "pino": "^9",
     "pino-http": "^10",
+    "sharp": "^0.35.1",
     "zod": "catalog:"
   },
   "devDependencies": {

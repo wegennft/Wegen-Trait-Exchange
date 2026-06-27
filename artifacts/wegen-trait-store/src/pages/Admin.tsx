@@ -6500,8 +6500,11 @@ interface BountyTrait {
 function BountiesAdminTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const upload = useUpload();
 
   const [form, setForm] = useState({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1 });
+  const [formUploading, setFormUploading] = useState(false);
+  const [editImageUploading, setEditImageUploading] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<BountyTrait>>({});
   const [sendForm, setSendForm] = useState({ wallets: "", points: 100, description: "" });
@@ -6741,10 +6744,50 @@ function BountiesAdminTab() {
             <Label className="text-xs">Name *</Label>
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Golden Halo" className="h-8 text-sm" />
           </div>
+
+          {/* Image Upload */}
           <div className="space-y-1">
-            <Label className="text-xs">Image URL</Label>
-            <Input value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://…" className="h-8 text-sm" />
+            <Label className="text-xs">Image</Label>
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setFormUploading(true);
+                    try {
+                      const url = await upload(file);
+                      setForm(f => ({ ...f, imageUrl: url }));
+                    } catch {
+                      toast({ title: "Upload failed", variant: "destructive" });
+                    } finally {
+                      setFormUploading(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                <div
+                  className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent transition-colors"
+                  style={{ height: 32 }}
+                >
+                  {formUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                  {formUploading ? "Uploading…" : "Upload File"}
+                </div>
+              </label>
+              {form.imageUrl && (
+                <img src={form.imageUrl} alt="preview" className="w-8 h-8 rounded object-cover border border-border/40" />
+              )}
+              {form.imageUrl && (
+                <button onClick={() => setForm(f => ({ ...f, imageUrl: "" }))} className="text-muted-foreground hover:text-destructive">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
+
           <div className="space-y-1">
             <Label className="text-xs">Point Cost</Label>
             <Input type="number" value={form.pointCost} onChange={e => setForm(f => ({ ...f, pointCost: parseInt(e.target.value) || 0 }))} className="h-8 text-sm" />
@@ -6758,7 +6801,7 @@ function BountiesAdminTab() {
             <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description" className="h-8 text-sm" />
           </div>
         </div>
-        <Button size="sm" disabled={!form.name || createMutation.isPending} onClick={() => createMutation.mutate()}>
+        <Button size="sm" disabled={!form.name || createMutation.isPending || formUploading} onClick={() => createMutation.mutate()}>
           {createMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Plus className="w-3 h-3 mr-1" />}
           Create Reward Trait
         </Button>
@@ -6780,7 +6823,45 @@ function BountiesAdminTab() {
                       <div><Label className="text-xs">Point Cost</Label><Input type="number" value={editForm.pointCost ?? t.pointCost} onChange={e => setEditForm(f => ({ ...f, pointCost: parseInt(e.target.value) || 0 }))} className="h-8 text-sm mt-1" /></div>
                       <div><Label className="text-xs">Total Supply</Label><Input type="number" value={editForm.totalSupply ?? t.totalSupply} onChange={e => setEditForm(f => ({ ...f, totalSupply: parseInt(e.target.value) || -1 }))} className="h-8 text-sm mt-1" /></div>
                       <div><Label className="text-xs">Remaining Supply</Label><Input type="number" value={editForm.remainingSupply ?? t.remainingSupply} onChange={e => setEditForm(f => ({ ...f, remainingSupply: parseInt(e.target.value) || -1 }))} className="h-8 text-sm mt-1" /></div>
-                      <div className="col-span-2"><Label className="text-xs">Image URL</Label><Input value={editForm.imageUrl ?? t.imageUrl ?? ""} onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))} className="h-8 text-sm mt-1" /></div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Image</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*,video/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setEditImageUploading(true);
+                                try {
+                                  const url = await upload(file);
+                                  setEditForm(f => ({ ...f, imageUrl: url }));
+                                } catch {
+                                  toast({ title: "Upload failed", variant: "destructive" });
+                                } finally {
+                                  setEditImageUploading(false);
+                                  e.target.value = "";
+                                }
+                              }}
+                            />
+                            <div className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent transition-colors h-8">
+                              {editImageUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                              {editImageUploading ? "Uploading…" : "Upload"}
+                            </div>
+                          </label>
+                          {(editForm.imageUrl ?? t.imageUrl) && (
+                            <img src={editForm.imageUrl ?? t.imageUrl ?? ""} alt="preview" className="w-8 h-8 rounded object-cover border border-border/40 flex-shrink-0" />
+                          )}
+                          <Input
+                            value={editForm.imageUrl ?? t.imageUrl ?? ""}
+                            onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))}
+                            placeholder="or paste URL"
+                            className="h-8 text-xs flex-1 font-mono"
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => saveMutation.mutate({ id: t.id, data: editForm })} disabled={saveMutation.isPending}>Save</Button>

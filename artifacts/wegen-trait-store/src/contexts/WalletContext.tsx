@@ -6,7 +6,20 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { BrowserProvider } from "ethers";
+import { BrowserProvider, Eip1193Provider } from "ethers";
+
+// Resolve the best available Ethereum provider.
+// Priority: Phantom Ethereum → window.ethereum (MetaMask / injected)
+function getEthProvider(): Eip1193Provider | null {
+  // Phantom exposes its own EIP-1193 provider under window.phantom.ethereum.
+  // Prefer it over window.ethereum to avoid MetaMask overriding Phantom.
+  const phantom = (window as unknown as { phantom?: { ethereum?: Eip1193Provider } }).phantom;
+  if (phantom?.ethereum?.request) return phantom.ethereum;
+  if ((window as { ethereum?: Eip1193Provider }).ethereum) {
+    return (window as { ethereum?: Eip1193Provider }).ethereum!;
+  }
+  return null;
+}
 
 export type ConnectStep = "requesting" | "signing" | null;
 
@@ -58,27 +71,33 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!window.ethereum) return;
-    window.ethereum.on("accountsChanged", handleAccountsChanged);
-    window.ethereum.on("chainChanged", handleChainChanged);
+    const eth = getEthProvider();
+    if (!eth) return;
+    (eth as { on: (e: string, cb: (v: unknown) => void) => void }).on("accountsChanged", handleAccountsChanged as (v: unknown) => void);
+    (eth as { on: (e: string, cb: (v: unknown) => void) => void }).on("chainChanged", handleChainChanged as (v: unknown) => void);
     return () => {
-      if (window.ethereum?.removeListener) {
-        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
-        window.ethereum.removeListener("chainChanged", handleChainChanged);
-      }
+      const rm = eth as { removeListener?: (e: string, cb: (v: unknown) => void) => void };
+      rm.removeListener?.("accountsChanged", handleAccountsChanged as (v: unknown) => void);
+      rm.removeListener?.("chainChanged", handleChainChanged as (v: unknown) => void);
     };
   }, [handleAccountsChanged, handleChainChanged]);
 
   const connect = async () => {
-    if (!window.ethereum) {
-      alert("Please install MetaMask or another Web3 wallet to continue.");
+    const eth = getEthProvider();
+    if (!eth) {
+      alert(
+        "No Ethereum wallet detected.\n\n" +
+        "• Phantom: open the extension and enable 'Ethereum' network, then refresh.\n" +
+        "• MetaMask: install from metamask.io.\n\n" +
+        "Note: wallet extensions don't work inside iframes — open the app in its own browser tab."
+      );
       return;
     }
 
     setIsConnecting(true);
     setConnectStep("requesting");
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(eth);
 
       // 1. Request account access
       const accounts: string[] = await provider.send("eth_requestAccounts", []);

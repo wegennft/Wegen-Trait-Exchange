@@ -7,6 +7,8 @@ import {
   bountyTraitsTable,
   bountyPurchasesTable,
   dailyBountyCompletionsTable,
+  lockerItemsTable,
+  wegenNftsTable,
 } from "@workspace/db";
 import { requireWalletOwnership } from "../middleware/requireAuth";
 
@@ -347,29 +349,49 @@ router.post(
 // ── Admin: POST /admin/bounties/send-points ───────────────────────────────────
 
 router.post("/admin/bounties/send-points", async (req, res): Promise<void> => {
-  const { wallets, points, description } = req.body as {
+  const { wallets, points, description, sendToAll } = req.body as {
     wallets?: string[];
     points?: number;
     description?: string;
+    sendToAll?: boolean;
   };
 
-  if (!Array.isArray(wallets) || wallets.length === 0) {
-    res.status(400).json({ error: "wallets array is required" });
-    return;
-  }
   if (typeof points !== "number" || points <= 0) {
     res.status(400).json({ error: "points must be a positive number" });
     return;
   }
 
+  let targetWallets: string[];
+
+  if (sendToAll) {
+    // Collect every known wallet across all tables
+    const [lockerRows, nftRows, pointRows] = await Promise.all([
+      db.selectDistinct({ w: lockerItemsTable.walletAddress }).from(lockerItemsTable),
+      db.selectDistinct({ w: wegenNftsTable.walletAddress }).from(wegenNftsTable),
+      db.selectDistinct({ w: walletPointsTable.walletAddress }).from(walletPointsTable),
+    ]);
+    const seen = new Set<string>();
+    for (const row of [...lockerRows, ...nftRows, ...pointRows]) {
+      if (row.w) seen.add(row.w);
+    }
+    targetWallets = [...seen];
+    if (targetWallets.length === 0) {
+      res.status(400).json({ error: "No wallets found in the database" });
+      return;
+    }
+  } else {
+    if (!Array.isArray(wallets) || wallets.length === 0) {
+      res.status(400).json({ error: "wallets array is required (or use sendToAll: true)" });
+      return;
+    }
+    targetWallets = wallets.map((w) => w.trim()).filter(Boolean);
+  }
+
   const desc_text = description?.trim() || "Admin point airdrop";
   const results: { wallet: string; ok: boolean; error?: string }[] = [];
 
-  for (const raw of wallets) {
-    const wallet = raw.trim();
-    if (!wallet) continue;
+  for (const wallet of targetWallets) {
     try {
-      // Insert pending transaction (claimedAt = null — user must claim)
       await awardPoints(wallet, points, "admin_airdrop", desc_text, true);
       results.push({ wallet, ok: true });
     } catch (err) {
@@ -377,7 +399,7 @@ router.post("/admin/bounties/send-points", async (req, res): Promise<void> => {
     }
   }
 
-  res.json({ success: true, results });
+  res.json({ success: true, results, totalWallets: results.length });
 });
 
 // ── Admin: GET /admin/bounties/traits ─────────────────────────────────────────

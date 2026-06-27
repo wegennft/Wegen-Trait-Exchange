@@ -6505,7 +6505,9 @@ function BountiesAdminTab() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<BountyTrait>>({});
   const [sendForm, setSendForm] = useState({ wallets: "", points: 100, description: "" });
+  const [sendToAll, setSendToAll] = useState(false);
   const [sendResults, setSendResults] = useState<{ wallet: string; ok: boolean; error?: string }[] | null>(null);
+  const [sendTotal, setSendTotal] = useState(0);
 
   const { data } = useQuery({
     queryKey: ["admin-bounty-traits"],
@@ -6525,18 +6527,24 @@ function BountiesAdminTab() {
 
   const sendPointsMutation = useMutation({
     mutationFn: async () => {
-      const wallets = sendForm.wallets
-        .split(/[\n,]+/)
-        .map((w) => w.trim())
-        .filter(Boolean);
-      if (wallets.length === 0) throw new Error("Enter at least one wallet address");
+      const body: Record<string, unknown> = {
+        points: sendForm.points,
+        description: sendForm.description || undefined,
+      };
+      if (sendToAll) {
+        body.sendToAll = true;
+      } else {
+        const wallets = sendForm.wallets.split(/[\n,]+/).map((w) => w.trim()).filter(Boolean);
+        if (wallets.length === 0) throw new Error("Enter at least one wallet address");
+        body.wallets = wallets;
+      }
       const r = await fetch("/api/admin/bounties/send-points", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallets, points: sendForm.points, description: sendForm.description || undefined }),
+        body: JSON.stringify(body),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
-      return r.json() as Promise<{ results: { wallet: string; ok: boolean; error?: string }[] }>;
+      return r.json() as Promise<{ results: { wallet: string; ok: boolean; error?: string }[]; totalWallets: number }>;
     },
     onSuccess: (d) => {
       const ok = d.results.filter((r) => r.ok).length;
@@ -6546,6 +6554,7 @@ function BountiesAdminTab() {
         description: "Users will see a Claim Points button on their Bounties page.",
       });
       setSendResults(d.results);
+      setSendTotal(d.totalWallets);
       setSendForm({ wallets: "", points: 100, description: "" });
       qc.invalidateQueries({ queryKey: ["admin-bounty-leaderboard"] });
     },
@@ -6630,25 +6639,55 @@ function BountiesAdminTab() {
 
       {/* ── Send Points ── */}
       <div className="rounded-xl border border-amber-500/30 p-5 space-y-4" style={{ background: "hsl(45 100% 6%)" }}>
-        <div>
-          <h3 className="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
-            <Gift className="w-4 h-4" /> Send Points to Wallets
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            Points are sent as pending — users must click "Claim Points" on their Bounties page to add them to their balance.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1 sm:col-span-2">
-            <Label className="text-xs">Wallet Addresses <span className="text-muted-foreground">(one per line or comma-separated)</span></Label>
-            <textarea
-              value={sendForm.wallets}
-              onChange={e => setSendForm(f => ({ ...f, wallets: e.target.value }))}
-              placeholder={"0xABC123...\n0xDEF456..."}
-              rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-            />
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+              <Gift className="w-4 h-4" /> Send Points to Wallets
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Points are sent as pending — users must click "Claim Points" on their Bounties page to add them to their balance.
+            </p>
           </div>
+          {/* Send to All toggle */}
+          <button
+            type="button"
+            onClick={() => { setSendToAll(v => !v); setSendResults(null); }}
+            className="flex-shrink-0 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold border transition-all"
+            style={
+              sendToAll
+                ? { background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "black", borderColor: "#f59e0b", boxShadow: "0 0 12px #f59e0b60" }
+                : { background: "transparent", color: "hsl(var(--muted-foreground))", borderColor: "hsl(45 100% 30% / 0.4)" }
+            }
+          >
+            <span style={{ fontSize: 14 }}>{sendToAll ? "✓" : "○"}</span>
+            Send to ALL Wallets
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {!sendToAll && (
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Wallet Addresses <span className="text-muted-foreground">(one per line or comma-separated)</span></Label>
+              <textarea
+                value={sendForm.wallets}
+                onChange={e => setSendForm(f => ({ ...f, wallets: e.target.value }))}
+                placeholder={"0xABC123...\n0xDEF456..."}
+                rows={3}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+              />
+            </div>
+          )}
+          {sendToAll && (
+            <div
+              className="sm:col-span-2 rounded-lg px-4 py-3 text-xs flex items-center gap-2"
+              style={{ background: "hsl(45 100% 10%)", border: "1px solid hsl(45 100% 30% / 0.3)" }}
+            >
+              <span style={{ color: "#f59e0b", fontSize: 16 }}>⚡</span>
+              <span className="text-amber-200/80">
+                Points will be sent to <strong className="text-amber-300">every wallet</strong> that has ever interacted with the store — locker, NFTs, or points history.
+              </span>
+            </div>
+          )}
           <div className="space-y-1">
             <Label className="text-xs">Points to Send</Label>
             <Input
@@ -6671,13 +6710,13 @@ function BountiesAdminTab() {
         </div>
         <Button
           size="sm"
-          disabled={!sendForm.wallets.trim() || sendForm.points <= 0 || sendPointsMutation.isPending}
+          disabled={(!sendToAll && !sendForm.wallets.trim()) || sendForm.points <= 0 || sendPointsMutation.isPending}
           onClick={() => { setSendResults(null); sendPointsMutation.mutate(); }}
           className="border border-amber-500/40"
           style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "black", fontWeight: 700 }}
         >
           {sendPointsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Gift className="w-3 h-3 mr-1" />}
-          Send Points
+          {sendToAll ? `Broadcast ${sendForm.points} pts to All Wallets` : "Send Points"}
         </Button>
 
         {sendResults && sendResults.length > 0 && (

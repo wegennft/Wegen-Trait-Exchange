@@ -1103,6 +1103,9 @@ export function Admin() {
           <TabsTrigger value="legends" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Crown className="w-4 h-4" /> Legends
           </TabsTrigger>
+          <TabsTrigger value="bounties" className="flex items-center gap-2 rounded-sm px-4 py-2">
+            <Trophy className="w-4 h-4" /> Bounties
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
@@ -1845,6 +1848,10 @@ export function Admin() {
 
         <TabsContent value="legends" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <LegendsAdminTab collection={traitCollection} />
+        </TabsContent>
+
+        <TabsContent value="bounties" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <BountiesAdminTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -6471,6 +6478,235 @@ function LegendVariantsManager({ legendId }: { legendId: number }) {
           onClick={() => addVariant.mutate({ id: legendId, data: { name: packName, imageUrl: variantUrl || undefined } })}>
           {addVariant.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Add
         </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Bounties Admin Tab ────────────────────────────────────────────────────────
+
+interface BountyTrait {
+  id: number;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  pointCost: number;
+  totalSupply: number;
+  remainingSupply: number;
+  isActive: number;
+  totalRedeemed: number;
+}
+
+function BountiesAdminTab() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const [form, setForm] = useState({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1 });
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<BountyTrait>>({});
+
+  const { data } = useQuery({
+    queryKey: ["admin-bounty-traits"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/bounties/traits");
+      return r.json() as Promise<{ traits: BountyTrait[] }>;
+    },
+  });
+
+  const { data: lbData } = useQuery({
+    queryKey: ["admin-bounty-leaderboard"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/bounties/leaderboard");
+      return r.json() as Promise<{ leaderboard: { walletAddress: string; totalPoints: number }[] }>;
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/admin/bounties/traits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description || undefined,
+          imageUrl: form.imageUrl || undefined,
+          pointCost: form.pointCost,
+          totalSupply: form.totalSupply,
+        }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Bounty trait created!" });
+      setForm({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1 });
+      qc.invalidateQueries({ queryKey: ["admin-bounty-traits"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: number }) => {
+      const r = await fetch(`/api/admin/bounties/traits/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      if (!r.ok) throw new Error("Failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-bounty-traits"] }),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<BountyTrait> }) => {
+      const r = await fetch(`/api/admin/bounties/traits/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!r.ok) throw new Error("Failed");
+    },
+    onSuccess: () => {
+      setEditId(null);
+      qc.invalidateQueries({ queryKey: ["admin-bounty-traits"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`/api/admin/bounties/traits/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("Failed");
+    },
+    onSuccess: () => {
+      toast({ title: "Deleted" });
+      qc.invalidateQueries({ queryKey: ["admin-bounty-traits"] });
+    },
+  });
+
+  const traits = data?.traits ?? [];
+  const leaderboard = lbData?.leaderboard ?? [];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-xl font-bold flex items-center gap-2 mb-1">
+          <Trophy className="w-5 h-5 text-yellow-400" /> Bounties & Rewards
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Manage exclusive reward traits purchasable with points. Users earn 25 pts per purchase/SOC, 1 pt per sandbox bounty (max 5/day).
+        </p>
+      </div>
+
+      {/* ── Create Form ── */}
+      <div className="rounded-xl border border-border/40 p-5 space-y-4">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">New Reward Trait</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Name *</Label>
+            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Golden Halo" className="h-8 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Image URL</Label>
+            <Input value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://…" className="h-8 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Point Cost</Label>
+            <Input type="number" value={form.pointCost} onChange={e => setForm(f => ({ ...f, pointCost: parseInt(e.target.value) || 0 }))} className="h-8 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Total Supply (-1 = unlimited)</Label>
+            <Input type="number" value={form.totalSupply} onChange={e => setForm(f => ({ ...f, totalSupply: parseInt(e.target.value) || -1 }))} className="h-8 text-sm" />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">Description</Label>
+            <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description" className="h-8 text-sm" />
+          </div>
+        </div>
+        <Button size="sm" disabled={!form.name || createMutation.isPending} onClick={() => createMutation.mutate()}>
+          {createMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Plus className="w-3 h-3 mr-1" />}
+          Create Reward Trait
+        </Button>
+      </div>
+
+      {/* ── Traits Table ── */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Reward Traits ({traits.length})</h3>
+        {traits.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground text-sm">No reward traits yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {traits.map(t => (
+              <div key={t.id} className="rounded-xl border border-border/30 p-4 space-y-2">
+                {editId === t.id ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label className="text-xs">Name</Label><Input value={editForm.name ?? t.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="h-8 text-sm mt-1" /></div>
+                      <div><Label className="text-xs">Point Cost</Label><Input type="number" value={editForm.pointCost ?? t.pointCost} onChange={e => setEditForm(f => ({ ...f, pointCost: parseInt(e.target.value) || 0 }))} className="h-8 text-sm mt-1" /></div>
+                      <div><Label className="text-xs">Total Supply</Label><Input type="number" value={editForm.totalSupply ?? t.totalSupply} onChange={e => setEditForm(f => ({ ...f, totalSupply: parseInt(e.target.value) || -1 }))} className="h-8 text-sm mt-1" /></div>
+                      <div><Label className="text-xs">Remaining Supply</Label><Input type="number" value={editForm.remainingSupply ?? t.remainingSupply} onChange={e => setEditForm(f => ({ ...f, remainingSupply: parseInt(e.target.value) || -1 }))} className="h-8 text-sm mt-1" /></div>
+                      <div className="col-span-2"><Label className="text-xs">Image URL</Label><Input value={editForm.imageUrl ?? t.imageUrl ?? ""} onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))} className="h-8 text-sm mt-1" /></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => saveMutation.mutate({ id: t.id, data: editForm })} disabled={saveMutation.isPending}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditId(null)}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    {t.imageUrl && <img src={t.imageUrl} alt={t.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm truncate">{t.name}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
+                        <span className="text-yellow-400 font-bold">{t.pointCost} pts</span>
+                        <span>{t.totalSupply === -1 ? "∞" : `${t.remainingSupply}/${t.totalSupply}`} supply</span>
+                        <span>{t.totalRedeemed} redeemed</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge variant={t.isActive ? "default" : "secondary"} className="text-[10px]">
+                        {t.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditId(t.id); setEditForm({}); }}>Edit</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => toggleMutation.mutate({ id: t.id, isActive: t.isActive ? 0 : 1 })}>
+                        {t.isActive ? "Disable" : "Enable"}
+                      </Button>
+                      <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => deleteMutation.mutate(t.id)}>Delete</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Leaderboard Preview ── */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Top Wallets by Points</h3>
+        {leaderboard.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground text-sm">No points earned yet.</div>
+        ) : (
+          <div className="rounded-xl border border-border/30 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/30 bg-secondary/20">
+                  <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Rank</th>
+                  <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Wallet</th>
+                  <th className="text-right px-4 py-2 text-xs text-muted-foreground font-medium">Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.slice(0, 20).map((entry, i) => (
+                  <tr key={entry.walletAddress} className="border-b border-border/20 last:border-0">
+                    <td className="px-4 py-2 text-muted-foreground font-mono text-xs">#{i + 1}</td>
+                    <td className="px-4 py-2 font-mono text-xs">{entry.walletAddress.slice(0, 8)}…{entry.walletAddress.slice(-6)}</td>
+                    <td className="px-4 py-2 text-right font-bold text-yellow-400">{entry.totalPoints.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

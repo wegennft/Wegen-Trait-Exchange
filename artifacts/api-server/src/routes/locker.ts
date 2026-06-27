@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
 import { db, lockerItemsTable, traitsTable, transactionsTable } from "@workspace/db";
+import { awardPoints } from "./bounties";
 import {
   GetLockerParams,
   GetLockerResponse,
@@ -146,6 +147,9 @@ router.post(
       tokenId: null,
       nftCollection: trait.nftCollection,
     });
+
+    // Award 25 points per unit purchased
+    await awardPoints(walletAddress, 25 * qty, "purchase", `Purchased: ${trait.name} ×${qty}`).catch(() => {});
 
     const itemWithTrait = {
       ...lockerItem,

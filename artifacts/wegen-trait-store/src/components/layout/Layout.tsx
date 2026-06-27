@@ -5,7 +5,7 @@ import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
@@ -44,6 +44,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/locker", label: "Trait Locker", icon: Package },
     { href: "/nfts", label: `My ${collectionLabel}`, icon: Gem },
     { href: "/my-legends", label: "Legends & 1/1's", icon: Crown },
+    { href: "/bounties", label: "Bounties", icon: Trophy },
     { href: "/swap", label: "Trait Swap", icon: Repeat2 },
     { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
   ];

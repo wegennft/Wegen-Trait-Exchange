@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { awardPoints } from "./bounties";
 import { eq, and } from "drizzle-orm";
 import { db, wegenNftsTable, lockerItemsTable, traitsTable, transactionsTable } from "@workspace/db";
 import {
@@ -306,6 +307,9 @@ router.post("/nfts/:tokenId/confirm-traits", requireWalletOwnership(), async (re
       ...(variantPack !== undefined ? { variantPack } : {}),
     })
     .where(eq(wegenNftsTable.tokenId, tokenId));
+
+  // Award 25 points for saving traits on-chain
+  await awardPoints(walletAddress, 25, "confirm_traits", `SOC: token #${tokenId}`).catch(() => {});
 
   res.json(
     ConfirmTraitsResponse.parse({

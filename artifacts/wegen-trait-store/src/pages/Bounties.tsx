@@ -251,6 +251,70 @@ export function Bounties() {
         </div>
       </div>
 
+      {/* ── Exclusive Rewards Preview ── */}
+      {traits.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ ...BANGERS, color: `hsl(${accentHsl} / 0.7)`, letterSpacing: "0.12em" }}>
+              Exclusive Rewards
+            </h2>
+            <span className="text-[11px] text-muted-foreground">Redeem with points in the Rewards Store</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+            {traits.map((trait) => {
+              const canAfford = myPoints >= trait.pointCost;
+              const soldOut = trait.remainingSupply !== -1 && trait.remainingSupply <= 0;
+              const atLimit = trait.walletPurchaseCount >= 2;
+              return (
+                <div
+                  key={trait.id}
+                  className="flex-shrink-0 rounded-xl overflow-hidden w-36"
+                  style={{
+                    background: "hsl(272 20% 6%)",
+                    border: `1px solid hsl(${accentHsl} / ${canAfford && !soldOut && !atLimit ? "0.35" : "0.12"})`,
+                    boxShadow: canAfford && !soldOut && !atLimit ? `0 0 12px ${glow}` : "none",
+                    opacity: soldOut || atLimit ? 0.5 : 1,
+                  }}
+                >
+                  <div className="w-full aspect-square bg-secondary/20 relative overflow-hidden">
+                    {trait.imageUrl ? (
+                      <img src={trait.imageUrl} alt={trait.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Gift className="w-8 h-8 opacity-20" />
+                      </div>
+                    )}
+                    {atLimit && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5" style={{ color: accent }} />
+                      </div>
+                    )}
+                    {soldOut && !atLimit && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-red-400">SOLD OUT</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5 space-y-1">
+                    <div className="text-xs font-semibold truncate">{trait.name}</div>
+                    <div
+                      className="text-xs font-bold flex items-center gap-1"
+                      style={{ color: canAfford && !soldOut && !atLimit ? accent : "hsl(var(--muted-foreground))" }}
+                    >
+                      <Star className="w-3 h-3 flex-shrink-0" />
+                      {trait.pointCost.toLocaleString()} pts
+                    </div>
+                    {trait.totalSupply !== -1 && (
+                      <div className="text-[10px] text-muted-foreground">{trait.remainingSupply}/{trait.totalSupply} left</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Tabs ── */}
       <Tabs defaultValue="leaderboard">
         <TabsList className="w-full" style={{ background: "hsl(272 20% 6%)", border: `1px solid hsl(${accentHsl} / 0.15)` }}>

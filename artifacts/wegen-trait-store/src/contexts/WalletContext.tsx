@@ -6,7 +6,7 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { BrowserProvider, Eip1193Provider } from "ethers";
+import { BrowserProvider, Eip1193Provider, hexlify, toUtf8Bytes } from "ethers";
 
 // Resolve the best available Ethereum provider.
 // Priority: Phantom Ethereum → window.ethereum (MetaMask / injected)
@@ -119,9 +119,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       };
 
       // 3. Ask the user to sign the challenge (proves private key ownership)
+      // We call personal_sign directly on the raw provider rather than going
+      // through ethers' getSigner().signMessage() — Phantom returns error 32000
+      // when ethers encodes the message internally before passing it.
       setConnectStep("signing");
-      const signer = await provider.getSigner();
-      const signature = await signer.signMessage(message);
+      type RawProvider = { request: (args: { method: string; params: unknown[] }) => Promise<unknown> };
+      const hexMsg = hexlify(toUtf8Bytes(message));
+      const signature = await (eth as unknown as RawProvider).request({
+        method: "personal_sign",
+        params: [hexMsg, address],
+      }) as string;
 
       // 4. Server verifies signature and creates a session
       const verifyRes = await fetch("/api/auth/verify", {

@@ -25,13 +25,25 @@ export function Layout({ children }: { children: ReactNode }) {
       await connect();
     } catch (err) {
       const code = (err as { code?: number }).code;
-      if (code !== 4001) {
-        toast({
-          title: "Connection failed",
-          description: err instanceof Error ? err.message : "Could not connect wallet",
-          variant: "destructive",
-        });
+      // 4001 = user cancelled — silent (they know they cancelled)
+      if (code === 4001) return;
+
+      let description = err instanceof Error ? err.message : "Could not connect wallet";
+
+      // -32000 / 32000 = wallet internal error (common with Phantom Ethereum)
+      if (code === -32000 || code === 32000) {
+        description =
+          "Phantom returned an internal error (32000). Try these steps:\n" +
+          "1. Open Phantom → Settings → Developer Settings → make sure Ethereum is enabled.\n" +
+          "2. Disconnect any existing connection to this site in Phantom, then retry.\n" +
+          "3. If you also have MetaMask installed, try disabling it temporarily.";
       }
+
+      toast({
+        title: "Connection failed",
+        description,
+        variant: "destructive",
+      });
     }
   };
 

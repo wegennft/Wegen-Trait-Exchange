@@ -64,6 +64,8 @@ export function Layout({ children }: { children: ReactNode }) {
     setWalletPickerOpen(true);
   };
 
+  const isInIframe = window.self !== window.top;
+
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -82,6 +84,27 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-transparent text-foreground dark">
+
+      {/* ── Iframe wallet warning banner ── */}
+      {isInIframe && !isConnected && (
+        <div className="relative z-50 flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-300 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <Wallet className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">
+              <strong>Wallet extensions don't work inside this preview.</strong>
+              {" "}Open the app in its own tab to connect MetaMask or Phantom.
+            </span>
+          </div>
+          <a
+            href={window.location.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-md px-3 py-1 transition-colors font-semibold whitespace-nowrap"
+          >
+            Open in new tab ↗
+          </a>
+        </div>
+      )}
 
       {/* ── Background Image Layer ── */}
       {settings.backgroundUrl && (

@@ -3281,6 +3281,11 @@ function FeesSettings() {
   // Dual ETH↔USD state for the flat on-chain fee
   const [socUsdInput, setSocUsdInput] = useState<string>("");
 
+  // Dollar-equivalent state for each percentage fee (synced with % input)
+  const [buyingUsdInput, setBuyingUsdInput] = useState<string>("");
+  const [sellingUsdInput, setSellingUsdInput] = useState<string>("");
+  const [marketplaceUsdInput, setMarketplaceUsdInput] = useState<string>("");
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -3364,20 +3369,46 @@ function FeesSettings() {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="buyingFeePercent">
-                  Fee Percentage
-                  <span className="ml-1 text-xs text-muted-foreground">(0 – 100)</span>
+                  Fee
+                  <span className="ml-1 text-xs text-muted-foreground">(enter % or $ on the reference amount)</span>
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="buyingFeePercent"
-                    {...form.register("buyingFeePercent")}
-                    placeholder="2.5"
-                    className="bg-secondary/50 pr-8"
-                  />
-                  <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="buyingFeePercent"
+                      {...form.register("buyingFeePercent")}
+                      placeholder="2.5"
+                      className="bg-secondary/50 pr-8"
+                      onChange={e => {
+                        form.setValue("buyingFeePercent", e.target.value, { shouldValidate: true });
+                        const pct = parseFloat(e.target.value);
+                        if (!isNaN(pct) && ethUsd && refEth > 0)
+                          setBuyingUsdInput((pct / 100 * refEth * ethUsd).toFixed(2));
+                        else setBuyingUsdInput("");
+                      }}
+                    />
+                    <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
+                  <span className="text-muted-foreground text-sm shrink-0">≈</span>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">$</span>
+                    <Input
+                      value={buyingUsdInput}
+                      onChange={e => {
+                        setBuyingUsdInput(e.target.value);
+                        const usd = parseFloat(e.target.value);
+                        if (!isNaN(usd) && ethUsd && refEth > 0) {
+                          const pct = (usd / (refEth * ethUsd) * 100).toFixed(4);
+                          form.setValue("buyingFeePercent", pct, { shouldValidate: true });
+                        }
+                      }}
+                      placeholder={ethUsd ? `on ${refEth} ETH ref` : "..."}
+                      className="bg-secondary/50 pl-6"
+                    />
+                  </div>
                 </div>
                 {form.formState.errors.buyingFeePercent && (
                   <p className="text-xs text-destructive">{form.formState.errors.buyingFeePercent.message}</p>
@@ -3436,20 +3467,46 @@ function FeesSettings() {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="sellingFeePercent">
-                  Fee Percentage
-                  <span className="ml-1 text-xs text-muted-foreground">(0 – 100)</span>
+                  Fee
+                  <span className="ml-1 text-xs text-muted-foreground">(enter % or $ on the reference amount)</span>
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="sellingFeePercent"
-                    {...form.register("sellingFeePercent")}
-                    placeholder="2.5"
-                    className="bg-secondary/50 pr-8"
-                  />
-                  <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="sellingFeePercent"
+                      {...form.register("sellingFeePercent")}
+                      placeholder="2.5"
+                      className="bg-secondary/50 pr-8"
+                      onChange={e => {
+                        form.setValue("sellingFeePercent", e.target.value, { shouldValidate: true });
+                        const pct = parseFloat(e.target.value);
+                        if (!isNaN(pct) && ethUsd && refEth > 0)
+                          setSellingUsdInput((pct / 100 * refEth * ethUsd).toFixed(2));
+                        else setSellingUsdInput("");
+                      }}
+                    />
+                    <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
+                  <span className="text-muted-foreground text-sm shrink-0">≈</span>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">$</span>
+                    <Input
+                      value={sellingUsdInput}
+                      onChange={e => {
+                        setSellingUsdInput(e.target.value);
+                        const usd = parseFloat(e.target.value);
+                        if (!isNaN(usd) && ethUsd && refEth > 0) {
+                          const pct = (usd / (refEth * ethUsd) * 100).toFixed(4);
+                          form.setValue("sellingFeePercent", pct, { shouldValidate: true });
+                        }
+                      }}
+                      placeholder={ethUsd ? `on ${refEth} ETH ref` : "..."}
+                      className="bg-secondary/50 pl-6"
+                    />
+                  </div>
                 </div>
                 {form.formState.errors.sellingFeePercent && (
                   <p className="text-xs text-destructive">{form.formState.errors.sellingFeePercent.message}</p>
@@ -3512,20 +3569,46 @@ function FeesSettings() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="marketplaceListingFeePercent">
-                  Total Fee Percentage
-                  <span className="ml-1 text-xs text-muted-foreground">(0 – 100, split 50/50)</span>
+                  Total Fee
+                  <span className="ml-1 text-xs text-muted-foreground">(enter % or $ on the reference amount, split 50/50)</span>
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="marketplaceListingFeePercent"
-                    {...form.register("marketplaceListingFeePercent")}
-                    placeholder="5.0"
-                    className="bg-secondary/50 pr-8"
-                  />
-                  <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="marketplaceListingFeePercent"
+                      {...form.register("marketplaceListingFeePercent")}
+                      placeholder="5.0"
+                      className="bg-secondary/50 pr-8"
+                      onChange={e => {
+                        form.setValue("marketplaceListingFeePercent", e.target.value, { shouldValidate: true });
+                        const pct = parseFloat(e.target.value);
+                        if (!isNaN(pct) && ethUsd && refEth > 0)
+                          setMarketplaceUsdInput((pct / 100 * refEth * ethUsd).toFixed(2));
+                        else setMarketplaceUsdInput("");
+                      }}
+                    />
+                    <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  </div>
+                  <span className="text-muted-foreground text-sm shrink-0">≈</span>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">$</span>
+                    <Input
+                      value={marketplaceUsdInput}
+                      onChange={e => {
+                        setMarketplaceUsdInput(e.target.value);
+                        const usd = parseFloat(e.target.value);
+                        if (!isNaN(usd) && ethUsd && refEth > 0) {
+                          const pct = (usd / (refEth * ethUsd) * 100).toFixed(4);
+                          form.setValue("marketplaceListingFeePercent", pct, { shouldValidate: true });
+                        }
+                      }}
+                      placeholder={ethUsd ? `on ${refEth} ETH ref` : "..."}
+                      className="bg-secondary/50 pl-6"
+                    />
+                  </div>
                 </div>
                 {form.formState.errors.marketplaceListingFeePercent && (
                   <p className="text-xs text-destructive">{form.formState.errors.marketplaceListingFeePercent.message}</p>

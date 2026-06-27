@@ -41,7 +41,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { href: "/", label: "Store", icon: ShoppingBag },
-    { href: "/locker", label: "Locker", icon: Package },
+    { href: "/locker", label: "Trait Locker", icon: Package },
     { href: "/nfts", label: `My ${collectionLabel}`, icon: Gem },
     { href: "/my-legends", label: "My Legends", icon: Crown },
     { href: "/swap", label: "Trait Swap", icon: Repeat2 },

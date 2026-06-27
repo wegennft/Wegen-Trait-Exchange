@@ -7,6 +7,7 @@ import {
   PurchaseTraitParams,
   PurchaseTraitBody,
 } from "@workspace/api-zod";
+import { requireWalletOwnership } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
@@ -73,6 +74,7 @@ router.get("/locker/:walletAddress", async (req, res): Promise<void> => {
 
 router.post(
   "/locker/:walletAddress/purchase",
+  requireWalletOwnership(),
   async (req, res): Promise<void> => {
     const rawWallet = Array.isArray(req.params.walletAddress)
       ? req.params.walletAddress[0]

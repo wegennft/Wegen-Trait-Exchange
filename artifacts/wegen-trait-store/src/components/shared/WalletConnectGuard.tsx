@@ -1,7 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/button";
-import { Wallet } from "lucide-react";
+import { Wallet, PenLine, Loader2, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.1em' };
 
@@ -11,11 +12,41 @@ interface WalletConnectGuardProps {
 }
 
 export function WalletConnectGuard({ children, message = "Connect your wallet to view this page" }: WalletConnectGuardProps) {
-  const { isConnected, connect, isConnecting } = useWallet();
+  const { isConnected, connect, isConnecting, connectStep } = useWallet();
+  const { toast } = useToast();
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   if (isConnected) {
     return <>{children}</>;
   }
+
+  const handleConnect = async () => {
+    setConnectError(null);
+    try {
+      await connect();
+    } catch (err) {
+      const code = (err as { code?: number }).code;
+      if (code === 4001) {
+        setConnectError("You declined the sign-in request. Click below to try again.");
+      } else {
+        const msg = err instanceof Error ? err.message : "Connection failed";
+        setConnectError(msg);
+        toast({ title: "Connection failed", description: msg, variant: "destructive" });
+      }
+    }
+  };
+
+  const buttonLabel = connectStep === "signing"
+    ? "Sign in wallet…"
+    : connectStep === "requesting"
+    ? "Connecting…"
+    : "Connect Wallet";
+
+  const buttonIcon = connectStep === "signing"
+    ? <PenLine className="w-5 h-5 mr-2 animate-pulse" />
+    : connectStep === "requesting"
+    ? <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+    : <Wallet className="w-5 h-5 mr-2" />;
 
   return (
     <div
@@ -35,24 +66,62 @@ export function WalletConnectGuard({ children, message = "Connect your wallet to
           style={{ filter: 'drop-shadow(0 0 8px rgba(157,0,255,0.7))' }}
         />
       </div>
+
       <h2
         className="text-4xl text-primary mb-3"
         style={{ ...BANGERS, textShadow: '3px 3px 0 rgba(0,0,0,0.9), 0 0 18px rgba(157,0,255,0.5)' }}
       >
         WALLET REQUIRED
       </h2>
-      <p className="text-muted-foreground max-w-md mb-8 font-mono text-sm">
+
+      <p className="text-muted-foreground max-w-md mb-4 font-mono text-sm">
         // {message} //
       </p>
+
+      {/* Two-step flow explainer */}
+      <div className="flex items-center gap-6 mb-6 text-xs text-muted-foreground">
+        <div className="flex flex-col items-center gap-1.5">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${connectStep === "requesting" ? "border-primary bg-primary/20 text-primary" : "border-border/50 bg-secondary/30"}`}>
+            <Wallet className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-mono">Connect</span>
+        </div>
+        <div className="h-px w-8 bg-border/50" />
+        <div className="flex flex-col items-center gap-1.5">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${connectStep === "signing" ? "border-primary bg-primary/20 text-primary" : "border-border/50 bg-secondary/30"}`}>
+            <PenLine className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-mono">Sign</span>
+        </div>
+        <div className="h-px w-8 bg-border/50" />
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-border/50 bg-secondary/30">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-mono">Verified</span>
+        </div>
+      </div>
+
+      {connectError && (
+        <p className="text-destructive text-xs mb-4 max-w-sm font-mono bg-destructive/10 border border-destructive/30 rounded p-2">
+          {connectError}
+        </p>
+      )}
+
       <Button
         size="lg"
-        onClick={connect}
+        onClick={handleConnect}
         disabled={isConnecting}
         className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-widest transition-all neon-pulse"
         style={{ ...BANGERS, fontSize: '1.1rem', paddingLeft: '2rem', paddingRight: '2rem' }}
       >
-        {isConnecting ? "Connecting..." : "Connect Wallet"}
+        {buttonIcon}
+        {buttonLabel}
       </Button>
+
+      <p className="text-[10px] text-muted-foreground/60 mt-4 font-mono max-w-xs">
+        Signing proves wallet ownership. No transaction is submitted and no gas is charged.
+      </p>
     </div>
   );
 }

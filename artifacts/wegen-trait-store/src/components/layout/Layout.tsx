@@ -4,7 +4,8 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
@@ -13,10 +14,26 @@ const MARKER  = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.0
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { walletAddress, isConnected, connect, disconnect, isConnecting } = useWallet();
+  const { walletAddress, isConnected, connect, disconnect, isConnecting, connectStep } = useWallet();
   const { settings } = useSiteSettings();
   const { collection, collectionLabel, setCollection, theme } = useCollection();
   const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
+  const { toast } = useToast();
+
+  const handleConnect = async () => {
+    try {
+      await connect();
+    } catch (err) {
+      const code = (err as { code?: number }).code;
+      if (code !== 4001) {
+        toast({
+          title: "Connection failed",
+          description: err instanceof Error ? err.message : "Could not connect wallet",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -377,7 +394,7 @@ export function Layout({ children }: { children: ReactNode }) {
               </DropdownMenu>
             ) : (
               <Button
-                onClick={connect}
+                onClick={handleConnect}
                 disabled={isConnecting}
                 className="relative text-white font-bold uppercase tracking-widest transition-all neon-pulse overflow-hidden px-3 py-1.5 h-auto text-xs"
                 style={{
@@ -395,9 +412,15 @@ export function Layout({ children }: { children: ReactNode }) {
                     backgroundSize: '200% 200%',
                   }}
                 />
-                <Wallet className="relative z-10 w-3 h-3 mr-1.5" />
+                {connectStep === "signing" ? (
+                  <PenLine className="relative z-10 w-3 h-3 mr-1.5 animate-pulse" />
+                ) : connectStep === "requesting" ? (
+                  <Loader2 className="relative z-10 w-3 h-3 mr-1.5 animate-spin" />
+                ) : (
+                  <Wallet className="relative z-10 w-3 h-3 mr-1.5" />
+                )}
                 <span className="relative z-10">
-                  {isConnecting ? "Connecting..." : "Connect Wallet"}
+                  {connectStep === "signing" ? "Sign in wallet…" : connectStep === "requesting" ? "Connecting…" : "Connect Wallet"}
                 </span>
               </Button>
             )}

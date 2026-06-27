@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import traitsRouter from "./traits";
 import lockerRouter from "./locker";
 import nftsRouter from "./nfts";
@@ -13,6 +14,7 @@ import metadataRouter from "./metadata";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(storageRouter);
 router.use(traitsRouter);
 router.use(lockerRouter);

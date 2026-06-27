@@ -1,11 +1,32 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import session from "express-session";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
+const SESSION_SECRET = process.env["SESSION_SECRET"];
+if (!SESSION_SECRET) {
+  throw new Error("SESSION_SECRET env var is required");
+}
+
 const app: Express = express();
 app.set("etag", false);
+app.set("trust proxy", 1);
+
+app.use(
+  session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env["NODE_ENV"] === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    },
+  }),
+);
 
 app.use(
   pinoHttp({

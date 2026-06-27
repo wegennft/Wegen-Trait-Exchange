@@ -14,6 +14,7 @@ import {
   ConfirmTraitsBody,
   ConfirmTraitsResponse,
 } from "@workspace/api-zod";
+import { requireWalletOwnership } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
@@ -77,7 +78,7 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
   res.json(GetUserNftsResponse.parse({ nfts: filtered, total: filtered.length }));
 });
 
-router.post("/nfts/:tokenId/apply-trait", async (req, res): Promise<void> => {
+router.post("/nfts/:tokenId/apply-trait", requireWalletOwnership(), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.tokenId)
     ? req.params.tokenId[0]
     : req.params.tokenId;
@@ -177,7 +178,7 @@ router.post("/nfts/:tokenId/apply-trait", async (req, res): Promise<void> => {
   res.json(ApplyTraitResponse.parse({ success: true, nft, lockerItem: itemWithTrait }));
 });
 
-router.post("/nfts/:tokenId/remove-trait", async (req, res): Promise<void> => {
+router.post("/nfts/:tokenId/remove-trait", requireWalletOwnership(), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.tokenId)
     ? req.params.tokenId[0]
     : req.params.tokenId;
@@ -235,7 +236,7 @@ router.post("/nfts/:tokenId/remove-trait", async (req, res): Promise<void> => {
   res.json(RemoveTraitResponse.parse({ success: true, nft, lockerItem: itemWithTrait }));
 });
 
-router.post("/nfts/:tokenId/confirm-traits", async (req, res): Promise<void> => {
+router.post("/nfts/:tokenId/confirm-traits", requireWalletOwnership(), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.tokenId)
     ? req.params.tokenId[0]
     : req.params.tokenId;

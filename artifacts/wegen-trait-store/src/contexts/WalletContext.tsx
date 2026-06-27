@@ -60,7 +60,7 @@ interface WalletContextState {
   isConnecting: boolean;
   connectStep: ConnectStep;
   chainId: string | null;
-  connect: (provider: Eip1193Provider) => Promise<void>;
+  connect: (provider?: Eip1193Provider) => Promise<void>;
   disconnect: () => void;
 }
 
@@ -115,12 +115,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, [handleAccountsChanged, handleChainChanged]);
 
-  const connect = async (eth: Eip1193Provider) => {
+  const connect = async (eth?: Eip1193Provider) => {
+    // Auto-detect when no provider is passed (e.g. calls from WalletConnectGuard / Store)
+    const resolvedEth: Eip1193Provider | null = eth ?? (() => {
+      const wallets = detectWallets();
+      if (wallets.length === 0) return null;
+      // Prefer window.ethereum (MetaMask) over Phantom when auto-detecting
+      return wallets.find(w => w.id === "metamask")?.provider
+          ?? wallets.find(w => w.id === "injected")?.provider
+          ?? wallets[0].provider;
+    })();
+
+    if (!resolvedEth) {
+      throw Object.assign(
+        new Error(
+          "No Ethereum wallet detected. Install MetaMask (metamask.io) or Phantom, then refresh.\n" +
+          "Note: wallet extensions don't work inside iframes — open the app in its own tab."
+        ),
+        { code: -32603 }
+      );
+    }
+
     setIsConnecting(true);
     setConnectStep("requesting");
     try {
       type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
-      const raw = eth as unknown as RawProvider;
+      const raw = resolvedEth as unknown as RawProvider;
 
       // 1. Request account access
       const accounts = await raw.request({ method: "eth_requestAccounts", params: [] }) as string[];

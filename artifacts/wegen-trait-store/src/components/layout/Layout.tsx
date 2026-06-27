@@ -212,7 +212,7 @@ export function Layout({ children }: { children: ReactNode }) {
           }}
         />
 
-        <div className="w-full px-5 h-[70px] flex items-center gap-4">
+        <div className="w-full px-5 h-[82px] flex items-center gap-4">
           {/* ── Logo (fixed left) ── */}
           <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-85 group flex-shrink-0">
             {settings.logoUrl ? (
@@ -320,15 +320,16 @@ export function Layout({ children }: { children: ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`relative flex items-center gap-1.5 px-2 py-2 transition-all group whitespace-nowrap flex-shrink-0 ${
+                    className={`relative flex flex-col items-center gap-0.5 px-3 py-2 transition-all group whitespace-nowrap flex-shrink-0 ${
                       isActive
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
-                    style={{ ...BANGERS, fontSize: 'clamp(0.82rem, 1vw, 1.05rem)', letterSpacing: '0.1em' }}
                   >
-                    <Icon className={`w-3 h-3 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
-                    {item.label}
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                    <span style={{ ...BANGERS, fontSize: 'clamp(0.72rem, 0.9vw, 0.9rem)', letterSpacing: '0.1em' }}>
+                      {item.label}
+                    </span>
 
                     {/* Paint-drip active indicator */}
                     {isActive ? (

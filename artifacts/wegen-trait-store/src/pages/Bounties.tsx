@@ -23,9 +23,10 @@ interface LeaderboardEntry {
 
 interface PointHistory {
   id: number;
-  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem";
+  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem" | "admin_airdrop";
   points: number;
   description: string | null;
+  claimedAt: string | null;
   createdAt: string;
 }
 
@@ -34,6 +35,7 @@ interface MyStats {
   rank: number;
   dailyCompletions: number;
   dailyLimit: number;
+  pendingPoints: number;
   history: PointHistory[];
 }
 
@@ -56,6 +58,7 @@ const TX_LABELS: Record<string, string> = {
   confirm_traits: "Save On Chain",
   sandbox_bounty: "Sandbox Bounty",
   redeem: "Redeemed Reward",
+  admin_airdrop: "Point Airdrop",
 };
 
 const TX_ICON: Record<string, typeof Zap> = {
@@ -128,6 +131,26 @@ export function Bounties() {
     },
   });
 
+  // Claim pending points mutation
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/bounties/claim-points", { method: "POST" });
+      if (!r.ok) {
+        const d = await r.json();
+        throw new Error(d.error ?? "Failed");
+      }
+      return r.json() as Promise<{ pointsClaimed: number }>;
+    },
+    onSuccess: (d) => {
+      toast({ title: `🎉 ${d.pointsClaimed} points claimed!`, description: "Points have been added to your balance." });
+      qc.invalidateQueries({ queryKey: ["bounties-me"] });
+      qc.invalidateQueries({ queryKey: ["bounties-leaderboard"] });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Claim failed", description: e.message, variant: "destructive" });
+    },
+  });
+
   // Redeem trait mutation
   const redeemMutation = useMutation({
     mutationFn: async (traitId: number) => {
@@ -152,6 +175,7 @@ export function Bounties() {
   const traits = traitsData?.traits ?? [];
   const myRank = meData?.rank;
   const myPoints = meData?.totalPoints ?? 0;
+  const pendingPoints = meData?.pendingPoints ?? 0;
   const dailyLeft = meData ? meData.dailyLimit - meData.dailyCompletions : 5;
 
   return (
@@ -400,6 +424,39 @@ export function Bounties() {
                   </div>
                 ))}
               </div>
+
+              {/* Pending points claim banner */}
+              {pendingPoints > 0 && (
+                <div
+                  className="rounded-xl p-4 flex items-center gap-4"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(45 100% 12%), hsl(45 100% 7%))",
+                    border: "1px solid hsl(45 100% 40% / 0.5)",
+                    boxShadow: "0 0 24px hsl(45 100% 50% / 0.2)",
+                  }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 0 16px #f59e0b80" }}
+                  >
+                    <Gift className="w-6 h-6 text-black" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-sm text-amber-300">Points Ready to Claim!</div>
+                    <div className="text-xs text-amber-200/70 mt-0.5">
+                      An admin airdropped points to your wallet. Claim them to add to your balance.
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={claimMutation.isPending}
+                    onClick={() => claimMutation.mutate()}
+                    style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "black", boxShadow: "0 0 16px #f59e0b80", fontWeight: 700 }}
+                  >
+                    {claimMutation.isPending ? "Claiming…" : `Claim ${pendingPoints.toLocaleString()} pts`}
+                  </Button>
+                </div>
+              )}
 
               {/* Sandbox bounty claim */}
               <div

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, sum } from "drizzle-orm";
 import {
   db,
   walletPointsTable,
@@ -21,25 +21,30 @@ const MAX_BOUNTY_TRAIT_PER_WALLET = 2;
 export async function awardPoints(
   walletAddress: string,
   points: number,
-  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem",
+  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem" | "admin_airdrop",
   description?: string,
+  pending = false,
 ) {
-  await db
-    .insert(walletPointsTable)
-    .values({ walletAddress, totalPoints: points, updatedAt: new Date() })
-    .onConflictDoUpdate({
-      target: walletPointsTable.walletAddress,
-      set: {
-        totalPoints: sql`${walletPointsTable.totalPoints} + ${points}`,
-        updatedAt: new Date(),
-      },
-    });
+  // Pending transactions (admin airdrops) are NOT added to wallet total yet
+  if (!pending) {
+    await db
+      .insert(walletPointsTable)
+      .values({ walletAddress, totalPoints: points, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: walletPointsTable.walletAddress,
+        set: {
+          totalPoints: sql`${walletPointsTable.totalPoints} + ${points}`,
+          updatedAt: new Date(),
+        },
+      });
+  }
 
   await db.insert(pointTransactionsTable).values({
     walletAddress,
     type,
     points,
     description: description ?? null,
+    claimedAt: pending ? null : new Date(),
   });
 }
 
@@ -93,6 +98,18 @@ router.get(
       );
     const dailyCompletions = dayRow?.count ?? 0;
 
+    // Pending (unclaimed) points from admin airdrops
+    const [pendingRow] = await db
+      .select({ total: sum(pointTransactionsTable.points) })
+      .from(pointTransactionsTable)
+      .where(
+        and(
+          eq(pointTransactionsTable.walletAddress, walletAddress),
+          isNull(pointTransactionsTable.claimedAt),
+        ),
+      );
+    const pendingPoints = Number(pendingRow?.total ?? 0);
+
     // Recent point history (last 20)
     const history = await db
       .select()
@@ -101,7 +118,7 @@ router.get(
       .orderBy(desc(pointTransactionsTable.createdAt))
       .limit(20);
 
-    res.json({ totalPoints, rank, dailyCompletions, dailyLimit: DAILY_BOUNTY_LIMIT, history });
+    res.json({ totalPoints, rank, dailyCompletions, dailyLimit: DAILY_BOUNTY_LIMIT, pendingPoints, history });
   },
 );
 
@@ -154,6 +171,60 @@ router.post(
       dailyCompletions: currentCount + 1,
       dailyLimit: DAILY_BOUNTY_LIMIT,
     });
+  },
+);
+
+// ── POST /bounties/claim-points ───────────────────────────────────────────────
+
+router.post(
+  "/bounties/claim-points",
+  requireWalletOwnership(),
+  async (req, res): Promise<void> => {
+    const walletAddress = req.session.walletAddress!;
+
+    // Find all pending (unclaimed) transactions for this wallet
+    const pending = await db
+      .select()
+      .from(pointTransactionsTable)
+      .where(
+        and(
+          eq(pointTransactionsTable.walletAddress, walletAddress),
+          isNull(pointTransactionsTable.claimedAt),
+        ),
+      );
+
+    if (pending.length === 0) {
+      res.status(400).json({ error: "No pending points to claim" });
+      return;
+    }
+
+    const totalClaiming = pending.reduce((s, t) => s + t.points, 0);
+    const now = new Date();
+
+    // Mark all pending as claimed
+    await db
+      .update(pointTransactionsTable)
+      .set({ claimedAt: now })
+      .where(
+        and(
+          eq(pointTransactionsTable.walletAddress, walletAddress),
+          isNull(pointTransactionsTable.claimedAt),
+        ),
+      );
+
+    // Add to wallet total
+    await db
+      .insert(walletPointsTable)
+      .values({ walletAddress, totalPoints: totalClaiming, updatedAt: now })
+      .onConflictDoUpdate({
+        target: walletPointsTable.walletAddress,
+        set: {
+          totalPoints: sql`${walletPointsTable.totalPoints} + ${totalClaiming}`,
+          updatedAt: now,
+        },
+      });
+
+    res.json({ success: true, pointsClaimed: totalClaiming });
   },
 );
 
@@ -272,6 +343,42 @@ router.post(
     });
   },
 );
+
+// ── Admin: POST /admin/bounties/send-points ───────────────────────────────────
+
+router.post("/admin/bounties/send-points", async (req, res): Promise<void> => {
+  const { wallets, points, description } = req.body as {
+    wallets?: string[];
+    points?: number;
+    description?: string;
+  };
+
+  if (!Array.isArray(wallets) || wallets.length === 0) {
+    res.status(400).json({ error: "wallets array is required" });
+    return;
+  }
+  if (typeof points !== "number" || points <= 0) {
+    res.status(400).json({ error: "points must be a positive number" });
+    return;
+  }
+
+  const desc_text = description?.trim() || "Admin point airdrop";
+  const results: { wallet: string; ok: boolean; error?: string }[] = [];
+
+  for (const raw of wallets) {
+    const wallet = raw.trim();
+    if (!wallet) continue;
+    try {
+      // Insert pending transaction (claimedAt = null — user must claim)
+      await awardPoints(wallet, points, "admin_airdrop", desc_text, true);
+      results.push({ wallet, ok: true });
+    } catch (err) {
+      results.push({ wallet, ok: false, error: String(err) });
+    }
+  }
+
+  res.json({ success: true, results });
+});
 
 // ── Admin: GET /admin/bounties/traits ─────────────────────────────────────────
 

@@ -6504,6 +6504,8 @@ function BountiesAdminTab() {
   const [form, setForm] = useState({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1 });
   const [editId, setEditId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<BountyTrait>>({});
+  const [sendForm, setSendForm] = useState({ wallets: "", points: 100, description: "" });
+  const [sendResults, setSendResults] = useState<{ wallet: string; ok: boolean; error?: string }[] | null>(null);
 
   const { data } = useQuery({
     queryKey: ["admin-bounty-traits"],
@@ -6519,6 +6521,35 @@ function BountiesAdminTab() {
       const r = await fetch("/api/admin/bounties/leaderboard");
       return r.json() as Promise<{ leaderboard: { walletAddress: string; totalPoints: number }[] }>;
     },
+  });
+
+  const sendPointsMutation = useMutation({
+    mutationFn: async () => {
+      const wallets = sendForm.wallets
+        .split(/[\n,]+/)
+        .map((w) => w.trim())
+        .filter(Boolean);
+      if (wallets.length === 0) throw new Error("Enter at least one wallet address");
+      const r = await fetch("/api/admin/bounties/send-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallets, points: sendForm.points, description: sendForm.description || undefined }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
+      return r.json() as Promise<{ results: { wallet: string; ok: boolean; error?: string }[] }>;
+    },
+    onSuccess: (d) => {
+      const ok = d.results.filter((r) => r.ok).length;
+      const fail = d.results.filter((r) => !r.ok).length;
+      toast({
+        title: `Points sent to ${ok} wallet${ok !== 1 ? "s" : ""}${fail ? ` (${fail} failed)` : ""}`,
+        description: "Users will see a Claim Points button on their Bounties page.",
+      });
+      setSendResults(d.results);
+      setSendForm({ wallets: "", points: 100, description: "" });
+      qc.invalidateQueries({ queryKey: ["admin-bounty-leaderboard"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const createMutation = useMutation({
@@ -6595,6 +6626,72 @@ function BountiesAdminTab() {
         <p className="text-sm text-muted-foreground">
           Manage exclusive reward traits purchasable with points. Users earn 25 pts per purchase/SOC, 1 pt per sandbox bounty (max 5/day).
         </p>
+      </div>
+
+      {/* ── Send Points ── */}
+      <div className="rounded-xl border border-amber-500/30 p-5 space-y-4" style={{ background: "hsl(45 100% 6%)" }}>
+        <div>
+          <h3 className="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+            <Gift className="w-4 h-4" /> Send Points to Wallets
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Points are sent as pending — users must click "Claim Points" on their Bounties page to add them to their balance.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">Wallet Addresses <span className="text-muted-foreground">(one per line or comma-separated)</span></Label>
+            <textarea
+              value={sendForm.wallets}
+              onChange={e => setSendForm(f => ({ ...f, wallets: e.target.value }))}
+              placeholder={"0xABC123...\n0xDEF456..."}
+              rows={3}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Points to Send</Label>
+            <Input
+              type="number"
+              min={1}
+              value={sendForm.points}
+              onChange={e => setSendForm(f => ({ ...f, points: parseInt(e.target.value) || 0 }))}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Reason / Note <span className="text-muted-foreground">(optional)</span></Label>
+            <Input
+              value={sendForm.description}
+              onChange={e => setSendForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="e.g. Community event reward"
+              className="h-8 text-sm"
+            />
+          </div>
+        </div>
+        <Button
+          size="sm"
+          disabled={!sendForm.wallets.trim() || sendForm.points <= 0 || sendPointsMutation.isPending}
+          onClick={() => { setSendResults(null); sendPointsMutation.mutate(); }}
+          className="border border-amber-500/40"
+          style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "black", fontWeight: 700 }}
+        >
+          {sendPointsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Gift className="w-3 h-3 mr-1" />}
+          Send Points
+        </Button>
+
+        {sendResults && sendResults.length > 0 && (
+          <div className="space-y-1.5 pt-2 border-t border-border/30">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Results</p>
+            {sendResults.map(r => (
+              <div key={r.wallet} className="flex items-center gap-2 text-xs font-mono">
+                <span className={r.ok ? "text-green-400" : "text-red-400"}>{r.ok ? "✓" : "✗"}</span>
+                <span className="truncate text-muted-foreground">{r.wallet}</span>
+                {r.error && <span className="text-red-400 ml-auto flex-shrink-0">{r.error}</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Create Form ── */}

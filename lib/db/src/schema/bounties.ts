@@ -14,6 +14,7 @@ export const pointTxTypeEnum = pgEnum("point_tx_type", [
   "confirm_traits",
   "sandbox_bounty",
   "redeem",
+  "admin_airdrop",
 ]);
 
 export const walletPointsTable = pgTable("wallet_points", {
@@ -32,6 +33,7 @@ export const pointTransactionsTable = pgTable(
     type: pointTxTypeEnum("type").notNull(),
     points: integer("points").notNull(),
     description: text("description"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

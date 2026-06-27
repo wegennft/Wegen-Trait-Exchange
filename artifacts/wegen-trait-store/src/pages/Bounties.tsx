@@ -330,38 +330,200 @@ export function Bounties() {
         </TabsList>
 
         {/* ── Leaderboard ── */}
-        <TabsContent value="leaderboard" className="mt-6 space-y-2">
+        <TabsContent value="leaderboard" className="mt-6">
           {leaderboard.length === 0 ? (
             <EmptyState icon={Trophy} label="No points earned yet — be the first!" accent={accent} glow={glow} />
           ) : (
-            leaderboard.map((entry, i) => {
-              const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
-              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-              return (
+            <div className="space-y-6">
+
+              {/* ── Podium: Top 3 ── */}
+              {leaderboard.length >= 1 && (
+                <div className="flex items-end justify-center gap-3 pt-4 pb-2">
+                  {/* 2nd place */}
+                  {leaderboard[1] && (() => {
+                    const entry = leaderboard[1];
+                    const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
+                    return (
+                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
+                        <div className="text-2xl">🥈</div>
+                        <div
+                          className="w-full rounded-t-2xl pt-5 pb-4 px-3 text-center"
+                          style={{
+                            background: isMe
+                              ? `linear-gradient(180deg, hsl(${accentHsl} / 0.2), hsl(${accentHsl} / 0.08))`
+                              : "linear-gradient(180deg, hsl(220 15% 16%), hsl(220 15% 10%))",
+                            border: `1px solid ${isMe ? `hsl(${accentHsl} / 0.5)` : "hsl(220 15% 22%)"}`,
+                            borderBottom: "none",
+                            height: 110,
+                          }}
+                        >
+                          <div className="text-3xl font-black" style={{ ...BANGERS, color: "#94a3b8" }}>
+                            {entry.totalPoints.toLocaleString()}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">pts</div>
+                          <div className="font-mono text-[10px] mt-2 truncate" style={{ color: isMe ? accent : "#94a3b8" }}>
+                            {truncate(entry.walletAddress)}
+                            {isMe && <span className="ml-1 font-bold">(you)</span>}
+                          </div>
+                        </div>
+                        <div
+                          className="w-full text-center text-xs font-bold py-1 rounded-b-sm"
+                          style={{ background: "#475569", color: "white" }}
+                        >
+                          #2
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 1st place */}
+                  {(() => {
+                    const entry = leaderboard[0];
+                    const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
+                    return (
+                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[190px]">
+                        <div className="text-3xl animate-bounce">👑</div>
+                        <div
+                          className="w-full rounded-t-2xl pt-6 pb-4 px-3 text-center relative overflow-hidden"
+                          style={{
+                            background: isMe
+                              ? `linear-gradient(180deg, hsl(${accentHsl} / 0.35), hsl(${accentHsl} / 0.12))`
+                              : "linear-gradient(180deg, hsl(45 80% 18%), hsl(45 60% 8%))",
+                            border: `2px solid ${isMe ? `hsl(${accentHsl} / 0.7)` : "#c8920a"}`,
+                            borderBottom: "none",
+                            boxShadow: isMe ? `0 0 32px ${glow}` : "0 0 32px #c8920a60",
+                            height: 140,
+                          }}
+                        >
+                          {/* shimmer */}
+                          <div className="absolute inset-0 pointer-events-none" style={{
+                            background: "linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%)",
+                          }} />
+                          <div className="text-4xl font-black" style={{ ...BANGERS, color: isMe ? accent : "#f59e0b", textShadow: `0 0 20px ${isMe ? glow : "#f59e0b80"}` }}>
+                            {entry.totalPoints.toLocaleString()}
+                          </div>
+                          <div className="text-[11px] mt-0.5" style={{ color: isMe ? accent : "#d97706" }}>pts</div>
+                          <div className="font-mono text-[11px] mt-2 truncate font-bold" style={{ color: isMe ? accent : "#fbbf24" }}>
+                            {truncate(entry.walletAddress)}
+                            {isMe && <span className="ml-1">(you)</span>}
+                          </div>
+                        </div>
+                        <div
+                          className="w-full text-center text-xs font-bold py-1.5 rounded-b-sm"
+                          style={{ background: "linear-gradient(90deg, #b45309, #d97706)", color: "white" }}
+                        >
+                          🏆 #1
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 3rd place */}
+                  {leaderboard[2] && (() => {
+                    const entry = leaderboard[2];
+                    const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
+                    return (
+                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
+                        <div className="text-2xl">🥉</div>
+                        <div
+                          className="w-full rounded-t-2xl pt-5 pb-4 px-3 text-center"
+                          style={{
+                            background: isMe
+                              ? `linear-gradient(180deg, hsl(${accentHsl} / 0.2), hsl(${accentHsl} / 0.08))`
+                              : "linear-gradient(180deg, hsl(25 40% 14%), hsl(25 30% 8%))",
+                            border: `1px solid ${isMe ? `hsl(${accentHsl} / 0.5)` : "hsl(25 40% 22%)"}`,
+                            borderBottom: "none",
+                            height: 90,
+                          }}
+                        >
+                          <div className="text-3xl font-black" style={{ ...BANGERS, color: "#cd7f32" }}>
+                            {entry.totalPoints.toLocaleString()}
+                          </div>
+                          <div className="text-[10px] text-orange-800 mt-0.5">pts</div>
+                          <div className="font-mono text-[10px] mt-2 truncate" style={{ color: isMe ? accent : "#cd7f32" }}>
+                            {truncate(entry.walletAddress)}
+                            {isMe && <span className="ml-1 font-bold">(you)</span>}
+                          </div>
+                        </div>
+                        <div
+                          className="w-full text-center text-xs font-bold py-1 rounded-b-sm"
+                          style={{ background: "#78350f", color: "#fde68a" }}
+                        >
+                          #3
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ── Rest of leaderboard ── */}
+              {leaderboard.length > 3 && (
+                <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid hsl(${accentHsl} / 0.12)` }}>
+                  {/* Header */}
+                  <div
+                    className="grid grid-cols-[48px_1fr_auto] px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest"
+                    style={{ background: "hsl(272 20% 6%)", color: "hsl(var(--muted-foreground))" }}
+                  >
+                    <span>Rank</span>
+                    <span>Wallet</span>
+                    <span>Points</span>
+                  </div>
+                  {leaderboard.slice(3).map((entry, idx) => {
+                    const i = idx + 3;
+                    const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
+                    return (
+                      <div
+                        key={entry.walletAddress}
+                        className="grid grid-cols-[48px_1fr_auto] items-center px-4 py-3 transition-colors"
+                        style={{
+                          background: isMe
+                            ? `linear-gradient(90deg, hsl(${accentHsl} / 0.1), transparent)`
+                            : i % 2 === 0 ? "hsl(272 20% 5%)" : "hsl(272 20% 7%)",
+                          borderTop: `1px solid hsl(${accentHsl} / 0.07)`,
+                          boxShadow: isMe ? `inset 3px 0 0 hsl(${accentHsl})` : "none",
+                        }}
+                      >
+                        <span className="font-mono text-xs font-bold" style={{ color: "hsl(var(--muted-foreground))" }}>
+                          #{i + 1}
+                        </span>
+                        <span className="font-mono text-sm truncate pr-4" style={{ color: isMe ? accent : "hsl(var(--foreground))" }}>
+                          {truncate(entry.walletAddress)}
+                          {isMe && (
+                            <span
+                              className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ background: `hsl(${accentHsl} / 0.15)`, color: accent }}
+                            >
+                              you
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-bold text-sm tabular-nums" style={{ ...BANGERS, color: "hsl(var(--foreground))" }}>
+                          {entry.totalPoints.toLocaleString()}
+                          <span className="text-[10px] font-normal text-muted-foreground ml-1">pts</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── My rank callout (if not in top 50) ── */}
+              {isConnected && myRank && myRank > leaderboard.length && (
                 <div
-                  key={entry.walletAddress}
-                  className="flex items-center gap-4 rounded-xl px-4 py-3 transition-all"
+                  className="rounded-xl px-4 py-3 flex items-center gap-4"
                   style={{
-                    background: isMe
-                      ? `linear-gradient(135deg, hsl(${accentHsl} / 0.15), hsl(${accentHsl} / 0.05))`
-                      : "hsl(272 20% 6%)",
-                    border: `1px solid ${isMe ? `hsl(${accentHsl} / 0.4)` : "hsl(272 20% 12%)"}`,
-                    boxShadow: isMe ? `0 0 12px ${glow}` : "none",
+                    background: `linear-gradient(135deg, hsl(${accentHsl} / 0.12), hsl(${accentHsl} / 0.04))`,
+                    border: `1px solid hsl(${accentHsl} / 0.3)`,
                   }}
                 >
-                  <div className="w-8 text-center text-sm font-mono font-bold text-muted-foreground">
-                    {medal ?? `#${i + 1}`}
-                  </div>
-                  <div className="flex-1 font-mono text-sm" style={{ color: isMe ? accent : "hsl(var(--foreground))" }}>
-                    {truncate(entry.walletAddress)}
-                    {isMe && <span className="ml-2 text-[10px] font-bold" style={{ color: accent }}>(you)</span>}
-                  </div>
-                  <div className="font-bold text-sm" style={{ ...BANGERS, color: i < 3 ? accent : "hsl(var(--foreground))" }}>
-                    {entry.totalPoints.toLocaleString()} pts
-                  </div>
+                  <div className="font-mono text-xs text-muted-foreground">Your rank</div>
+                  <div className="font-black text-2xl" style={{ ...BANGERS, color: accent }}>#{myRank}</div>
+                  <div className="flex-1" />
+                  <div className="font-bold" style={{ ...BANGERS, color: accent }}>{myPoints.toLocaleString()} pts</div>
                 </div>
-              );
-            })
+              )}
+            </div>
           )}
         </TabsContent>
 

@@ -31,9 +31,11 @@ import {
   Loader2,
   Link2,
   CheckCircle2,
-  Upload,
   Layers,
   ExternalLink,
+  Zap,
+  Shield,
+  ChevronRight,
 } from "lucide-react";
 
 export function Nfts() {
@@ -311,9 +313,17 @@ function NftsContent() {
                     <Fingerprint className="w-3 h-3 mr-1" />#{nft.tokenId}
                   </Badge>
                   {isOnChain && (
-                    <Badge className="bg-green-600/80 backdrop-blur-md text-white border-0 text-[10px]">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      On-Chain
+                    <Badge
+                      className="backdrop-blur-md text-[10px] border font-bold tracking-wider"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(234,179,8,0.85), rgba(245,158,11,0.75))',
+                        borderColor: 'rgba(234,179,8,0.6)',
+                        color: '#000',
+                        boxShadow: '0 0 10px rgba(234,179,8,0.4)',
+                      }}
+                    >
+                      <Zap className="w-3 h-3 mr-1 fill-current" />
+                      SOC'd
                     </Badge>
                   )}
                 </div>
@@ -401,16 +411,31 @@ function NftsContent() {
                       Equip Traits
                     </Button>
 
-                    {hasEquipped && (
-                      <Button
-                        onClick={() => openSaveDialog(nftExt)}
-                        variant="outline"
-                        className="w-full border-green-500/50 text-green-400 hover:bg-green-500/10 hover:text-green-300 transition-colors"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {isOnChain ? "Update On-Chain Metadata" : "Save to Chain"}
-                      </Button>
-                    )}
+                    {/* SOC — Save On Chain button, always visible */}
+                    <button
+                      onClick={() => hasEquipped && openSaveDialog(nftExt)}
+                      disabled={!hasEquipped}
+                      title={hasEquipped ? (isOnChain ? "Update your on-chain SOC" : "Save this loadout on-chain") : "Equip traits first to SOC"}
+                      className={`w-full flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-black uppercase tracking-widest transition-all duration-200 border-2 ${
+                        !hasEquipped
+                          ? "opacity-40 cursor-not-allowed border-border/40 bg-secondary/20 text-muted-foreground"
+                          : isOnChain
+                          ? "border-amber-400/60 text-amber-300 hover:border-amber-400 hover:shadow-[0_0_18px_rgba(234,179,8,0.35)] active:scale-95"
+                          : "border-amber-500/80 text-amber-400 hover:border-amber-400 hover:shadow-[0_0_24px_rgba(234,179,8,0.5)] active:scale-95 animate-pulse"
+                      }`}
+                      style={hasEquipped ? {
+                        background: isOnChain
+                          ? 'linear-gradient(135deg, rgba(234,179,8,0.08), rgba(245,158,11,0.05))'
+                          : 'linear-gradient(135deg, rgba(234,179,8,0.12), rgba(245,158,11,0.08))',
+                        fontFamily: "'Bungee', Impact, sans-serif",
+                        letterSpacing: '0.12em',
+                      } : { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.12em' }}
+                    >
+                      <Zap className={`w-4 h-4 ${hasEquipped ? 'fill-amber-400 text-amber-400' : ''}`} />
+                      <span>{isOnChain ? "Re-SOC" : "SOC"}</span>
+                      <span className="text-[9px] font-normal normal-case tracking-normal opacity-70 -ml-1">{isOnChain ? "" : "Save On Chain"}</span>
+                      {hasEquipped && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
+                    </button>
                   </div>
                 </CardContent>
               </Card>
@@ -544,7 +569,7 @@ function NftsContent() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Save to Chain Dialog ──────────────────────────────────────────── */}
+      {/* ── SOC Dialog ── Save On Chain ────────────────────────────────────── */}
       <Dialog
         open={!!saveDialogNft}
         onOpenChange={(open) => {
@@ -554,193 +579,226 @@ function NftsContent() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl bg-card border-border/50">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <Upload className="w-5 h-5 text-green-400" />
-              {saveTxResult
-                ? "Metadata Saved to Chain"
-                : `Save ${saveDialogNft?.name} to Chain`}
-            </DialogTitle>
-            <DialogDescription>
-              {saveTxResult
-                ? "Your NFT's on-chain metadata has been updated with the current trait loadout."
-                : "This will update your NFT's on-chain metadata URI with the current trait loadout and chosen skin variant."}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-2xl border-0 p-0 overflow-hidden bg-card">
+          {/* SOC header bar */}
+          <div
+            className="px-6 py-4 flex items-center gap-3"
+            style={{
+              background: saveTxResult
+                ? 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.1))'
+                : 'linear-gradient(135deg, rgba(234,179,8,0.2), rgba(245,158,11,0.1))',
+              borderBottom: saveTxResult
+                ? '1px solid rgba(34,197,94,0.3)'
+                : '1px solid rgba(234,179,8,0.3)',
+            }}
+          >
+            {/* SOC badge */}
+            <div
+              className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 font-black text-lg"
+              style={{
+                background: saveTxResult
+                  ? 'linear-gradient(135deg, rgba(34,197,94,0.3), rgba(16,185,129,0.2))'
+                  : 'linear-gradient(135deg, rgba(234,179,8,0.3), rgba(245,158,11,0.2))',
+                border: saveTxResult ? '2px solid rgba(34,197,94,0.6)' : '2px solid rgba(234,179,8,0.6)',
+                color: saveTxResult ? '#4ade80' : '#fbbf24',
+                fontFamily: "'Bungee', Impact, sans-serif",
+                boxShadow: saveTxResult
+                  ? '0 0 16px rgba(34,197,94,0.3)'
+                  : '0 0 16px rgba(234,179,8,0.35)',
+              }}
+            >
+              {saveTxResult ? <CheckCircle2 className="w-6 h-6" /> : <Zap className="w-6 h-6 fill-amber-400" />}
+            </div>
+            <div>
+              <DialogTitle
+                className="text-xl font-black tracking-wider"
+                style={{
+                  fontFamily: "'Bungee', Impact, sans-serif",
+                  color: saveTxResult ? '#4ade80' : '#fbbf24',
+                  textShadow: saveTxResult
+                    ? '0 0 12px rgba(34,197,94,0.4)'
+                    : '0 0 12px rgba(234,179,8,0.4)',
+                }}
+              >
+                {saveTxResult ? "SOC'd!" : "SOC — Save On Chain"}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                {saveTxResult
+                  ? `${saveDialogNft?.name} is now locked on-chain — this loadout is the canonical version.`
+                  : `Lock ${saveDialogNft?.name}'s current trait loadout as the canonical on-chain version.`}
+              </DialogDescription>
+            </div>
+          </div>
 
-          {saveTxResult ? (
-            /* ── Success State ── */
-            <div className="space-y-4 pt-2">
-              <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-5 space-y-3">
-                <div className="flex items-center gap-2 text-green-400 font-bold text-lg">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Transaction Confirmed
+          <div className="px-6 py-5">
+            {saveTxResult ? (
+              /* ── Success State ── */
+              <div className="space-y-4">
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-5 space-y-3">
+                  <div className="flex items-center gap-2 text-green-400 font-bold">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Transaction Confirmed
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Tx Hash</div>
+                    <div className="font-mono text-xs break-all text-foreground/80">{saveTxResult.txHash}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">On-Chain Metadata URL</div>
+                    <a
+                      href={`/api/metadata/${collection}/${saveTxResult.tokenId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-primary hover:underline break-all flex items-center gap-1"
+                    >
+                      /api/metadata/{collection}/{saveTxResult.tokenId}
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                    </a>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Tx Hash
-                  </div>
-                  <div className="font-mono text-xs break-all text-foreground/80">
-                    {saveTxResult.txHash}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Metadata URL
-                  </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <a
-                    href={`/api/metadata/${collection}/${saveTxResult.tokenId}`}
+                    href={`/api/metadata/${collection}/${saveTxResult.tokenId}/image`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-mono text-xs text-primary hover:underline break-all flex items-center gap-1"
                   >
-                    /api/metadata/{collection}/{saveTxResult.tokenId}
-                    <ExternalLink className="w-3 h-3 shrink-0" />
+                    <Button variant="outline" className="w-full">
+                      <Layers className="w-4 h-4 mr-2" />
+                      View On-Chain Image
+                    </Button>
                   </a>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <a
-                  href={`/api/metadata/${collection}/${saveTxResult.tokenId}/image`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" className="w-full">
-                    <Layers className="w-4 h-4 mr-2" />
-                    View Composited Image
+                  <Button
+                    onClick={() => { setSaveDialogNft(null); setSaveTxResult(null); }}
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                  >
+                    Done
                   </Button>
-                </a>
-                <Button
-                  onClick={() => {
-                    setSaveDialogNft(null);
-                    setSaveTxResult(null);
-                  }}
-                >
-                  Done
-                </Button>
+                </div>
               </div>
-            </div>
-          ) : (
-            /* ── Pre-Save State ── */
-            <div className="space-y-5 pt-2">
-              {/* Composited image preview */}
-              {saveDialogNft && (
-                <div className="rounded-xl overflow-hidden border border-border/50 bg-secondary/20 aspect-square max-h-48 flex items-center justify-center mx-auto w-48">
-                  <img
-                    key={`${saveDialogNft.tokenId}-${saveVariantPack}`}
-                    src={`/api/metadata/${collection}/${saveDialogNft.tokenId}/image`}
-                    alt="Composited NFT preview"
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Equipped traits summary */}
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
-                  Traits to Confirm ({saveDialogNft?.equippedTraits.length})
-                </div>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto hide-scrollbar">
-                  {saveDialogNft?.equippedTraits.map((et) => (
+            ) : (
+              /* ── Pre-SOC State ── */
+              <div className="space-y-5">
+                <div className="flex gap-4">
+                  {/* Composited image preview */}
+                  {saveDialogNft && (
                     <div
-                      key={et.category}
-                      className="flex items-center gap-3 rounded-lg bg-secondary/30 p-2"
+                      className="rounded-xl overflow-hidden border bg-secondary/20 w-32 h-32 shrink-0 flex items-center justify-center"
+                      style={{ borderColor: 'rgba(234,179,8,0.3)' }}
                     >
-                      {et.trait.imageUrl ? (
-                        <img
-                          src={et.trait.imageUrl}
-                          alt={et.trait.name}
-                          className="w-7 h-7 object-contain rounded"
-                        />
-                      ) : (
-                        <div className="w-7 h-7 rounded bg-white/10 flex items-center justify-center text-[10px] font-bold uppercase">
-                          {et.category[0]}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div
-                          className={`text-sm font-bold truncate ${getRarityColor(et.trait.rarity)}`}
-                        >
-                          {et.trait.name}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground uppercase">
-                          {et.category}
-                        </div>
-                      </div>
+                      <img
+                        key={`${saveDialogNft.tokenId}-${saveVariantPack}`}
+                        src={`/api/metadata/${collection}/${saveDialogNft.tokenId}/image`}
+                        alt="On-chain NFT preview"
+                        className="w-full h-full object-contain"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
                     </div>
-                  ))}
-                </div>
-              </div>
+                  )}
 
-              {/* Variant pack selector */}
-              {variantPacks.length > 0 && (
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
-                    Skin Variant to Save
+                  {/* Equipped traits summary */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
+                      Traits Being SOC'd ({saveDialogNft?.equippedTraits.length})
+                    </div>
+                    <div className="space-y-1.5 max-h-28 overflow-y-auto hide-scrollbar">
+                      {saveDialogNft?.equippedTraits.map((et) => (
+                        <div key={et.category} className="flex items-center gap-2 rounded-lg bg-secondary/30 p-2">
+                          {et.trait.imageUrl ? (
+                            <img src={et.trait.imageUrl} alt={et.trait.name} className="w-6 h-6 object-contain rounded" />
+                          ) : (
+                            <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-[10px] font-bold uppercase">
+                              {et.category[0]}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className={`text-xs font-bold truncate ${getRarityColor(et.trait.rarity)}`}>{et.trait.name}</div>
+                            <div className="text-[10px] text-muted-foreground uppercase">{et.category}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSaveVariantPack(null)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
-                        saveVariantPack === null
-                          ? "border-primary bg-primary/20 text-primary"
-                          : "border-border/50 bg-secondary/20 text-muted-foreground hover:border-primary/50"
-                      }`}
-                    >
-                      Original
-                    </button>
-                    {variantPacks.map((pack) => (
+                </div>
+
+                {/* Variant pack selector */}
+                {variantPacks.length > 0 && (
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
+                      Choose Variant to SOC
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       <button
-                        key={pack}
-                        onClick={() => setSaveVariantPack(pack)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
-                          saveVariantPack === pack
-                            ? "border-primary bg-primary/20 text-primary"
-                            : "border-border/50 bg-secondary/20 text-muted-foreground hover:border-primary/50"
+                        onClick={() => setSaveVariantPack(null)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all ${
+                          saveVariantPack === null
+                            ? "border-amber-400/70 bg-amber-400/15 text-amber-300 shadow-[0_0_10px_rgba(234,179,8,0.2)]"
+                            : "border-border/50 bg-secondary/20 text-muted-foreground hover:border-amber-400/40"
                         }`}
                       >
-                        {pack}
+                        Original
                       </button>
-                    ))}
+                      {variantPacks.map((pack) => (
+                        <button
+                          key={pack}
+                          onClick={() => setSaveVariantPack(pack)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all ${
+                            saveVariantPack === pack
+                              ? "border-amber-400/70 bg-amber-400/15 text-amber-300 shadow-[0_0_10px_rgba(234,179,8,0.2)]"
+                              : "border-border/50 bg-secondary/20 text-muted-foreground hover:border-amber-400/40"
+                          }`}
+                        >
+                          {pack}
+                        </button>
+                      ))}
+                    </div>
+                    {saveVariantPack && (
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        The <span className="text-amber-300 font-semibold">{saveVariantPack}</span> variant will be used as the on-chain image.
+                      </p>
+                    )}
                   </div>
-                  {saveVariantPack && (
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      The <span className="text-foreground font-semibold">{saveVariantPack}</span> variant images will be used when compositing your on-chain metadata image.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Warning / info */}
-              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200/80">
-                This is a simulated transaction. In production, this would sign
-                an on-chain metadata update via your connected wallet.
-              </div>
-
-              <Button
-                onClick={handleSaveToChain}
-                disabled={isSaving || !saveDialogNft?.equippedTraits.length}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-base h-12"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Signing Transaction…
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-5 h-5 mr-2" />
-                    Sign &amp; Save to Chain
-                  </>
                 )}
-              </Button>
-            </div>
-          )}
+
+                {/* Info note */}
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/8 p-3 text-xs text-amber-200/70 flex items-start gap-2">
+                  <Shield className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400/70" />
+                  <span>
+                    SOC locks your chosen trait loadout and variant as the canonical on-chain metadata. Anyone querying your NFT's tokenURI will see this version.
+                  </span>
+                </div>
+
+                {/* SOC button */}
+                <button
+                  onClick={handleSaveToChain}
+                  disabled={isSaving || !saveDialogNft?.equippedTraits.length}
+                  className="w-full flex items-center justify-center gap-3 rounded-xl py-3.5 text-base font-black uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                  style={{
+                    background: isSaving
+                      ? 'linear-gradient(135deg, rgba(234,179,8,0.3), rgba(245,158,11,0.2))'
+                      : 'linear-gradient(135deg, rgba(234,179,8,0.85), rgba(245,158,11,0.7))',
+                    border: '2px solid rgba(234,179,8,0.8)',
+                    color: isSaving ? 'rgba(234,179,8,0.7)' : '#000',
+                    fontFamily: "'Bungee', Impact, sans-serif",
+                    letterSpacing: '0.14em',
+                    boxShadow: isSaving ? 'none' : '0 0 24px rgba(234,179,8,0.4), 2px 2px 0 rgba(0,0,0,0.6)',
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin text-amber-400" />
+                      <span className="text-amber-300">Signing Transaction…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5 fill-black" />
+                      SOC It
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

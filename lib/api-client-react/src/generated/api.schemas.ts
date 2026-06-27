@@ -380,6 +380,43 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+/**
+ * Raw NFT metadata JSON (Metaplex / Wegen format)
+ */
+export type ImportNftBodyMetadata = { [key: string]: unknown };
+
+export interface ImportNftBody {
+  /** Raw NFT metadata JSON (Metaplex / Wegen format) */
+  metadata: ImportNftBodyMetadata;
+  /** Ethereum wallet address to register the NFT under */
+  walletAddress: string;
+  /** Update existing record if token ID already exists */
+  upsert?: boolean;
+}
+
+export interface ImportNftResponse {
+  success: boolean;
+  tokenId: number;
+  name: string;
+  imageUrl?: string | null;
+  /** true if new record was created, false if updated */
+  created?: boolean;
+}
+
+export interface AdminNftItem {
+  tokenId: number;
+  walletAddress: string;
+  name: string;
+  imageUrl?: string | null;
+  metadataTxHash?: string | null;
+  createdAt?: string;
+}
+
+export interface AdminNftListResponse {
+  nfts: AdminNftItem[];
+  total: number;
+}
+
 export type ListTraitsParams = {
   category?: string;
   /**

@@ -796,6 +796,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdminStats"
 
+  /admin/import-nft:
+    post:
+      operationId: importNftMetadata
+      tags: [admin]
+      summary: Import a Wegen NFT from its on-chain metadata JSON
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportNftBody"
+      responses:
+        "200":
+          description: NFT imported or updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportNftResponse"
+        "400":
+          description: Invalid metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/list-nfts:
+    get:
+      operationId: listAdminNfts
+      tags: [admin]
+      summary: List all Wegen NFTs registered in the system
+      responses:
+        "200":
+          description: List of NFTs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminNftListResponse"
+
+  /admin/delete-nft/{tokenId}:
+    delete:
+      operationId: deleteAdminNft
+      tags: [admin]
+      summary: Remove a Wegen NFT record from the system
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: NFT deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1554,3 +1611,66 @@ components:
       properties:
         error:
           type: string
+
+    ImportNftBody:
+      type: object
+      required: [metadata, walletAddress]
+      properties:
+        metadata:
+          type: object
+          description: Raw NFT metadata JSON (Metaplex / Wegen format)
+          additionalProperties: true
+        walletAddress:
+          type: string
+          description: Ethereum wallet address to register the NFT under
+        upsert:
+          type: boolean
+          default: true
+          description: Update existing record if token ID already exists
+
+    ImportNftResponse:
+      type: object
+      required: [success, tokenId, name]
+      properties:
+        success:
+          type: boolean
+        tokenId:
+          type: integer
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        created:
+          type: boolean
+          description: true if new record was created, false if updated
+
+    AdminNftItem:
+      type: object
+      required: [tokenId, walletAddress, name]
+      properties:
+        tokenId:
+          type: integer
+        walletAddress:
+          type: string
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        metadataTxHash:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+
+    AdminNftListResponse:
+      type: object
+      required: [nfts, total]
+      properties:
+        nfts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminNftItem"
+        total:
+          type: integer

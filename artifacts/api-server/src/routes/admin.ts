@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, asc, inArray, desc, and } from "drizzle-orm";
-import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable, traitVariantsTable } from "@workspace/db";
+import { db, traitsTable, lockerItemsTable, storeSettingsTable, transactionsTable, rarityTiersTable, traitVariantsTable, wegenNftsTable } from "@workspace/db";
 
 function getNftCollection(req: import("express").Request): string {
   const c = (req.query.nftCollection ?? req.body?.nftCollection) as string | undefined;
@@ -901,6 +901,94 @@ router.get("/admin/airdrop-history", async (req, res): Promise<void> => {
     .orderBy(desc(lockerItemsTable.purchasedAt))
     .limit(limit);
   res.json({ airdrops: rows });
+});
+
+// ─── NFT Management ──────────────────────────────────────────────────────────
+
+/** Parse Wegen metadata JSON and extract token ID.
+ *  Supports:  "Wegens #135", "Wegen #135", "Wegen135", or Original ID attribute */
+function parseWegenTokenId(meta: Record<string, unknown>): number | null {
+  const name = typeof meta.name === "string" ? meta.name : "";
+  // Match "#<digits>" anywhere in the name
+  const fromName = name.match(/#(\d+)/);
+  if (fromName) return parseInt(fromName[1], 10);
+  // Fallback: "Original ID" attribute
+  if (Array.isArray(meta.attributes)) {
+    for (const attr of meta.attributes as { trait_type?: string; value?: unknown }[]) {
+      if (attr.trait_type === "Original ID" && typeof attr.value === "number") {
+        return attr.value;
+      }
+    }
+  }
+  return null;
+}
+
+router.post("/admin/import-nft", async (req, res): Promise<void> => {
+  const { metadata, walletAddress, upsert = true } = req.body as {
+    metadata: Record<string, unknown>;
+    walletAddress: string;
+    upsert?: boolean;
+  };
+
+  if (!metadata || typeof metadata !== "object") {
+    res.status(400).json({ error: "metadata is required and must be an object" });
+    return;
+  }
+  if (!walletAddress || typeof walletAddress !== "string") {
+    res.status(400).json({ error: "walletAddress is required" });
+    return;
+  }
+
+  const tokenId = parseWegenTokenId(metadata);
+  if (tokenId === null || isNaN(tokenId)) {
+    res.status(400).json({
+      error: 'Could not extract token ID from metadata. Name must contain "#<number>" (e.g. "Wegens #135").',
+    });
+    return;
+  }
+
+  const name = typeof metadata.name === "string" ? metadata.name : `Wegen #${tokenId}`;
+  const imageUrl = typeof metadata.image === "string" ? metadata.image : null;
+  const addr = walletAddress.toLowerCase();
+
+  const [existing] = await db
+    .select({ tokenId: wegenNftsTable.tokenId })
+    .from(wegenNftsTable)
+    .where(eq(wegenNftsTable.tokenId, tokenId));
+
+  if (existing) {
+    if (!upsert) {
+      res.status(400).json({ error: `Token ID ${tokenId} already exists. Set upsert=true to update.` });
+      return;
+    }
+    await db
+      .update(wegenNftsTable)
+      .set({ walletAddress: addr, name, imageUrl })
+      .where(eq(wegenNftsTable.tokenId, tokenId));
+    res.json({ success: true, tokenId, name, imageUrl, created: false });
+    return;
+  }
+
+  await db.insert(wegenNftsTable).values({ tokenId, walletAddress: addr, name, imageUrl });
+  res.json({ success: true, tokenId, name, imageUrl, created: true });
+});
+
+router.get("/admin/list-nfts", async (_req, res): Promise<void> => {
+  const nfts = await db
+    .select()
+    .from(wegenNftsTable)
+    .orderBy(asc(wegenNftsTable.tokenId));
+  res.json({ nfts, total: nfts.length });
+});
+
+router.delete("/admin/delete-nft/:tokenId", async (req, res): Promise<void> => {
+  const tokenId = parseInt(req.params.tokenId, 10);
+  if (isNaN(tokenId)) {
+    res.status(400).json({ error: "Invalid tokenId" });
+    return;
+  }
+  await db.delete(wegenNftsTable).where(eq(wegenNftsTable.tokenId, tokenId));
+  res.json({ success: true, message: `NFT #${tokenId} removed` });
 });
 
 export default router;

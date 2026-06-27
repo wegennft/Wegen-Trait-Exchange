@@ -1150,3 +1150,61 @@ export const GetAdminStatsResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Import a Wegen NFT from its on-chain metadata JSON
+ */
+export const importNftMetadataBodyUpsertDefault = true;
+
+export const ImportNftMetadataBody = zod.object({
+  metadata: zod
+    .record(zod.string(), zod.unknown())
+    .describe("Raw NFT metadata JSON (Metaplex \/ Wegen format)"),
+  walletAddress: zod
+    .string()
+    .describe("Ethereum wallet address to register the NFT under"),
+  upsert: zod
+    .boolean()
+    .default(importNftMetadataBodyUpsertDefault)
+    .describe("Update existing record if token ID already exists"),
+});
+
+export const ImportNftMetadataResponse = zod.object({
+  success: zod.boolean(),
+  tokenId: zod.number(),
+  name: zod.string(),
+  imageUrl: zod.string().nullish(),
+  created: zod
+    .boolean()
+    .optional()
+    .describe("true if new record was created, false if updated"),
+});
+
+/**
+ * @summary List all Wegen NFTs registered in the system
+ */
+export const ListAdminNftsResponse = zod.object({
+  nfts: zod.array(
+    zod.object({
+      tokenId: zod.number(),
+      walletAddress: zod.string(),
+      name: zod.string(),
+      imageUrl: zod.string().nullish(),
+      metadataTxHash: zod.string().nullish(),
+      createdAt: zod.string().optional(),
+    }),
+  ),
+  total: zod.number(),
+});
+
+/**
+ * @summary Remove a Wegen NFT record from the system
+ */
+export const DeleteAdminNftParams = zod.object({
+  tokenId: zod.coerce.number(),
+});
+
+export const DeleteAdminNftResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});

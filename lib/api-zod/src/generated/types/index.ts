@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./adminNftItem";
+export * from "./adminNftListResponse";
 export * from "./adminStats";
 export * from "./adminStatsRecentActivityItem";
 export * from "./adminStatsTopSellingTraitsItem";
@@ -32,6 +34,9 @@ export * from "./getMyLegendsNftCollection";
 export * from "./getMyLegendsParams";
 export * from "./getVariantsByCollectionParams";
 export * from "./healthStatus";
+export * from "./importNftBody";
+export * from "./importNftBodyMetadata";
+export * from "./importNftResponse";
 export * from "./legendItem";
 export * from "./legendVariant";
 export * from "./listAllLegendsNftCollection";

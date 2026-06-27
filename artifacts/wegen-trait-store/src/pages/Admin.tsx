@@ -15,6 +15,10 @@ import {
   useCreateLegendVariant,
   useDeleteLegendVariant,
   getListAllLegendsQueryKey,
+  useImportNftMetadata,
+  useListAdminNfts,
+  useDeleteAdminNft,
+  getListAdminNftsQueryKey,
 } from "@workspace/api-client-react";
 import type { LegendItem } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1109,6 +1113,9 @@ export function Admin() {
           <TabsTrigger value="bounties" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Trophy className="w-4 h-4" /> Bounties
           </TabsTrigger>
+          <TabsTrigger value="nft-registry" className="flex items-center gap-2 rounded-sm px-4 py-2">
+            <Gem className="w-4 h-4" /> NFT Registry
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
@@ -1855,6 +1862,10 @@ export function Admin() {
 
         <TabsContent value="bounties" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <BountiesAdminTab />
+        </TabsContent>
+
+        <TabsContent value="nft-registry" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <NftRegistryTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -7231,6 +7242,199 @@ function BountiesAdminTab() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── NFT Registry Tab ─────────────────────────────────────────────────────────
+
+function NftRegistryTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [metadataJson, setMetadataJson] = useState("");
+  const [walletAddr, setWalletAddr] = useState("");
+  const [parsePreview, setParsePreview] = useState<{ tokenId: number; name: string; imageUrl: string | null } | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  const { data: nftList, isLoading } = useListAdminNfts();
+  const importMut = useImportNftMetadata();
+  const deleteMut = useDeleteAdminNft();
+
+  useEffect(() => {
+    setParseError(null);
+    setParsePreview(null);
+    if (!metadataJson.trim()) return;
+    try {
+      const meta = JSON.parse(metadataJson) as Record<string, unknown>;
+      const name = typeof meta.name === "string" ? meta.name : "";
+      const match = name.match(/#(\d+)/);
+      const tokenId = match ? parseInt(match[1], 10) : null;
+      const imageUrl = typeof meta.image === "string" ? meta.image : null;
+      if (!tokenId) {
+        setParseError('Name must contain "#<number>" — e.g. "Wegens #135"');
+        return;
+      }
+      setParsePreview({ tokenId, name, imageUrl });
+    } catch {
+      setParseError("Invalid JSON — paste the raw metadata object");
+    }
+  }, [metadataJson]);
+
+  const handleImport = () => {
+    if (!parsePreview) return;
+    if (!walletAddr.trim()) {
+      toast({ title: "Wallet required", description: "Enter the owner wallet address", variant: "destructive" });
+      return;
+    }
+    let meta: Record<string, unknown>;
+    try { meta = JSON.parse(metadataJson); } catch { return; }
+    importMut.mutate(
+      { importNftBody: { metadata: meta, walletAddress: walletAddr.trim(), upsert: true } },
+      {
+        onSuccess: (data) => {
+          toast({
+            title: data.created ? "NFT imported ✓" : "NFT updated ✓",
+            description: `${data.name} → Token #${data.tokenId}`,
+          });
+          setMetadataJson("");
+          setWalletAddr("");
+          setParsePreview(null);
+          void queryClient.invalidateQueries({ queryKey: getListAdminNftsQueryKey() });
+        },
+        onError: (err) => {
+          toast({ title: "Import failed", description: (err as Error).message, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const handleDelete = (tokenId: number, name: string) => {
+    if (!confirm(`Remove ${name} (token #${tokenId}) from the registry?`)) return;
+    deleteMut.mutate(
+      { tokenId },
+      {
+        onSuccess: () => {
+          toast({ title: "NFT removed", description: `Token #${tokenId} removed from registry` });
+          void queryClient.invalidateQueries({ queryKey: getListAdminNftsQueryKey() });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-xl font-bold mb-1">NFT Registry</h2>
+        <p className="text-sm text-muted-foreground">
+          Import Wegen NFTs by pasting their on-chain metadata JSON. The token ID is parsed from the name
+          (e.g. <code className="bg-secondary/40 px-1 rounded text-xs">Wegens #135</code> → token 135).
+        </p>
+      </div>
+
+      <Card className="border border-primary/30 bg-card/40">
+        <CardHeader><CardTitle className="text-base">Import from Metadata JSON</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Metadata JSON</Label>
+            <Textarea
+              rows={8}
+              placeholder={`Paste the NFT metadata JSON here, e.g.\n{\n  "name": "Wegens #135",\n  "image": "https://...",\n  "attributes": [...]\n}`}
+              value={metadataJson}
+              onChange={(e) => setMetadataJson(e.target.value)}
+              className="font-mono text-xs"
+            />
+          </div>
+
+          {parsePreview && (
+            <div className="flex items-center gap-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+              {parsePreview.imageUrl && (
+                <img src={parsePreview.imageUrl} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0 border border-border/30" />
+              )}
+              <div>
+                <div className="text-sm font-semibold text-green-400">✓ Recognized: {parsePreview.name}</div>
+                <div className="text-xs text-muted-foreground">Token ID #{parsePreview.tokenId}</div>
+              </div>
+            </div>
+          )}
+          {parseError && <p className="text-xs text-destructive">{parseError}</p>}
+
+          <div className="space-y-1.5">
+            <Label>Owner Wallet Address</Label>
+            <Input
+              placeholder="0x..."
+              value={walletAddr}
+              onChange={(e) => setWalletAddr(e.target.value)}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">The Ethereum wallet that owns this NFT.</p>
+          </div>
+
+          <Button
+            onClick={handleImport}
+            disabled={!parsePreview || !walletAddr.trim() || importMut.isPending}
+            className="w-full"
+          >
+            {importMut.isPending ? "Importing…" : parsePreview ? `Import Wegen #${parsePreview.tokenId}` : "Import NFT"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-primary/30 bg-card/40">
+        <CardHeader>
+          <CardTitle className="text-base">
+            Registered NFTs
+            {nftList && <span className="ml-2 text-sm font-normal text-muted-foreground">({nftList.total} total)</span>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : !nftList?.nfts?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No NFTs registered yet. Import one above.</p>
+          ) : (
+            <div className="rounded-lg border border-border/30 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/30 bg-secondary/20">
+                    <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Token</th>
+                    <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Name</th>
+                    <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium hidden md:table-cell">Wallet</th>
+                    <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium hidden lg:table-cell">SOC'd</th>
+                    <th className="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {nftList.nfts.map((nft) => (
+                    <tr key={nft.tokenId} className="border-b border-border/20 last:border-0 hover:bg-secondary/10">
+                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">#{nft.tokenId}</td>
+                      <td className="px-4 py-2 font-medium text-sm">{nft.name}</td>
+                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground hidden md:table-cell">
+                        {nft.walletAddress.slice(0, 8)}…{nft.walletAddress.slice(-6)}
+                      </td>
+                      <td className="px-4 py-2 hidden lg:table-cell">
+                        {nft.metadataTxHash
+                          ? <Badge variant="outline" className="text-green-400 border-green-500/30 text-xs">SOC'd</Badge>
+                          : <span className="text-xs text-muted-foreground/50">—</span>}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(nft.tokenId, nft.name)}
+                          disabled={deleteMut.isPending}
+                        >
+                          Remove
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

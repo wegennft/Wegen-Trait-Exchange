@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminNftListResponse,
   AdminStats,
   ApplyTraitBody,
   ApplyTraitResponse,
@@ -36,6 +37,8 @@ import type {
   GetMyLegendsParams,
   GetVariantsByCollectionParams,
   HealthStatus,
+  ImportNftBody,
+  ImportNftResponse,
   ListAllLegendsParams,
   ListLegendVariantCollectionsParams,
   ListLegendsParams,
@@ -3153,3 +3156,248 @@ export function useGetAdminStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Import a Wegen NFT from its on-chain metadata JSON
+ */
+export const getImportNftMetadataUrl = () => {
+  return `/api/admin/import-nft`;
+};
+
+export const importNftMetadata = async (
+  importNftBody: ImportNftBody,
+  options?: RequestInit,
+): Promise<ImportNftResponse> => {
+  return customFetch<ImportNftResponse>(getImportNftMetadataUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(importNftBody),
+  });
+};
+
+export const getImportNftMetadataMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importNftMetadata>>,
+    TError,
+    { data: BodyType<ImportNftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importNftMetadata>>,
+  TError,
+  { data: BodyType<ImportNftBody> },
+  TContext
+> => {
+  const mutationKey = ["importNftMetadata"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importNftMetadata>>,
+    { data: BodyType<ImportNftBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importNftMetadata(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportNftMetadataMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importNftMetadata>>
+>;
+export type ImportNftMetadataMutationBody = BodyType<ImportNftBody>;
+export type ImportNftMetadataMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Import a Wegen NFT from its on-chain metadata JSON
+ */
+export const useImportNftMetadata = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importNftMetadata>>,
+    TError,
+    { data: BodyType<ImportNftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importNftMetadata>>,
+  TError,
+  { data: BodyType<ImportNftBody> },
+  TContext
+> => {
+  return useMutation(getImportNftMetadataMutationOptions(options));
+};
+
+/**
+ * @summary List all Wegen NFTs registered in the system
+ */
+export const getListAdminNftsUrl = () => {
+  return `/api/admin/list-nfts`;
+};
+
+export const listAdminNfts = async (
+  options?: RequestInit,
+): Promise<AdminNftListResponse> => {
+  return customFetch<AdminNftListResponse>(getListAdminNftsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdminNftsQueryKey = () => {
+  return [`/api/admin/list-nfts`] as const;
+};
+
+export const getListAdminNftsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminNfts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminNfts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminNftsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminNfts>>> = ({
+    signal,
+  }) => listAdminNfts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminNfts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminNftsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminNfts>>
+>;
+export type ListAdminNftsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all Wegen NFTs registered in the system
+ */
+
+export function useListAdminNfts<
+  TData = Awaited<ReturnType<typeof listAdminNfts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminNfts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminNftsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Remove a Wegen NFT record from the system
+ */
+export const getDeleteAdminNftUrl = (tokenId: number) => {
+  return `/api/admin/delete-nft/${tokenId}`;
+};
+
+export const deleteAdminNft = async (
+  tokenId: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteAdminNftUrl(tokenId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdminNftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminNft>>,
+    TError,
+    { tokenId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminNft>>,
+  TError,
+  { tokenId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminNft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminNft>>,
+    { tokenId: number }
+  > = (props) => {
+    const { tokenId } = props ?? {};
+
+    return deleteAdminNft(tokenId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminNftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminNft>>
+>;
+
+export type DeleteAdminNftMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a Wegen NFT record from the system
+ */
+export const useDeleteAdminNft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminNft>>,
+    TError,
+    { tokenId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminNft>>,
+  TError,
+  { tokenId: number },
+  TContext
+> => {
+  return useMutation(getDeleteAdminNftMutationOptions(options));
+};

@@ -1,12 +1,13 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useWallet } from "@/contexts/WalletContext";
+import { useWallet, detectWallets, type DetectedWallet } from "@/contexts/WalletContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 const DISPLAY = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: '0.04em' };
@@ -19,32 +20,48 @@ export function Layout({ children }: { children: ReactNode }) {
   const { collection, collectionLabel, setCollection, theme } = useCollection();
   const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { toast } = useToast();
+  const [walletPickerOpen, setWalletPickerOpen] = useState(false);
+  const [detectedWallets, setDetectedWallets] = useState<DetectedWallet[]>([]);
 
-  const handleConnect = async () => {
+  const doConnect = async (wallet: DetectedWallet) => {
+    setWalletPickerOpen(false);
     try {
-      await connect();
+      await connect(wallet.provider);
     } catch (err) {
       const code = (err as { code?: number }).code;
-      // 4001 = user cancelled — silent (they know they cancelled)
-      if (code === 4001) return;
+      if (code === 4001) return; // user cancelled — silent
 
       let description = err instanceof Error ? err.message : "Could not connect wallet";
-
-      // -32000 / 32000 = wallet internal error (common with Phantom Ethereum)
       if (code === -32000 || code === 32000) {
         description =
-          "Phantom returned an internal error (32000). Try these steps:\n" +
-          "1. Open Phantom → Settings → Developer Settings → make sure Ethereum is enabled.\n" +
-          "2. Disconnect any existing connection to this site in Phantom, then retry.\n" +
-          "3. If you also have MetaMask installed, try disabling it temporarily.";
+          `${wallet.name} returned an internal error (32000). ` +
+          (wallet.id === "phantom"
+            ? "Open Phantom → Settings → Developer Settings and make sure Ethereum is enabled, then retry."
+            : "Try disconnecting this site from the wallet and reconnecting.");
       }
+      toast({ title: "Connection failed", description, variant: "destructive" });
+    }
+  };
 
+  const handleConnect = () => {
+    const wallets = detectWallets();
+    if (wallets.length === 0) {
       toast({
-        title: "Connection failed",
-        description,
+        title: "No wallet found",
+        description:
+          "Install MetaMask (metamask.io) or Phantom, then refresh. " +
+          "Note: wallet extensions don't work inside iframes — open the app in its own browser tab.",
         variant: "destructive",
       });
+      return;
     }
+    if (wallets.length === 1) {
+      void doConnect(wallets[0]);
+      return;
+    }
+    // Multiple wallets — let the user pick
+    setDetectedWallets(wallets);
+    setWalletPickerOpen(true);
   };
 
   const truncateAddress = (address: string) => {
@@ -557,6 +574,52 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </footer>
+
+      {/* ── Wallet Picker Dialog ── */}
+      <Dialog open={walletPickerOpen} onOpenChange={setWalletPickerOpen}>
+        <DialogContent className="sm:max-w-xs border border-white/10 bg-black/90 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg" style={BANGERS}>
+              Choose Wallet
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-2">
+            {detectedWallets.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => void doConnect(w)}
+                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-left"
+              >
+                {w.id === "metamask" && (
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg"
+                    alt="MetaMask"
+                    className="w-8 h-8 flex-shrink-0"
+                  />
+                )}
+                {w.id === "phantom" && (
+                  <img
+                    src="https://187760183-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MVOiF6Zqit57q_hxJYp%2Fuploads%2FHEjleywo9QOnfYebBPCZ%2FPhantom_SVG_Icon.svg?alt=media"
+                    alt="Phantom"
+                    className="w-8 h-8 flex-shrink-0"
+                  />
+                )}
+                {w.id === "injected" && (
+                  <Wallet className="w-7 h-7 flex-shrink-0 text-muted-foreground" />
+                )}
+                <div>
+                  <div className="font-semibold text-sm">{w.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {w.id === "metamask" && "MetaMask browser extension"}
+                    {w.id === "phantom" && "Phantom Ethereum"}
+                    {w.id === "injected" && "Browser-injected wallet"}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

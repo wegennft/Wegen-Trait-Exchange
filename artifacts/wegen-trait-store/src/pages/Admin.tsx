@@ -105,6 +105,7 @@ import {
   History,
   ArrowLeftRight,
   Crown,
+  Zap,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -3158,6 +3159,8 @@ interface FeeSettings {
   sellingFeeWallet: string | null;
   marketplaceListingFeePercent: string;
   marketplaceListingFeeWallet: string | null;
+  onChainUpdateFeeEth: string;
+  onChainUpdateFeeWallet: string | null;
 }
 
 const feeSchema = z.object({
@@ -3176,6 +3179,10 @@ const feeSchema = z.object({
     .regex(/^\d+(\.\d+)?$/, "Must be a valid number (e.g. 2.5)")
     .refine(v => parseFloat(v) <= 100, "Cannot exceed 100%"),
   marketplaceListingFeeWallet: z.string().optional(),
+  onChainUpdateFeeEth: z
+    .string()
+    .regex(/^\d+(\.\d+)?$/, "Must be a valid ETH amount (e.g. 0.005)"),
+  onChainUpdateFeeWallet: z.string().optional(),
 });
 
 type FeeFormValues = z.infer<typeof feeSchema>;
@@ -3203,6 +3210,8 @@ function FeesSettings() {
       sellingFeeWallet: "",
       marketplaceListingFeePercent: "0",
       marketplaceListingFeeWallet: "",
+      onChainUpdateFeeEth: "0",
+      onChainUpdateFeeWallet: "",
     },
     values: fees
       ? {
@@ -3212,6 +3221,8 @@ function FeesSettings() {
           sellingFeeWallet: fees.sellingFeeWallet ?? "",
           marketplaceListingFeePercent: fees.marketplaceListingFeePercent ?? "0",
           marketplaceListingFeeWallet: fees.marketplaceListingFeeWallet ?? "",
+          onChainUpdateFeeEth: fees.onChainUpdateFeeEth ?? "0",
+          onChainUpdateFeeWallet: fees.onChainUpdateFeeWallet ?? "",
         }
       : undefined,
   });
@@ -3228,6 +3239,8 @@ function FeesSettings() {
           sellingFeeWallet: data.sellingFeeWallet || null,
           marketplaceListingFeePercent: data.marketplaceListingFeePercent,
           marketplaceListingFeeWallet: data.marketplaceListingFeeWallet || null,
+          onChainUpdateFeeEth: data.onChainUpdateFeeEth,
+          onChainUpdateFeeWallet: data.onChainUpdateFeeWallet || null,
         }),
       });
       if (!res.ok) {
@@ -3256,6 +3269,7 @@ function FeesSettings() {
   const buyingPct = parseFloat(form.watch("buyingFeePercent") || "0");
   const sellingPct = parseFloat(form.watch("sellingFeePercent") || "0");
   const marketplacePct = parseFloat(form.watch("marketplaceListingFeePercent") || "0");
+  const onChainFeeEth = parseFloat(form.watch("onChainUpdateFeeEth") || "0");
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -3465,6 +3479,71 @@ function FeesSettings() {
                 <div className="pt-1 border-t border-border/30 text-[10px] text-muted-foreground/60">
                   Total fee collected: {(0.1 * marketplacePct / 100).toFixed(4)} ETH → forwarded to recipient wallet
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── On-Chain Update Fee ── */}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Zap className="w-5 h-5 text-amber-400" />
+              On-Chain Update Fee (SOC)
+              <span className="ml-auto text-2xl font-black text-amber-400" style={{ fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
+                {isNaN(onChainFeeEth) ? "0" : onChainFeeEth.toFixed(4)} ETH
+              </span>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Flat ETH fee charged to users when they Save On Chain (SOC) — locking their Wegen or Wegenette trait loadout to on-chain metadata. Set to 0 to make SOC free.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="onChainUpdateFeeEth">
+                  Fee Amount
+                  <span className="ml-1 text-xs text-muted-foreground">(ETH, flat per SOC)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="onChainUpdateFeeEth"
+                    {...form.register("onChainUpdateFeeEth")}
+                    placeholder="0.005"
+                    className="bg-secondary/50 pr-14"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none font-mono">ETH</span>
+                </div>
+                {form.formState.errors.onChainUpdateFeeEth && (
+                  <p className="text-xs text-destructive">{form.formState.errors.onChainUpdateFeeEth.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="onChainUpdateFeeWallet">
+                  Recipient Wallet
+                  <span className="ml-1 text-xs text-muted-foreground">(ETH address)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="onChainUpdateFeeWallet"
+                    {...form.register("onChainUpdateFeeWallet")}
+                    placeholder="0x..."
+                    className="bg-secondary/50 font-mono text-xs pl-8"
+                  />
+                  <Wallet className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {onChainFeeEth > 0 && (
+              <div className="text-xs text-muted-foreground p-3 bg-amber-500/5 border border-amber-500/20 font-mono flex items-start gap-2">
+                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  Each SOC costs the user a flat{" "}
+                  <span className="text-amber-400 font-bold">{onChainFeeEth.toFixed(4)} ETH</span>{" "}
+                  — shown in the confirmation dialog before they proceed.
+                </span>
               </div>
             )}
           </CardContent>

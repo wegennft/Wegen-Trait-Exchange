@@ -31,6 +31,8 @@ export const storeSettingsTable = pgTable("store_settings", {
   maintenanceMode: boolean("maintenance_mode").default(false),
   maintenanceWhitelist: text("maintenance_whitelist").default("[]"),
   ineligibleNfts: text("ineligible_nfts").default("[]"),
+  onChainUpdateFeeEth: text("on_chain_update_fee_eth").notNull().default("0"),
+  onChainUpdateFeeWallet: text("on_chain_update_fee_wallet"),
   updateAuthorityKeyCiphertext: text("update_authority_key_ciphertext"),
   dailyGameEnabled: boolean("daily_game_enabled").default(true),
   dailyGameOverrides: text("daily_game_overrides").default("{}"),

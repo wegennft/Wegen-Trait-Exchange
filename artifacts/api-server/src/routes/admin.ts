@@ -16,6 +16,8 @@ async function getOrCreateSettings(nftCollection: string) {
       buyingFeeWallet: null,
       sellingFeePercent: "0",
       sellingFeeWallet: null,
+      onChainUpdateFeeEth: "0",
+      onChainUpdateFeeWallet: null,
       nftCollection,
     }).returning();
   }
@@ -31,6 +33,8 @@ const UpdateFeesBody = z.object({
   sellingFeeWallet: z.string().nullable().optional(),
   marketplaceListingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number").optional().default("0"),
   marketplaceListingFeeWallet: z.string().nullable().optional(),
+  onChainUpdateFeeEth: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid ETH amount").optional().default("0"),
+  onChainUpdateFeeWallet: z.string().nullable().optional(),
 });
 import {
   CreateTraitBody,
@@ -235,6 +239,8 @@ router.put("/admin/fees", async (req, res): Promise<void> => {
         sellingFeeWallet: body.data.sellingFeeWallet ?? null,
         marketplaceListingFeePercent: body.data.marketplaceListingFeePercent ?? "0",
         marketplaceListingFeeWallet: body.data.marketplaceListingFeeWallet ?? null,
+        onChainUpdateFeeEth: body.data.onChainUpdateFeeEth ?? "0",
+        onChainUpdateFeeWallet: body.data.onChainUpdateFeeWallet ?? null,
         nftCollection,
       })
       .returning();
@@ -251,6 +257,8 @@ router.put("/admin/fees", async (req, res): Promise<void> => {
       sellingFeeWallet: body.data.sellingFeeWallet ?? null,
       marketplaceListingFeePercent: body.data.marketplaceListingFeePercent ?? "0",
       marketplaceListingFeeWallet: body.data.marketplaceListingFeeWallet ?? null,
+      onChainUpdateFeeEth: body.data.onChainUpdateFeeEth ?? "0",
+      onChainUpdateFeeWallet: body.data.onChainUpdateFeeWallet ?? null,
     })
     .where(eq(storeSettingsTable.id, existing.id))
     .returning();

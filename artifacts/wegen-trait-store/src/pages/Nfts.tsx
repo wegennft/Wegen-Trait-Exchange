@@ -90,6 +90,17 @@ function NftsContent() {
     },
   });
 
+  const { data: feeData } = useQuery({
+    queryKey: ["admin-fees-public", collection],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/fees?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) return null;
+      return res.json() as Promise<{ onChainUpdateFeeEth: string; onChainUpdateFeeWallet: string | null }>;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  const onChainFeeEth = parseFloat(feeData?.onChainUpdateFeeEth ?? "0") || 0;
+
   const { data: variantCollectionsData } = useQuery({
     queryKey: ["trait-variant-collections", collection],
     queryFn: async () => {
@@ -757,6 +768,21 @@ function NftsContent() {
                         The <span className="text-amber-300 font-semibold">{saveVariantPack}</span> variant will be used as the on-chain image.
                       </p>
                     )}
+                  </div>
+                )}
+
+                {/* On-chain fee notice */}
+                {onChainFeeEth > 0 && (
+                  <div className="rounded-lg border border-amber-400/40 bg-amber-400/8 p-3 flex items-center gap-3">
+                    <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div className="flex-1 text-xs text-amber-200/80">
+                      A flat SOC fee of{" "}
+                      <span className="font-bold text-amber-300">{onChainFeeEth.toFixed(4)} ETH</span>{" "}
+                      will be charged to your wallet to cover on-chain update costs.
+                    </div>
+                    <div className="text-lg font-black tabular-nums shrink-0" style={{ fontFamily: "'Bungee', Impact, sans-serif", color: "#fbbf24" }}>
+                      {onChainFeeEth.toFixed(4)} ETH
+                    </div>
                   </div>
                 )}
 

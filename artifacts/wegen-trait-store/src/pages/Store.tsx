@@ -1196,13 +1196,13 @@ export function Store() {
                 <div className="mt-auto pt-3">
                   {/* Price block */}
                   <div className="px-3 py-2.5 rounded mb-2" style={{ background: `${accent}1a`, border: `1px solid ${accent}40` }}>
-                    <div className="flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
-                      <Coins className="w-5 h-5 flex-shrink-0" style={{ color: 'hsl(43 100% 60%)' }} />
-                      <span className="text-2xl leading-none">{trait.priceEth}</span>
-                      <span className="text-base opacity-70">ETH</span>
+                    <div className="flex items-baseline gap-2" style={{ ...BANGERS, color: accent }}>
+                      <Coins className="w-6 h-6 flex-shrink-0 self-center" style={{ color: 'hsl(43 100% 60%)' }} />
+                      <span className="text-4xl leading-none">{trait.priceEth}</span>
+                      <span className="text-xl opacity-70">ETH</span>
                     </div>
                     {formatUsd(trait.priceEth ?? 0, ethUsd) && (
-                      <div className="text-sm font-mono mt-0.5 pl-7" style={{ color: 'hsl(43 100% 62%)', opacity: 0.85 }}>
+                      <div className="text-sm font-mono mt-1 pl-8" style={{ color: 'hsl(43 100% 62%)', opacity: 0.85 }}>
                         ≈ {formatUsd(trait.priceEth ?? 0, ethUsd)}
                       </div>
                     )}

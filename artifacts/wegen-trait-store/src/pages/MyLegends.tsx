@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Crown, Wallet, RefreshCw, ExternalLink, Hash, Layers } from "lucide-react";
+import { Crown, Wallet, RefreshCw, ExternalLink, Hash, Layers, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWallet } from "@/contexts/WalletContext";
@@ -14,39 +14,11 @@ export function MyLegends() {
   const { collection, collectionLabel, theme } = useCollection();
   const { accent, accentHsl, glow, glow2, gradient, gradient2 } = theme;
 
-  const [selectedPack, setSelectedPack] = useState<string | null>(null);
-
   const { data, isLoading, refetch, isFetching } = useGetMyLegends(
     { walletAddress: walletAddress ?? "", nftCollection: collection },
     { enabled: !!walletAddress }
   );
   const legends = data?.legends ?? [];
-
-  // Fetch available variant pack names for this collection
-  const { data: variantCollData } = useQuery({
-    queryKey: ["legend-variant-collections", collection],
-    queryFn: async () => {
-      const res = await fetch(`/api/legends/variant-collections?nftCollection=${encodeURIComponent(collection)}`);
-      if (!res.ok) return { collections: [] as string[] };
-      return res.json() as Promise<{ collections: string[] }>;
-    },
-  });
-  const variantPacks = variantCollData?.collections ?? [];
-
-  // Fetch the variant map for the selected pack
-  const { data: variantMapData } = useQuery({
-    queryKey: ["legend-variant-map", collection, selectedPack],
-    queryFn: async () => {
-      if (!selectedPack) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
-      const res = await fetch(
-        `/api/legends/variants/by-collection?nftCollection=${encodeURIComponent(collection)}&name=${encodeURIComponent(selectedPack)}`
-      );
-      if (!res.ok) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
-      return res.json() as Promise<{ variantMap: Record<number, { imageUrl: string | null; mediaType: string }> }>;
-    },
-    enabled: !!selectedPack,
-  });
-  const variantMap = variantMapData?.variantMap ?? {};
 
   return (
     <div className="space-y-10">
@@ -207,89 +179,18 @@ export function MyLegends() {
             />
           </div>
 
-          {/* ── Variant Pack Selector ── */}
-          {variantPacks.length > 0 && (
-            <div
-              className="rounded-xl px-4 py-3 flex flex-wrap items-center gap-2"
-              style={{
-                background: "hsl(272 20% 7%)",
-                border: `1px solid hsl(43 100% 52% / 0.15)`,
-              }}
-            >
-              <span
-                className="text-[9px] font-mono uppercase tracking-widest mr-1"
-                style={{ color: `hsl(43 100% 52% / 0.5)` }}
-              >
-                SKIN
-              </span>
-
-              {/* Original (no variant) */}
-              <button
-                onClick={() => setSelectedPack(null)}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
-                style={
-                  !selectedPack
-                    ? {
-                        background: "linear-gradient(135deg, hsl(43 100% 52% / 0.25), hsl(43 100% 40% / 0.1))",
-                        border: `1px solid hsl(43 100% 52% / 0.7)`,
-                        boxShadow: `0 0 10px hsl(43 100% 52% / 0.35)`,
-                        color: "hsl(43 100% 60%)",
-                      }
-                    : { border: "1px solid rgba(255,255,255,0.12)", color: "hsl(var(--muted-foreground))" }
-                }
-              >
-                ◈ Original
-              </button>
-
-              {/* Pack buttons */}
-              {variantPacks.map((pack) => (
-                <button
-                  key={pack}
-                  onClick={() => setSelectedPack(pack)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
-                  style={
-                    selectedPack === pack
-                      ? {
-                          background: gradient2,
-                          border: `1px solid ${accent}80`,
-                          boxShadow: `0 0 10px ${glow2}`,
-                          color: accent,
-                        }
-                      : { border: "1px solid rgba(255,255,255,0.12)", color: "hsl(var(--muted-foreground))" }
-                  }
-                >
-                  {pack}
-                </button>
-              ))}
-
-              {/* Active pack badge */}
-              {selectedPack && (
-                <span
-                  className="ml-auto text-[10px] font-mono uppercase tracking-widest"
-                  style={{ color: `${accent}80` }}
-                >
-                  Viewing: {selectedPack}
-                </span>
-              )}
-            </div>
-          )}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {legends.map((legend) => {
-              const variantEntry = selectedPack ? variantMap[legend.id] : undefined;
-              const variantImageUrl = variantEntry?.imageUrl ?? null;
-              return (
-                <LegendCard
-                  key={legend.id}
-                  legend={legend}
-                  accentHsl={accentHsl}
-                  accent={accent}
-                  glow={glow}
-                  selectedPack={selectedPack}
-                  variantImageUrl={variantImageUrl}
-                />
-              );
-            })}
+            {legends.map((legend) => (
+              <LegendCard
+                key={legend.id}
+                legend={legend}
+                accentHsl={accentHsl}
+                accent={accent}
+                glow={glow}
+                gradient2={gradient2}
+                glow2={glow2}
+              />
+            ))}
           </div>
         </>
       )}
@@ -299,16 +200,38 @@ export function MyLegends() {
 
 // ── Individual Legend Card ─────────────────────────────────────────────────────
 
+interface LegendVariant {
+  id: number;
+  legendId: number;
+  name: string;
+  imageUrl: string | null;
+  mediaType: string;
+  isEnabled: boolean;
+  sortOrder: number;
+}
+
 function LegendCard({
-  legend, accentHsl, accent, glow, selectedPack, variantImageUrl,
+  legend, accentHsl, accent, glow, gradient2, glow2,
 }: {
   legend: { id: number; name: string; tokenId?: number | null; imageUrl?: string | null; description?: string | null; nftCollection: string };
-  accentHsl: string; accent: string; glow: string;
-  selectedPack: string | null;
-  variantImageUrl: string | null;
+  accentHsl: string; accent: string; glow: string; gradient2: string; glow2: string;
 }) {
-  const displayImage = variantImageUrl ?? legend.imageUrl;
-  const isVariant = !!(selectedPack && variantImageUrl);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+
+  // Fetch this legend's own variants
+  const { data: variantsData } = useQuery({
+    queryKey: ["legend-variants", legend.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/legends/${legend.id}/variants`);
+      if (!res.ok) return { variants: [] as LegendVariant[] };
+      return res.json() as Promise<{ variants: LegendVariant[] }>;
+    },
+  });
+  const variants = (variantsData?.variants ?? []).filter((v) => v.isEnabled);
+  const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? null;
+
+  const displayImage = selectedVariant?.imageUrl ?? legend.imageUrl;
+  const isVariant = !!selectedVariant;
 
   return (
     <div
@@ -398,7 +321,7 @@ function LegendCard({
               letterSpacing: '0.1em',
             }}
           >
-            {selectedPack}
+            {selectedVariant?.name}
           </Badge>
         )}
       </div>
@@ -463,6 +386,64 @@ function LegendCard({
             </p>
           )}
         </div>
+
+        {/* ── Per-card Variant Selector ── */}
+        {variants.length > 0 && (
+          <div
+            className="rounded-xl p-2.5 space-y-2"
+            style={{
+              background: 'hsl(272 20% 6%)',
+              border: `1px solid hsl(43 100% 52% / 0.15)`,
+            }}
+          >
+            <div className="flex items-center gap-1.5">
+              <Palette className="w-3 h-3" style={{ color: 'hsl(43 100% 52% / 0.6)' }} />
+              <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'hsl(43 100% 52% / 0.5)' }}>
+                Variants
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {/* Original */}
+              <button
+                onClick={() => setSelectedVariantId(null)}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all"
+                style={
+                  !selectedVariantId
+                    ? {
+                        background: 'linear-gradient(135deg, hsl(43 100% 52% / 0.25), hsl(43 100% 40% / 0.1))',
+                        border: '1px solid hsl(43 100% 52% / 0.7)',
+                        boxShadow: '0 0 8px hsl(43 100% 52% / 0.3)',
+                        color: 'hsl(43 100% 62%)',
+                      }
+                    : { border: '1px solid rgba(255,255,255,0.1)', color: 'hsl(var(--muted-foreground))' }
+                }
+              >
+                ◈ Original
+              </button>
+
+              {/* Variant buttons */}
+              {variants.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setSelectedVariantId(v.id)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all"
+                  style={
+                    selectedVariantId === v.id
+                      ? {
+                          background: gradient2,
+                          border: `1px solid ${accent}80`,
+                          boxShadow: `0 0 8px ${glow2}`,
+                          color: accent,
+                        }
+                      : { border: '1px solid rgba(255,255,255,0.1)', color: 'hsl(var(--muted-foreground))' }
+                  }
+                >
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Collection + chain info */}
         <div className="flex items-center gap-2 flex-wrap">

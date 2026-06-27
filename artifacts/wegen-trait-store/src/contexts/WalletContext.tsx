@@ -159,13 +159,27 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
       const { message } = (await nonceRes.json()) as { nonce: string; message: string };
 
-      // 4. Sign — call personal_sign directly to avoid ethers wrapper issues with Phantom
+      // 4. Sign — try ethers signMessage first (works for MetaMask), fall back
+      //    to raw personal_sign (needed for Phantom which rejects the ethers wrapper)
       setConnectStep("signing");
-      const hexMsg = hexlify(toUtf8Bytes(message));
-      const signature = await raw.request({
-        method: "personal_sign",
-        params: [hexMsg, address],
-      }) as string;
+      let signature: string;
+      try {
+        const browserProvider = new BrowserProvider(resolvedEth);
+        const signer = await browserProvider.getSigner();
+        signature = await signer.signMessage(message);
+      } catch (signErr) {
+        const code = (signErr as { code?: number }).code;
+        if (code === -32000 || code === 32000 || code === 4200) {
+          // Wallet rejected ethers' wrapper — call personal_sign directly
+          const hexMsg = hexlify(toUtf8Bytes(message));
+          signature = await raw.request({
+            method: "personal_sign",
+            params: [hexMsg, address],
+          }) as string;
+        } else {
+          throw signErr;
+        }
+      }
 
       // 5. Server verifies signature and creates a session
       const verifyRes = await fetch("/api/auth/verify", {

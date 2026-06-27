@@ -52,6 +52,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useToast } from "@/hooks/use-toast";
+import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -106,6 +107,7 @@ import {
   ArrowLeftRight,
   Crown,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -3258,6 +3260,27 @@ function FeesSettings() {
     },
   });
 
+  // All hooks must come before any early returns
+  const { ethUsd } = useEthPrice();
+
+  // Reference amount for preview bars — user can edit either side; they stay in sync
+  const [refEthInput, setRefEthInput] = useState("0.1");
+  const [refUsdInput, setRefUsdInput] = useState<string>("");
+  const refEth = parseFloat(refEthInput) || 0.1;
+
+  // Keep USD reference in sync when ETH price loads
+  const syncRefUsd = (newEth: string) => {
+    const eth = parseFloat(newEth);
+    if (!isNaN(eth) && ethUsd) setRefUsdInput((eth * ethUsd).toFixed(0));
+  };
+  const syncRefEth = (newUsd: string) => {
+    const usd = parseFloat(newUsd);
+    if (!isNaN(usd) && ethUsd) setRefEthInput((usd / ethUsd).toFixed(6));
+  };
+
+  // Dual ETH↔USD state for the flat on-chain fee
+  const [socUsdInput, setSocUsdInput] = useState<string>("");
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -3278,6 +3301,50 @@ function FeesSettings() {
         <p className="text-sm text-muted-foreground">
           Configure platform fees for buying and selling traits. Fees are taken from each transaction and forwarded to the designated wallet.
         </p>
+      </div>
+
+      {/* ── Reference Amount (drives all preview bars) ── */}
+      <div className="rounded-xl border border-border/40 bg-secondary/20 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+          <RefreshCw className="w-3.5 h-3.5" />
+          Preview Reference Amount
+          {ethUsd && (
+            <span className="ml-auto text-[10px] font-normal normal-case tracking-normal">
+              1 ETH = ${ethUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Input
+              value={refEthInput}
+              onChange={e => {
+                setRefEthInput(e.target.value);
+                syncRefUsd(e.target.value);
+              }}
+              placeholder="0.1"
+              className="bg-secondary/50 pr-14 font-mono text-sm h-9"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none font-mono">ETH</span>
+          </div>
+          <span className="text-muted-foreground text-sm">≈</span>
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">$</span>
+            <Input
+              value={refUsdInput}
+              onChange={e => {
+                setRefUsdInput(e.target.value);
+                syncRefEth(e.target.value);
+              }}
+              placeholder={ethUsd ? (0.1 * ethUsd).toFixed(0) : "..."}
+              className="bg-secondary/50 pl-6 font-mono text-sm h-9"
+            />
+          </div>
+          {ethUsd === null && (
+            <span className="text-xs text-muted-foreground">Loading price…</span>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground/60">Edit either side — preview bars below update in real time using the current ETH price.</p>
       </div>
 
       <form onSubmit={form.handleSubmit(d => saveFees.mutate(d))} className="space-y-6">
@@ -3336,10 +3403,19 @@ function FeesSettings() {
 
             {/* Preview bar */}
             {buyingPct > 0 && (
-              <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono">
-                On a <span className="text-foreground">0.1 ETH</span> trait → buyer pays{" "}
-                <span className="text-primary font-bold">{(0.1 + 0.1 * buyingPct / 100).toFixed(4)} ETH</span>
-                {" "}({buyingPct}% fee = {(0.1 * buyingPct / 100).toFixed(4)} ETH)
+              <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono space-y-1">
+                <div>
+                  On a <span className="text-foreground">{refEth.toFixed(4)} ETH</span>
+                  {ethUsd && <span className="text-foreground/60"> (≈${(refEth * ethUsd).toFixed(0)})</span>}
+                  {" "}trait → buyer pays{" "}
+                  <span className="text-primary font-bold">{(refEth + refEth * buyingPct / 100).toFixed(6)} ETH</span>
+                  {ethUsd && <span className="text-primary/80"> ≈ ${((refEth + refEth * buyingPct / 100) * ethUsd).toFixed(2)}</span>}
+                </div>
+                <div className="text-[10px] text-muted-foreground/60">
+                  Fee: {(refEth * buyingPct / 100).toFixed(6)} ETH
+                  {ethUsd && ` ≈ $${(refEth * buyingPct / 100 * ethUsd).toFixed(2)}`}
+                  {" "}({buyingPct}%)
+                </div>
               </div>
             )}
           </CardContent>
@@ -3399,10 +3475,19 @@ function FeesSettings() {
 
             {/* Preview bar */}
             {sellingPct > 0 && (
-              <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono">
-                On a <span className="text-foreground">0.1 ETH</span> sale → seller receives{" "}
-                <span className="text-accent font-bold">{(0.1 - 0.1 * sellingPct / 100).toFixed(4)} ETH</span>
-                {" "}({sellingPct}% fee = {(0.1 * sellingPct / 100).toFixed(4)} ETH)
+              <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono space-y-1">
+                <div>
+                  On a <span className="text-foreground">{refEth.toFixed(4)} ETH</span>
+                  {ethUsd && <span className="text-foreground/60"> (≈${(refEth * ethUsd).toFixed(0)})</span>}
+                  {" "}sale → seller receives{" "}
+                  <span className="text-accent font-bold">{(refEth - refEth * sellingPct / 100).toFixed(6)} ETH</span>
+                  {ethUsd && <span className="text-accent/80"> ≈ ${((refEth - refEth * sellingPct / 100) * ethUsd).toFixed(2)}</span>}
+                </div>
+                <div className="text-[10px] text-muted-foreground/60">
+                  Fee: {(refEth * sellingPct / 100).toFixed(6)} ETH
+                  {ethUsd && ` ≈ $${(refEth * sellingPct / 100 * ethUsd).toFixed(2)}`}
+                  {" "}({sellingPct}%)
+                </div>
               </div>
             )}
           </CardContent>
@@ -3468,16 +3553,23 @@ function FeesSettings() {
             {marketplacePct > 0 && (
               <div className="text-xs text-muted-foreground p-3 bg-secondary/30 border border-border/40 font-mono space-y-1">
                 <div>
-                  On a <span className="text-foreground">0.1 ETH</span> listing →{" "}
-                  buyer pays <span className="text-emerald-400 font-bold">{(0.1 + 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span>{" "}
-                  (+{(marketplacePct / 2).toFixed(2)}% buyer share)
+                  On a <span className="text-foreground">{refEth.toFixed(4)} ETH</span>
+                  {ethUsd && <span className="text-foreground/60"> (≈${(refEth * ethUsd).toFixed(0)})</span>}
+                  {" "}listing → buyer pays{" "}
+                  <span className="text-emerald-400 font-bold">{(refEth + refEth * (marketplacePct / 2) / 100).toFixed(6)} ETH</span>
+                  {ethUsd && <span className="text-emerald-400/80"> ≈ ${((refEth + refEth * (marketplacePct / 2) / 100) * ethUsd).toFixed(2)}</span>}
+                  {" "}(+{(marketplacePct / 2).toFixed(2)}%)
                 </div>
                 <div>
-                  Seller receives <span className="text-emerald-400 font-bold">{(0.1 - 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span>{" "}
-                  (−{(marketplacePct / 2).toFixed(2)}% seller share)
+                  Seller receives{" "}
+                  <span className="text-emerald-400 font-bold">{(refEth - refEth * (marketplacePct / 2) / 100).toFixed(6)} ETH</span>
+                  {ethUsd && <span className="text-emerald-400/80"> ≈ ${((refEth - refEth * (marketplacePct / 2) / 100) * ethUsd).toFixed(2)}</span>}
+                  {" "}(−{(marketplacePct / 2).toFixed(2)}%)
                 </div>
                 <div className="pt-1 border-t border-border/30 text-[10px] text-muted-foreground/60">
-                  Total fee collected: {(0.1 * marketplacePct / 100).toFixed(4)} ETH → forwarded to recipient wallet
+                  Total fee: {(refEth * marketplacePct / 100).toFixed(6)} ETH
+                  {ethUsd && ` ≈ $${(refEth * marketplacePct / 100 * ethUsd).toFixed(2)}`}
+                  {" "}→ forwarded to recipient wallet
                 </div>
               </div>
             )}
@@ -3499,40 +3591,67 @@ function FeesSettings() {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="onChainUpdateFeeEth">
-                  Fee Amount
-                  <span className="ml-1 text-xs text-muted-foreground">(ETH, flat per SOC)</span>
-                </Label>
-                <div className="relative">
+            {/* ETH + USD dual inputs */}
+            <div className="space-y-2">
+              <Label>
+                Fee Amount
+                <span className="ml-1 text-xs text-muted-foreground">(flat per SOC — enter ETH or USD)</span>
+              </Label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
                   <Input
                     id="onChainUpdateFeeEth"
                     {...form.register("onChainUpdateFeeEth")}
                     placeholder="0.005"
                     className="bg-secondary/50 pr-14"
+                    onChange={e => {
+                      form.setValue("onChainUpdateFeeEth", e.target.value, { shouldValidate: true });
+                      const eth = parseFloat(e.target.value);
+                      if (!isNaN(eth) && ethUsd) setSocUsdInput((eth * ethUsd).toFixed(2));
+                      else setSocUsdInput("");
+                    }}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none font-mono">ETH</span>
                 </div>
-                {form.formState.errors.onChainUpdateFeeEth && (
-                  <p className="text-xs text-destructive">{form.formState.errors.onChainUpdateFeeEth.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="onChainUpdateFeeWallet">
-                  Recipient Wallet
-                  <span className="ml-1 text-xs text-muted-foreground">(ETH address)</span>
-                </Label>
-                <div className="relative">
+                <span className="text-muted-foreground text-sm shrink-0">≈</span>
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">$</span>
                   <Input
-                    id="onChainUpdateFeeWallet"
-                    {...form.register("onChainUpdateFeeWallet")}
-                    placeholder="0x..."
-                    className="bg-secondary/50 font-mono text-xs pl-8"
+                    value={socUsdInput}
+                    onChange={e => {
+                      setSocUsdInput(e.target.value);
+                      const usd = parseFloat(e.target.value);
+                      if (!isNaN(usd) && ethUsd) {
+                        const eth = (usd / ethUsd).toFixed(6);
+                        form.setValue("onChainUpdateFeeEth", eth, { shouldValidate: true });
+                      }
+                    }}
+                    placeholder={ethUsd ? "e.g. 12.50" : "..."}
+                    className="bg-secondary/50 pl-6"
                   />
-                  <Wallet className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                 </div>
+              </div>
+              {ethUsd === null && (
+                <p className="text-[11px] text-muted-foreground/60">Live ETH price loading — USD field available once price is fetched.</p>
+              )}
+              {form.formState.errors.onChainUpdateFeeEth && (
+                <p className="text-xs text-destructive">{form.formState.errors.onChainUpdateFeeEth.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="onChainUpdateFeeWallet">
+                Recipient Wallet
+                <span className="ml-1 text-xs text-muted-foreground">(ETH address)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="onChainUpdateFeeWallet"
+                  {...form.register("onChainUpdateFeeWallet")}
+                  placeholder="0x..."
+                  className="bg-secondary/50 font-mono text-xs pl-8"
+                />
+                <Wallet className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               </div>
             </div>
 
@@ -3541,8 +3660,11 @@ function FeesSettings() {
                 <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                 <span>
                   Each SOC costs the user a flat{" "}
-                  <span className="text-amber-400 font-bold">{onChainFeeEth.toFixed(4)} ETH</span>{" "}
-                  — shown in the confirmation dialog before they proceed.
+                  <span className="text-amber-400 font-bold">{onChainFeeEth.toFixed(6)} ETH</span>
+                  {ethUsd && (
+                    <span className="text-amber-400/70"> ≈ ${(onChainFeeEth * ethUsd).toFixed(2)}</span>
+                  )}
+                  {" "}— shown in the confirmation dialog before they proceed.
                 </span>
               </div>
             )}
@@ -3553,17 +3675,39 @@ function FeesSettings() {
         {(buyingPct > 0 || sellingPct > 0 || marketplacePct > 0) && (
           <div className="p-4 border border-primary/30 bg-primary/5 flex items-start gap-3">
             <DollarSign className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-            <div className="text-sm space-y-1">
-              <div className="font-semibold text-foreground">Combined fee impact on a 0.1 ETH transaction</div>
+            <div className="text-sm space-y-1 w-full">
+              <div className="font-semibold text-foreground">
+                Combined fee impact on a {refEth.toFixed(4)} ETH
+                {ethUsd && <span className="font-normal text-muted-foreground text-xs ml-1">(≈${(refEth * ethUsd).toFixed(0)})</span>}
+                {" "}transaction
+              </div>
               <div className="text-muted-foreground font-mono text-xs space-y-0.5">
                 {buyingPct > 0 && (
-                  <div>Store buy — buyer pays: <span className="text-primary">{(0.1 + 0.1 * buyingPct / 100).toFixed(4)} ETH</span> (+{buyingPct}% buyer fee)</div>
+                  <div>
+                    Store buy — buyer pays:{" "}
+                    <span className="text-primary">{(refEth + refEth * buyingPct / 100).toFixed(6)} ETH</span>
+                    {ethUsd && <span className="text-primary/70"> ≈ ${((refEth + refEth * buyingPct / 100) * ethUsd).toFixed(2)}</span>}
+                    {" "}(+{buyingPct}%)
+                  </div>
                 )}
                 {sellingPct > 0 && (
-                  <div>Store buy — seller gets: <span className="text-accent">{(0.1 - 0.1 * sellingPct / 100).toFixed(4)} ETH</span> (−{sellingPct}% seller fee)</div>
+                  <div>
+                    Store buy — seller gets:{" "}
+                    <span className="text-accent">{(refEth - refEth * sellingPct / 100).toFixed(6)} ETH</span>
+                    {ethUsd && <span className="text-accent/70"> ≈ ${((refEth - refEth * sellingPct / 100) * ethUsd).toFixed(2)}</span>}
+                    {" "}(−{sellingPct}%)
+                  </div>
                 )}
                 {marketplacePct > 0 && (
-                  <div>Market listing — buyer pays: <span className="text-emerald-400">{(0.1 + 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span>, seller gets: <span className="text-emerald-400">{(0.1 - 0.1 * (marketplacePct / 2) / 100).toFixed(4)} ETH</span> ({marketplacePct}% split 50/50)</div>
+                  <div>
+                    Market listing — buyer pays:{" "}
+                    <span className="text-emerald-400">{(refEth + refEth * (marketplacePct / 2) / 100).toFixed(6)} ETH</span>
+                    {ethUsd && <span className="text-emerald-400/70"> ≈ ${((refEth + refEth * (marketplacePct / 2) / 100) * ethUsd).toFixed(2)}</span>}
+                    , seller gets:{" "}
+                    <span className="text-emerald-400">{(refEth - refEth * (marketplacePct / 2) / 100).toFixed(6)} ETH</span>
+                    {ethUsd && <span className="text-emerald-400/70"> ≈ ${((refEth - refEth * (marketplacePct / 2) / 100) * ethUsd).toFixed(2)}</span>}
+                    {" "}({marketplacePct}% split 50/50)
+                  </div>
                 )}
               </div>
             </div>

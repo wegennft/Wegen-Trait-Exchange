@@ -10,17 +10,46 @@ import { BrowserProvider, Eip1193Provider, hexlify, toUtf8Bytes } from "ethers";
 
 // ─── Wallet detection ───────────────────────────────────────────────────────
 
-export type WalletId = "metamask" | "phantom" | "injected";
+export type WalletId =
+  | "metamask"
+  | "phantom"
+  | "backpack"
+  | "coinbase"
+  | "okx"
+  | "trust"
+  | "rabby"
+  | "rainbow"
+  | "brave"
+  | "injected";
+
+/** Which chain families this wallet's injected provider can sign for */
+export type WalletChain = "evm" | "evm+sol";
 
 export interface DetectedWallet {
   id: WalletId;
   name: string;
   provider: Eip1193Provider;
+  chain: WalletChain;
 }
 
+type EvmProvider = Eip1193Provider & {
+  isMetaMask?: boolean;
+  isPhantom?: boolean;
+  isCoinbaseWallet?: boolean;
+  isRabby?: boolean;
+  isBraveWallet?: boolean;
+  isBackpack?: boolean;
+  isTrust?: boolean;
+  isRainbow?: boolean;
+};
+
 type AnyWindow = Window & {
-  ethereum?: Eip1193Provider & { isMetaMask?: boolean; isPhantom?: boolean };
-  phantom?: { ethereum?: Eip1193Provider & { isPhantom?: boolean } };
+  ethereum?: EvmProvider;
+  phantom?: { ethereum?: Eip1193Provider; solana?: unknown };
+  backpack?: { ethereum?: Eip1193Provider; isBackpack?: boolean };
+  coinbaseWalletExtension?: Eip1193Provider;
+  okxwallet?: Eip1193Provider;
+  trustwallet?: { ethereum?: Eip1193Provider };
 };
 
 export function detectWallets(): DetectedWallet[] {
@@ -28,21 +57,49 @@ export function detectWallets(): DetectedWallet[] {
   const results: DetectedWallet[] = [];
   const seen = new Set<unknown>();
 
-  // 1. Phantom Ethereum (always its own object under window.phantom.ethereum)
-  const phantomEth = w.phantom?.ethereum;
-  if (phantomEth?.request) {
-    seen.add(phantomEth);
-    results.push({ id: "phantom", name: "Phantom", provider: phantomEth });
-  }
+  const tryAdd = (
+    id: WalletId,
+    name: string,
+    provider: Eip1193Provider | undefined,
+    chain: WalletChain = "evm",
+  ) => {
+    if (!provider?.request || seen.has(provider)) return;
+    seen.add(provider);
+    results.push({ id, name, provider, chain });
+  };
 
-  // 2. window.ethereum — MetaMask, Coinbase, or generic injected
-  const injected = w.ethereum;
-  if (injected?.request && !seen.has(injected)) {
-    seen.add(injected);
-    if (injected.isMetaMask) {
-      results.push({ id: "metamask", name: "MetaMask", provider: injected });
+  // 1. Phantom – always exposes its own namespace
+  tryAdd("phantom", "Phantom", w.phantom?.ethereum, "evm+sol");
+
+  // 2. Backpack – dedicated namespace takes priority over window.ethereum flag
+  tryAdd("backpack", "Backpack", w.backpack?.ethereum, "evm+sol");
+
+  // 3. Coinbase Wallet – has its own extension object separate from window.ethereum
+  tryAdd("coinbase", "Coinbase Wallet", w.coinbaseWalletExtension, "evm");
+
+  // 4. OKX Wallet – dedicated window.okxwallet namespace
+  tryAdd("okx", "OKX Wallet", w.okxwallet, "evm+sol");
+
+  // 5. Trust Wallet – dedicated window.trustwallet namespace
+  tryAdd("trust", "Trust Wallet", w.trustwallet?.ethereum, "evm");
+
+  // 6. window.ethereum – check specific flags, deduplicate
+  const eth = w.ethereum;
+  if (eth?.request && !seen.has(eth)) {
+    if (eth.isBackpack) {
+      tryAdd("backpack", "Backpack", eth, "evm+sol");
+    } else if (eth.isCoinbaseWallet) {
+      tryAdd("coinbase", "Coinbase Wallet", eth, "evm");
+    } else if (eth.isRabby) {
+      tryAdd("rabby", "Rabby", eth, "evm");
+    } else if (eth.isRainbow) {
+      tryAdd("rainbow", "Rainbow", eth, "evm");
+    } else if (eth.isBraveWallet) {
+      tryAdd("brave", "Brave Wallet", eth, "evm");
+    } else if (eth.isMetaMask) {
+      tryAdd("metamask", "MetaMask", eth, "evm");
     } else {
-      results.push({ id: "injected", name: "Browser Wallet", provider: injected });
+      tryAdd("injected", "Browser Wallet", eth, "evm");
     }
   }
 
@@ -116,11 +173,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [handleAccountsChanged, handleChainChanged]);
 
   const connect = async (eth?: Eip1193Provider) => {
-    // Auto-detect when no provider is passed (e.g. calls from WalletConnectGuard / Store)
     const resolvedEth: Eip1193Provider | null = eth ?? (() => {
       const wallets = detectWallets();
       if (wallets.length === 0) return null;
-      // Prefer window.ethereum (MetaMask) over Phantom when auto-detecting
       return wallets.find(w => w.id === "metamask")?.provider
           ?? wallets.find(w => w.id === "injected")?.provider
           ?? wallets[0].provider;
@@ -129,7 +184,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!resolvedEth) {
       throw Object.assign(
         new Error(
-          "No Ethereum wallet detected. Install MetaMask (metamask.io) or Phantom, then refresh.\n" +
+          "No Ethereum wallet detected. Install MetaMask, Backpack, Phantom, or another EVM wallet, then refresh.\n" +
           "Note: wallet extensions don't work inside iframes — open the app in its own tab."
         ),
         { code: -32603 }
@@ -159,8 +214,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
       const { message } = (await nonceRes.json()) as { nonce: string; message: string };
 
-      // 4. Sign — try ethers signMessage first (works for MetaMask), fall back
-      //    to raw personal_sign (needed for Phantom which rejects the ethers wrapper)
+      // 4. Sign — try ethers signMessage first (MetaMask), fall back to raw personal_sign
+      //    (needed for Phantom, Backpack, and other wallets that reject the ethers wrapper)
       setConnectStep("signing");
       let signature: string;
       try {
@@ -170,7 +225,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (signErr) {
         const code = (signErr as { code?: number }).code;
         if (code === -32000 || code === 32000 || code === 4200) {
-          // Wallet rejected ethers' wrapper — call personal_sign directly
           const hexMsg = hexlify(toUtf8Bytes(message));
           signature = await raw.request({
             method: "personal_sign",

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useWallet, detectWallets, type DetectedWallet } from "@/contexts/WalletContext";
+import { useWallet, detectWallets, type DetectedWallet, type WalletId } from "@/contexts/WalletContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,85 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 const DISPLAY = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: '0.04em' };
 const MARKER  = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.03em' };
+
+// ─── Wallet metadata ──────────────────────────────────────────────────────────
+
+const WALLET_COLORS: Record<WalletId, string> = {
+  metamask: "#E2761B",
+  phantom:  "#AB9FF2",
+  backpack: "#E33E3F",
+  coinbase: "#0052FF",
+  okx:      "#000000",
+  trust:    "#3375BB",
+  rabby:    "#8697FF",
+  rainbow:  "#174299",
+  brave:    "#FF5500",
+  injected: "#6B7280",
+};
+
+const WALLET_ICONS: Partial<Record<WalletId, string>> = {
+  metamask: "https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg",
+  phantom:  "https://raw.githubusercontent.com/phantom-labs/phantom-brand-assets/main/phantom-icon-purple.svg",
+  backpack: "https://raw.githubusercontent.com/coral-xyz/backpack/master/assets/backpack.png",
+  coinbase: "https://raw.githubusercontent.com/coinbase/coinbase-wallet-sdk/master/packages/wallet-sdk/src/assets/coinbaseWalletLogo.svg",
+  okx:      "https://static.okx.com/cdn/assets/imgs/2211/6BB53EF6A4CF49718CC14EA04EB9E29F.png",
+  trust:    "https://trustwallet.com/assets/images/media/assets/TWT.png",
+  rabby:    "https://raw.githubusercontent.com/RabbyHub/Rabby/master/src/_raw/images/icon-128.png",
+  rainbow:  "https://avatars.githubusercontent.com/u/48327834",
+  brave:    "https://brave.com/static-assets/images/brave-logo-sans-text.svg",
+};
+
+const WALLET_DESC: Partial<Record<WalletId, string>> = {
+  metamask: "MetaMask browser extension",
+  phantom:  "Phantom — Ethereum provider",
+  backpack: "Backpack — EVM + Solana",
+  coinbase: "Coinbase Wallet extension",
+  okx:      "OKX Wallet — EVM + Solana",
+  trust:    "Trust Wallet browser extension",
+  rabby:    "Rabby — EVM-focused wallet",
+  rainbow:  "Rainbow — Ethereum wallet",
+  brave:    "Brave browser built-in wallet",
+  injected: "Browser-injected EVM wallet",
+};
+
+function WalletIcon({ id, name }: { id: WalletId; name: string }) {
+  const iconUrl = WALLET_ICONS[id];
+  const color = WALLET_COLORS[id];
+  const initial = name.charAt(0).toUpperCase();
+
+  if (iconUrl) {
+    return (
+      <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ background: color + "22", border: `1px solid ${color}44` }}>
+        <img
+          src={iconUrl}
+          alt={name}
+          className="w-7 h-7 object-contain"
+          onError={(e) => {
+            const target = e.currentTarget;
+            target.style.display = "none";
+            const parent = target.parentElement;
+            if (parent) {
+              parent.style.background = color;
+              const span = document.createElement("span");
+              span.textContent = initial;
+              span.style.cssText = "color:white;font-weight:700;font-size:16px;";
+              parent.appendChild(span);
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white text-base"
+      style={{ background: color }}
+    >
+      {initial}
+    </div>
+  );
+}
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -33,11 +112,13 @@ export function Layout({ children }: { children: ReactNode }) {
 
       let description = err instanceof Error ? err.message : "Could not connect wallet";
       if (code === -32000 || code === 32000) {
+        const hints: Partial<Record<WalletId, string>> = {
+          phantom: "Open Phantom → Settings → Developer Settings and enable Ethereum, then retry.",
+          backpack: "Open Backpack → Settings and ensure the Ethereum network is enabled, then retry.",
+        };
         description =
-          `${wallet.name} returned an internal error (32000). ` +
-          (wallet.id === "phantom"
-            ? "Open Phantom → Settings → Developer Settings and make sure Ethereum is enabled, then retry."
-            : "Try disconnecting this site from the wallet and reconnecting.");
+          `${wallet.name} returned an internal error. ` +
+          (hints[wallet.id] ?? "Try disconnecting this site from the wallet and reconnecting.");
       }
       toast({ title: "Connection failed", description, variant: "destructive" });
     }
@@ -49,7 +130,7 @@ export function Layout({ children }: { children: ReactNode }) {
       toast({
         title: "No wallet found",
         description:
-          "Install MetaMask (metamask.io) or Phantom, then refresh. " +
+          "Install MetaMask, Backpack, Phantom, Coinbase Wallet, or another EVM wallet, then refresh. " +
           "Note: wallet extensions don't work inside iframes — open the app in its own browser tab.",
         variant: "destructive",
       });
@@ -600,44 +681,39 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Wallet Picker Dialog ── */}
       <Dialog open={walletPickerOpen} onOpenChange={setWalletPickerOpen}>
-        <DialogContent className="sm:max-w-xs border border-white/10 bg-black/90 backdrop-blur-xl">
+        <DialogContent className="sm:max-w-sm border border-white/10 bg-black/90 backdrop-blur-xl">
           <DialogHeader>
             <DialogTitle className="text-center text-lg" style={BANGERS}>
               Choose Wallet
             </DialogTitle>
+            <p className="text-center text-xs text-muted-foreground mt-1">
+              Select which wallet to connect with
+            </p>
           </DialogHeader>
-          <div className="flex flex-col gap-3 mt-2">
+          <div className="flex flex-col gap-2 mt-2">
             {detectedWallets.map((w) => (
               <button
                 key={w.id}
                 onClick={() => void doConnect(w)}
-                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-left"
+                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
               >
-                {w.id === "metamask" && (
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg"
-                    alt="MetaMask"
-                    className="w-8 h-8 flex-shrink-0"
-                  />
-                )}
-                {w.id === "phantom" && (
-                  <img
-                    src="https://187760183-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MVOiF6Zqit57q_hxJYp%2Fuploads%2FHEjleywo9QOnfYebBPCZ%2FPhantom_SVG_Icon.svg?alt=media"
-                    alt="Phantom"
-                    className="w-8 h-8 flex-shrink-0"
-                  />
-                )}
-                {w.id === "injected" && (
-                  <Wallet className="w-7 h-7 flex-shrink-0 text-muted-foreground" />
-                )}
-                <div>
-                  <div className="font-semibold text-sm">{w.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {w.id === "metamask" && "MetaMask browser extension"}
-                    {w.id === "phantom" && "Phantom Ethereum"}
-                    {w.id === "injected" && "Browser-injected wallet"}
+                <WalletIcon id={w.id} name={w.name} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm leading-tight">{w.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {WALLET_DESC[w.id] ?? "Browser wallet"}
                   </div>
                 </div>
+                <span
+                  className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                  style={
+                    w.chain === "evm+sol"
+                      ? { color: "#a78bfa", borderColor: "#a78bfa44", background: "#a78bfa11" }
+                      : { color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }
+                  }
+                >
+                  {w.chain === "evm+sol" ? "EVM + SOL" : "EVM"}
+                </span>
               </button>
             ))}
           </div>

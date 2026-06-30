@@ -1,0 +1,121 @@
+Goal:
+
+Add a secure multi-chain wallet connection layer for Solana and EVM WITHOUT breaking anything that already works.
+
+ 
+
+Rules:
+
+Do not rewrite the whole app.,
+
+Do not delete or refactor working trait store logic unless absolutely necessary.,
+
+Make changes in small, isolated steps.,
+
+Preserve existing routes, database tables, UI components, and trait store behavior.,
+
+Create a checkpoint before each major change.,
+
+If a change risks breaking the current app, stop and explain the risk first.,
+
+ 
+
+What to add:
+
+A wallet integration module that supports:,
+
+Solana wallets.,
+
+EVM wallets.,
+
+WalletConnect-compatible flows where appropriate.,
+
+Mobile support where appropriate.,
+
+ 
+
+Security requirements:,
+
+Never request or store seed phrases, private keys, or recovery phrases.,
+
+Never log sensitive wallet data.,
+
+Require explicit user approval for every signature or transaction.,
+
+Detect wrong network / wrong chain and show a clear user message.,
+
+Handle disconnect, account change, chain change, rejected signature, and stale session states safely.,
+
+Use separate development/test wallets in development only.,
+
+ 
+
+Architecture:,
+
+Create a separate wallet service or adapter layer.,
+
+Keep Solana logic isolated from EVM logic.,
+
+Use a shared wallet state store.,
+
+Add reusable components for:,
+
+  
+connect button,,
+
+  
+connected wallet status,,
+
+  
+network mismatch banner,,
+
+  
+disconnect button,,
+
+  
+transaction confirmation modal,,
+
+  
+error display.,
+
+Do not couple wallet logic directly into trait store business logic.,
+
+ 
+
+Integration behavior:,
+
+The trait store should continue to work exactly as it does now.,
+
+Wallet connection should only enhance the user experience.,
+
+If wallet connection fails, the trait store must still load normally.,
+
+Existing trait listing, store browsing, and trait display must remain intact.,
+
+ 
+
+Implementation order:,
+
+Step 1: inspect the current codebase and list the exact files that should be touched.,
+
+Step 2: add the wallet adapter layer.,
+
+Step 3: add UI components.,
+
+Step 4: connect the UI to the new wallet state.,
+
+Step 5: test that all existing trait store functionality still works.,
+
+Step 6: add cleanup and error handling.,
+
+ 
+
+Output:,
+
+First show the minimal file plan.,
+
+Then implement one step at a time.,
+
+After each step, verify nothing else broke.,
+
+Keep the code clean, secure, and production-minded.

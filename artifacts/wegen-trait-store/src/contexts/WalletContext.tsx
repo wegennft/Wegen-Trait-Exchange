@@ -7,6 +7,12 @@ import {
   useCallback,
 } from "react";
 import { BrowserProvider, Eip1193Provider, hexlify, toUtf8Bytes } from "ethers";
+import {
+  detectSolanaWallets,
+  connectSolanaWallet,
+  restoreSolanaSession,
+  type SolanaProvider,
+} from "@/wallet/solana-adapter";
 
 // ─── Wallet detection ───────────────────────────────────────────────────────
 
@@ -111,6 +117,7 @@ export function detectWallets(): DetectedWallet[] {
 export type ConnectStep = "requesting" | "signing" | null;
 
 interface WalletContextState {
+  // ── EVM (existing — unchanged) ──────────────────────────────────────
   walletAddress: string | null;
   isConnected: boolean;
   isVerified: boolean;
@@ -119,6 +126,18 @@ interface WalletContextState {
   chainId: string | null;
   connect: (provider?: Eip1193Provider) => Promise<void>;
   disconnect: () => void;
+
+  // ── Solana (additive — Locker/purchase still use EVM) ───────────────
+  /** Base58 Solana public key, or null when no Solana wallet is connected. */
+  solanaAddress: string | null;
+  isSolanaConnected: boolean;
+  isSolanaConnecting: boolean;
+  /**
+   * Connect a native Solana wallet. Resolves with the base58 public key.
+   * Does NOT affect the EVM session or server auth (server only supports EVM).
+   */
+  connectSolana: (provider: SolanaProvider) => Promise<string>;
+  disconnectSolana: () => void;
 }
 
 const WalletContext = createContext<WalletContextState | undefined>(undefined);
@@ -126,11 +145,17 @@ const WalletContext = createContext<WalletContextState | undefined>(undefined);
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function WalletProvider({ children }: { children: ReactNode }) {
+  // ── EVM state (unchanged) ─────────────────────────────────────────────────
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [chainId, setChainId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectStep, setConnectStep] = useState<ConnectStep>(null);
+
+  // ── Solana state (new, additive) ──────────────────────────────────────────
+  const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
+  const [isSolanaConnecting, setIsSolanaConnecting] = useState(false);
+  const [_activeSolanaProvider, setActiveSolanaProvider] = useState<SolanaProvider | null>(null);
 
   // Restore an existing server session on mount
   useEffect(() => {
@@ -143,6 +168,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {});
+  }, []);
+
+  // Silently restore a trusted Solana session on mount (never prompts)
+  useEffect(() => {
+    const solWallets = detectSolanaWallets();
+    if (!solWallets.length) return;
+    void restoreSolanaSession(solWallets[0].provider).then((addr) => {
+      if (addr) {
+        setSolanaAddress(addr);
+        setActiveSolanaProvider(solWallets[0].provider);
+      }
+    });
   }, []);
 
   const handleAccountsChanged = useCallback((accounts: string[]) => {
@@ -263,9 +300,44 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
   };
 
+  // ── Solana connect / disconnect ───────────────────────────────────────────
+
+  const connectSolana = async (provider: SolanaProvider): Promise<string> => {
+    setIsSolanaConnecting(true);
+    try {
+      const address = await connectSolanaWallet(provider);
+      setSolanaAddress(address);
+      setActiveSolanaProvider(provider);
+
+      // Listen for Solana account changes
+      provider.on("accountChanged", (publicKey: unknown) => {
+        if (!publicKey) {
+          setSolanaAddress(null);
+          setActiveSolanaProvider(null);
+        } else {
+          setSolanaAddress(String(publicKey));
+        }
+      });
+      provider.on("disconnect", () => {
+        setSolanaAddress(null);
+        setActiveSolanaProvider(null);
+      });
+
+      return address;
+    } finally {
+      setIsSolanaConnecting(false);
+    }
+  };
+
+  const disconnectSolana = () => {
+    setSolanaAddress(null);
+    setActiveSolanaProvider(null);
+  };
+
   return (
     <WalletContext.Provider
       value={{
+        // EVM (unchanged)
         walletAddress,
         isConnected: !!walletAddress && isVerified,
         isVerified,
@@ -274,6 +346,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         chainId,
         connect,
         disconnect,
+        // Solana (additive)
+        solanaAddress,
+        isSolanaConnected: !!solanaAddress,
+        isSolanaConnecting,
+        connectSolana,
+        disconnectSolana,
       }}
     >
       {children}

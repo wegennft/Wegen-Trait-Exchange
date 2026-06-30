@@ -7,6 +7,8 @@ import {
   useApplyTrait,
   useRemoveTrait,
   useConfirmTraits,
+  useListVariantCollections,
+  useGetVariantsByCollection,
   getGetLockerQueryKey,
   getGetUserNftsQueryKey,
 } from "@workspace/api-client-react";
@@ -16,6 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Fingerprint, Lock, Unlock, Gem, Loader2, X, Plus, Eye,
   ChevronDown, SlidersHorizontal, Package, CheckCircle2, Zap, ExternalLink,
+  Database, Layers,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -132,6 +135,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const [draggingItemId, setDraggingItemId] = useState<number | null>(null);
   const [dragOverPreview, setDragOverPreview] = useState(false);
   const dragEnterCount = useRef(0);
+  const [selectedVariantPack, setSelectedVariantPack] = useState<string | null>(null);
 
   const lockerQueryKey = [...getGetLockerQueryKey(walletAddress || ""), collection];
   const nftsQueryKey   = [...getGetUserNftsQueryKey(walletAddress || ""), collection];
@@ -154,6 +158,20 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
       return res.json();
     },
   });
+
+  // Variant packs available for this collection (nfts/demo resolved before activeNft)
+  const { data: variantColData } = useListVariantCollections(
+    { nftCollection: collection },
+    { query: { enabled: true } },
+  );
+  const variantPacks = variantColData?.collections ?? [];
+
+  // Variant image map for the selected pack
+  const { data: variantMapData, isLoading: isLoadingVariant } = useGetVariantsByCollection(
+    { variantPack: selectedVariantPack ?? "", nftCollection: collection },
+    { query: { enabled: !!selectedVariantPack } },
+  );
+  const variantMap = variantMapData?.variantMap ?? {};
 
   const applyTrait = useApplyTrait({
     mutation: {
@@ -204,7 +222,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
       return;
     }
     if (!walletAddress || !activeNft) return;
-    confirmTraits.mutate({ tokenId: activeNft.tokenId, data: { walletAddress } });
+    confirmTraits.mutate({ tokenId: activeNft.tokenId, data: { walletAddress, variantPack: selectedVariantPack ?? undefined } });
   };
 
   const nfts        = demo ? demoNfts  : (nftsData?.nfts ?? []);
@@ -227,6 +245,15 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     });
     return items;
   }, [lockerItems, filterLayer, filterRarity, sortBy]);
+
+  // Returns the variant-overridden image URL for a trait (falls back to default)
+  const getVariantImageUrl = (traitId: number, defaultUrl?: string | null): string | null => {
+    if (selectedVariantPack && !isLoadingVariant) {
+      const entry = variantMap[String(traitId)];
+      if (entry?.imageUrl) return entry.imageUrl;
+    }
+    return defaultUrl ?? null;
+  };
 
   const handleEquip = (lockerItemId: number) => {
     if (!activeNft) return;
@@ -385,10 +412,13 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
               {/* Equipped trait layers (skip hovered category) */}
               {activeNft.equippedTraits
                 .filter(et => !hoverTrait || et.category !== hoverTrait.category)
-                .map(et => et.trait.imageUrl ? (
-                  <img key={et.category} src={et.trait.imageUrl} alt={et.trait.name}
-                    className="absolute inset-0 w-full h-full object-cover" />
-                ) : null)}
+                .map(et => {
+                  const imgUrl = getVariantImageUrl(et.trait.id, et.trait.imageUrl);
+                  return imgUrl ? (
+                    <img key={et.category} src={imgUrl} alt={et.trait.name}
+                      className="absolute inset-0 w-full h-full object-cover" />
+                  ) : null;
+                })}
 
               {/* Hover preview layer */}
               {hoverTrait?.imageUrl && (
@@ -551,6 +581,106 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
         )}
       </div>
 
+      {/* ── Variant Tabs Band ── */}
+      {activeNft && (
+        <div
+          className="flex-shrink-0 border-b"
+          style={{
+            background: 'linear-gradient(90deg,rgba(26,16,40,0.99),rgba(16,11,24,0.99))',
+            borderColor: 'rgba(157,0,255,0.15)',
+          }}
+        >
+          <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
+
+            {/* Section label */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <Layers className="w-3 h-3 text-muted-foreground/50" />
+              <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
+                Variant Style
+              </span>
+            </div>
+
+            {/* BASE tab */}
+            <button
+              onClick={() => setSelectedVariantPack(null)}
+              className="flex-shrink-0 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-all"
+              style={{
+                ...BANGERS,
+                background: selectedVariantPack === null ? 'rgba(157,0,255,0.2)' : 'rgba(157,0,255,0.05)',
+                border: selectedVariantPack === null ? '1px solid rgba(157,0,255,0.7)' : '1px solid rgba(157,0,255,0.2)',
+                color: selectedVariantPack === null ? 'hsl(272 100% 78%)' : 'hsl(272 30% 60%)',
+                boxShadow: selectedVariantPack === null ? '0 0 10px rgba(157,0,255,0.3)' : 'none',
+              }}
+            >
+              BASE
+            </button>
+
+            {/* Variant pack tabs */}
+            {variantPacks.map(pack => (
+              <button
+                key={pack}
+                onClick={() => setSelectedVariantPack(selectedVariantPack === pack ? null : pack)}
+                className="flex-shrink-0 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-all"
+                style={{
+                  ...BANGERS,
+                  background: selectedVariantPack === pack ? 'rgba(255,200,0,0.15)' : 'rgba(157,0,255,0.05)',
+                  border: selectedVariantPack === pack ? '1px solid rgba(255,200,0,0.6)' : '1px solid rgba(157,0,255,0.2)',
+                  color: selectedVariantPack === pack ? 'hsl(43 100% 65%)' : 'hsl(272 30% 60%)',
+                  boxShadow: selectedVariantPack === pack ? '0 0 10px rgba(255,200,0,0.15)' : 'none',
+                }}
+              >
+                {pack}
+              </button>
+            ))}
+
+            {/* Loading spinner while fetching variant images */}
+            {isLoadingVariant && (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/40 flex-shrink-0" />
+            )}
+
+            {/* Empty state hint when no variant packs exist */}
+            {variantPacks.length === 0 && !isLoadingVariant && (
+              <span className="text-[10px] font-mono text-muted-foreground/30 italic">
+                No variant packs configured
+              </span>
+            )}
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* SOC button */}
+            {activeNft.equippedTraits.length > 0 && (
+              <button
+                onClick={() => setConfirmOpen(true)}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase transition-all"
+                style={{
+                  ...BANGERS,
+                  background: 'linear-gradient(90deg,rgba(255,200,0,0.18),rgba(157,0,255,0.18))',
+                  border: '1px solid rgba(255,200,0,0.55)',
+                  color: 'hsl(43 100% 65%)',
+                  boxShadow: '0 0 12px rgba(255,200,0,0.1)',
+                }}
+              >
+                <Database className="w-3.5 h-3.5" />
+                SOC
+                {selectedVariantPack && (
+                  <span className="text-[9px] ml-0.5 opacity-70 normal-case" style={{ fontFamily: 'monospace' }}>
+                    · {selectedVariantPack}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Variant active hint */}
+          {selectedVariantPack && (
+            <div className="px-4 pb-2 text-[10px] font-mono" style={{ color: 'hsl(43 100% 55%)' }}>
+              ◈ Previewing <span className="font-bold">{selectedVariantPack}</span> variant above — click SOC to save this style on-chain
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Traits Grid Section ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
@@ -692,8 +822,8 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
         >
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2" style={BANGERS}>
-              <Zap className="w-5 h-5 text-yellow-400" />
-              <span style={{ color: 'hsl(43 100% 65%)' }}>CONFIRM TRAIT SWAP</span>
+              <Database className="w-5 h-5 text-yellow-400" />
+              <span style={{ color: 'hsl(43 100% 65%)' }}>SAVE ON CHAIN (SOC)</span>
             </AlertDialogTitle>
             <AlertDialogDescription className="font-mono text-xs space-y-3 mt-2" asChild>
               <div>
@@ -703,8 +833,18 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   to Ethereum mainnet and update its on-chain metadata.
                 </p>
 
+                {/* Variant style row */}
+                <div className="flex items-center gap-2 px-2.5 py-2 mt-2"
+                  style={{ background: 'rgba(255,200,0,0.06)', border: '1px solid rgba(255,200,0,0.2)' }}>
+                  <Layers className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(43 100% 65%)' }} />
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 flex-shrink-0">Variant Style</span>
+                  <span className="font-bold text-xs ml-auto" style={{ color: selectedVariantPack ? 'hsl(43 100% 65%)' : 'hsl(272 100% 72%)' }}>
+                    {selectedVariantPack ?? "BASE (default)"}
+                  </span>
+                </div>
+
                 {activeNft && activeNft.equippedTraits.length > 0 && (
-                  <div className="mt-3 space-y-1.5">
+                  <div className="mt-2 space-y-1.5">
                     <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest mb-2">Traits being applied:</p>
                     {activeNft.equippedTraits.map(et => (
                       <div key={et.category} className="flex items-center gap-2 px-2.5 py-1.5 rounded"

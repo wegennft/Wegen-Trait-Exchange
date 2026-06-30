@@ -237,7 +237,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // 1. Request account access
       const accounts = await raw.request({ method: "eth_requestAccounts", params: [] }) as string[];
       if (!accounts.length) throw new Error("No accounts returned from wallet");
-      const address = accounts[0].toLowerCase();
+      // Keep the original casing from the wallet — Phantom's personal_sign does a
+      // case-sensitive match on the address param and rejects if it differs from
+      // what the wallet has internally stored.
+      const rawAddress = accounts[0];
+      const address = rawAddress.toLowerCase(); // normalized lowercase for all server calls
 
       // 2. Get chain ID
       const chainHex = await raw.request({ method: "eth_chainId" }) as string;
@@ -263,9 +267,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         const code = (signErr as { code?: number }).code;
         if (code === -32000 || code === 32000 || code === 4200) {
           const hexMsg = hexlify(toUtf8Bytes(message));
+          // Use rawAddress (original wallet casing) — Phantom validates this
+          // strictly and rejects lowercase addresses with code -32000.
           signature = await raw.request({
             method: "personal_sign",
-            params: [hexMsg, address],
+            params: [hexMsg, rawAddress],
           }) as string;
         } else {
           throw signErr;

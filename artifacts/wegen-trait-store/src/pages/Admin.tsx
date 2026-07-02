@@ -19,8 +19,18 @@ import {
   useListAdminNfts,
   useDeleteAdminNft,
   getListAdminNftsQueryKey,
+  useListAdminPointPacks,
+  useCreatePointPack,
+  useUpdatePointPack,
+  useDeletePointPack,
+  getListAdminPointPacksQueryKey,
+  useListAdminBundles,
+  useCreateBundle,
+  useUpdateBundle,
+  useDeleteBundle,
+  getListAdminBundlesQueryKey,
 } from "@workspace/api-client-react";
-import type { LegendItem } from "@workspace/api-client-react";
+import type { LegendItem, PointPack, Bundle } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,6 +122,7 @@ import {
   Crown,
   Zap,
   RefreshCw,
+  Coins,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -1116,6 +1127,9 @@ export function Admin() {
           <TabsTrigger value="nft-registry" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Gem className="w-4 h-4" /> NFT Registry
           </TabsTrigger>
+          <TabsTrigger value="bundles-points" className="flex items-center gap-2 rounded-sm px-4 py-2">
+            <Coins className="w-4 h-4" /> Packs & Points
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
@@ -1866,6 +1880,10 @@ export function Admin() {
 
         <TabsContent value="nft-registry" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <NftRegistryTab />
+        </TabsContent>
+
+        <TabsContent value="bundles-points" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <BundlesPointsAdminTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -7435,6 +7453,354 @@ function NftRegistryTab() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function BundlesPointsAdminTab() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: packsData } = useListAdminPointPacks();
+  const { data: bundlesData } = useListAdminBundles();
+  const { data: traitsData } = useListTraits({ includeAll: true, limit: 9999 });
+
+  const createPointPack = useCreatePointPack();
+  const updatePointPack = useUpdatePointPack();
+  const deletePointPack = useDeletePointPack();
+  const createBundle = useCreateBundle();
+  const updateBundle = useUpdateBundle();
+  const deleteBundle = useDeleteBundle();
+
+  const pointPacks = packsData?.pointPacks ?? [];
+  const bundles = bundlesData?.bundles ?? [];
+  const allTraits = traitsData?.traits ?? [];
+
+  const [packForm, setPackForm] = useState({ name: "", description: "", imageUrl: "", usdValue: "", pointsGranted: 100, isActive: true });
+  const [editingPack, setEditingPack] = useState<PointPack | null>(null);
+
+  const [bundleForm, setBundleForm] = useState({ name: "", description: "", imageUrl: "", priceEth: "", totalSupply: -1, isActive: true, traitIds: [] as number[] });
+  const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
+
+  const resetPackForm = () => setPackForm({ name: "", description: "", imageUrl: "", usdValue: "", pointsGranted: 100, isActive: true });
+  const resetBundleForm = () => setBundleForm({ name: "", description: "", imageUrl: "", priceEth: "", totalSupply: -1, isActive: true, traitIds: [] });
+
+  const handleCreatePack = () => {
+    if (!packForm.name || !packForm.usdValue || !packForm.pointsGranted) {
+      toast({ title: "Missing fields", description: "Name, USD value, and points are required.", variant: "destructive" });
+      return;
+    }
+    createPointPack.mutate(
+      { data: { ...packForm, description: packForm.description || undefined, imageUrl: packForm.imageUrl || undefined } },
+      {
+        onSuccess: () => {
+          toast({ title: "Point pack created" });
+          resetPackForm();
+          qc.invalidateQueries({ queryKey: getListAdminPointPacksQueryKey() });
+        },
+        onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+      },
+    );
+  };
+
+  const handleUpdatePack = () => {
+    if (!editingPack) return;
+    updatePointPack.mutate(
+      {
+        packId: editingPack.id,
+        data: {
+          name: editingPack.name,
+          description: editingPack.description ?? undefined,
+          imageUrl: editingPack.imageUrl ?? undefined,
+          usdValue: editingPack.usdValue,
+          pointsGranted: editingPack.pointsGranted,
+          isActive: editingPack.isActive,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Point pack updated" });
+          setEditingPack(null);
+          qc.invalidateQueries({ queryKey: getListAdminPointPacksQueryKey() });
+        },
+        onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+      },
+    );
+  };
+
+  const handleDeletePack = (id: number) => {
+    if (!confirm("Delete this point pack?")) return;
+    deletePointPack.mutate(
+      { packId: id },
+      {
+        onSuccess: () => {
+          toast({ title: "Point pack deleted" });
+          qc.invalidateQueries({ queryKey: getListAdminPointPacksQueryKey() });
+        },
+      },
+    );
+  };
+
+  const handleCreateBundle = () => {
+    if (!bundleForm.name || !bundleForm.priceEth || bundleForm.traitIds.length === 0) {
+      toast({ title: "Missing fields", description: "Name, price, and at least one trait are required.", variant: "destructive" });
+      return;
+    }
+    createBundle.mutate(
+      { data: { ...bundleForm, description: bundleForm.description || undefined, imageUrl: bundleForm.imageUrl || undefined } },
+      {
+        onSuccess: () => {
+          toast({ title: "Bundle created" });
+          resetBundleForm();
+          qc.invalidateQueries({ queryKey: getListAdminBundlesQueryKey() });
+        },
+        onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+      },
+    );
+  };
+
+  const handleUpdateBundle = () => {
+    if (!editingBundle) return;
+    updateBundle.mutate(
+      {
+        bundleId: editingBundle.id,
+        data: {
+          name: editingBundle.name,
+          description: editingBundle.description ?? undefined,
+          imageUrl: editingBundle.imageUrl ?? undefined,
+          priceEth: editingBundle.priceEth,
+          totalSupply: editingBundle.totalSupply,
+          isActive: editingBundle.isActive,
+          traitIds: editingBundle.traits.map((t) => t.id),
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Bundle updated" });
+          setEditingBundle(null);
+          qc.invalidateQueries({ queryKey: getListAdminBundlesQueryKey() });
+        },
+        onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+      },
+    );
+  };
+
+  const handleDeleteBundle = (id: number) => {
+    if (!confirm("Delete this bundle?")) return;
+    deleteBundle.mutate(
+      { bundleId: id },
+      {
+        onSuccess: () => {
+          toast({ title: "Bundle deleted" });
+          qc.invalidateQueries({ queryKey: getListAdminBundlesQueryKey() });
+        },
+      },
+    );
+  };
+
+  const toggleTraitId = (id: number, current: number[], setter: (ids: number[]) => void) => {
+    setter(current.includes(id) ? current.filter((t) => t !== id) : [...current, id]);
+  };
+
+  return (
+    <div className="space-y-10">
+      {/* ── Point Packs ── */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Coins className="w-5 h-5 text-amber-400" /> Store Point Packs
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Users buy fixed USD-value packs, converted to ETH at the live price. Points are balance-only for now.
+        </p>
+
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Create Point Pack</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={packForm.name} onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1"><Label className="text-xs">USD Value</Label><Input type="number" step="0.01" value={packForm.usdValue} onChange={(e) => setPackForm((f) => ({ ...f, usdValue: e.target.value }))} /></div>
+            <div className="space-y-1"><Label className="text-xs">Points Granted</Label><Input type="number" value={packForm.pointsGranted} onChange={(e) => setPackForm((f) => ({ ...f, pointsGranted: Number(e.target.value) }))} /></div>
+            <div className="space-y-1 lg:col-span-2"><Label className="text-xs">Image URL (optional)</Label><Input value={packForm.imageUrl} onChange={(e) => setPackForm((f) => ({ ...f, imageUrl: e.target.value }))} /></div>
+            <div className="sm:col-span-2 lg:col-span-5 space-y-1"><Label className="text-xs">Description (optional)</Label><Textarea value={packForm.description} onChange={(e) => setPackForm((f) => ({ ...f, description: e.target.value }))} rows={2} /></div>
+            <div className="lg:col-span-5">
+              <Button size="sm" onClick={handleCreatePack} disabled={createPointPack.isPending} className="gap-1.5">
+                {createPointPack.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create Pack
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>USD Value</TableHead>
+              <TableHead>Points</TableHead>
+              <TableHead>Active</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pointPacks.map((pack) => (
+              <TableRow key={pack.id}>
+                <TableCell className="font-medium">{pack.name}</TableCell>
+                <TableCell>${pack.usdValue}</TableCell>
+                <TableCell>{pack.pointsGranted.toLocaleString()}</TableCell>
+                <TableCell>{pack.isActive ? <Badge variant="secondary">Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
+                <TableCell className="text-right space-x-1">
+                  <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditingPack(pack)}><Edit className="w-3.5 h-3.5" /></Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-destructive hover:text-destructive" onClick={() => handleDeletePack(pack.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {pointPacks.length === 0 && (
+              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground">No point packs yet.</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Separator />
+
+      {/* ── Bundles ── */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Package className="w-5 h-5 text-purple-400" /> Trait Bundles
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          ETH-priced bundles of multiple traits, purchased directly into the buyer's Trait Locker.
+        </p>
+
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Create Bundle</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={bundleForm.name} onChange={(e) => setBundleForm((f) => ({ ...f, name: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Price (ETH)</Label><Input type="number" step="0.0001" value={bundleForm.priceEth} onChange={(e) => setBundleForm((f) => ({ ...f, priceEth: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Total Supply (-1 = unlimited)</Label><Input type="number" value={bundleForm.totalSupply} onChange={(e) => setBundleForm((f) => ({ ...f, totalSupply: Number(e.target.value) }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Image URL (optional)</Label><Input value={bundleForm.imageUrl} onChange={(e) => setBundleForm((f) => ({ ...f, imageUrl: e.target.value }))} /></div>
+            </div>
+            <div className="space-y-1"><Label className="text-xs">Description (optional)</Label><Textarea value={bundleForm.description} onChange={(e) => setBundleForm((f) => ({ ...f, description: e.target.value }))} rows={2} /></div>
+            <div className="space-y-1">
+              <Label className="text-xs">Traits ({bundleForm.traitIds.length} selected)</Label>
+              <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 p-2 rounded-md border border-border/50">
+                {allTraits.map((trait) => (
+                  <button
+                    key={trait.id}
+                    type="button"
+                    onClick={() => toggleTraitId(trait.id, bundleForm.traitIds, (ids) => setBundleForm((f) => ({ ...f, traitIds: ids })))}
+                    className={`text-left text-xs px-2 py-1.5 rounded border truncate ${
+                      bundleForm.traitIds.includes(trait.id) ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                    }`}
+                  >
+                    {trait.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button size="sm" onClick={handleCreateBundle} disabled={createBundle.isPending} className="gap-1.5">
+              {createBundle.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create Bundle
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Traits</TableHead>
+              <TableHead>Supply</TableHead>
+              <TableHead>Active</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {bundles.map((bundle) => (
+              <TableRow key={bundle.id}>
+                <TableCell className="font-medium">{bundle.name}</TableCell>
+                <TableCell>{bundle.priceEth} ETH</TableCell>
+                <TableCell>{bundle.traits.length}</TableCell>
+                <TableCell>{bundle.totalSupply === -1 ? "∞" : `${bundle.remainingSupply}/${bundle.totalSupply}`}</TableCell>
+                <TableCell>{bundle.isActive ? <Badge variant="secondary">Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
+                <TableCell className="text-right space-x-1">
+                  <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditingBundle(bundle)}><Edit className="w-3.5 h-3.5" /></Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-destructive hover:text-destructive" onClick={() => handleDeleteBundle(bundle.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {bundles.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">No bundles yet.</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* ── Edit Point Pack Dialog ── */}
+      <Dialog open={!!editingPack} onOpenChange={(open) => !open && setEditingPack(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Point Pack</DialogTitle></DialogHeader>
+          {editingPack && (
+            <div className="space-y-3">
+              <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={editingPack.name} onChange={(e) => setEditingPack({ ...editingPack, name: e.target.value })} /></div>
+              <div className="space-y-1"><Label className="text-xs">USD Value</Label><Input type="number" step="0.01" value={editingPack.usdValue} onChange={(e) => setEditingPack({ ...editingPack, usdValue: e.target.value })} /></div>
+              <div className="space-y-1"><Label className="text-xs">Points Granted</Label><Input type="number" value={editingPack.pointsGranted} onChange={(e) => setEditingPack({ ...editingPack, pointsGranted: Number(e.target.value) })} /></div>
+              <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={editingPack.imageUrl ?? ""} onChange={(e) => setEditingPack({ ...editingPack, imageUrl: e.target.value })} /></div>
+              <div className="space-y-1"><Label className="text-xs">Description</Label><Textarea value={editingPack.description ?? ""} onChange={(e) => setEditingPack({ ...editingPack, description: e.target.value })} rows={2} /></div>
+              <div className="flex items-center gap-2"><Switch checked={editingPack.isActive} onCheckedChange={(v) => setEditingPack({ ...editingPack, isActive: v })} /><Label className="text-xs">Active</Label></div>
+              <Button onClick={handleUpdatePack} disabled={updatePointPack.isPending} className="w-full gap-1.5">
+                {updatePointPack.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save Changes
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Bundle Dialog ── */}
+      <Dialog open={!!editingBundle} onOpenChange={(open) => !open && setEditingBundle(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Edit Bundle</DialogTitle></DialogHeader>
+          {editingBundle && (
+            <div className="space-y-3">
+              <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={editingBundle.name} onChange={(e) => setEditingBundle({ ...editingBundle, name: e.target.value })} /></div>
+              <div className="space-y-1"><Label className="text-xs">Price (ETH)</Label><Input type="number" step="0.0001" value={editingBundle.priceEth} onChange={(e) => setEditingBundle({ ...editingBundle, priceEth: e.target.value })} /></div>
+              <div className="space-y-1"><Label className="text-xs">Total Supply (-1 = unlimited)</Label><Input type="number" value={editingBundle.totalSupply} onChange={(e) => setEditingBundle({ ...editingBundle, totalSupply: Number(e.target.value) })} /></div>
+              <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={editingBundle.imageUrl ?? ""} onChange={(e) => setEditingBundle({ ...editingBundle, imageUrl: e.target.value })} /></div>
+              <div className="space-y-1"><Label className="text-xs">Description</Label><Textarea value={editingBundle.description ?? ""} onChange={(e) => setEditingBundle({ ...editingBundle, description: e.target.value })} rows={2} /></div>
+              <div className="space-y-1">
+                <Label className="text-xs">Traits ({editingBundle.traits.length} selected)</Label>
+                <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-2 rounded-md border border-border/50">
+                  {allTraits.map((trait) => {
+                    const selected = editingBundle.traits.some((t) => t.id === trait.id);
+                    return (
+                      <button
+                        key={trait.id}
+                        type="button"
+                        onClick={() =>
+                          setEditingBundle({
+                            ...editingBundle,
+                            traits: selected
+                              ? editingBundle.traits.filter((t) => t.id !== trait.id)
+                              : [...editingBundle.traits, trait],
+                          })
+                        }
+                        className={`text-left text-xs px-2 py-1.5 rounded border truncate ${
+                          selected ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                        }`}
+                      >
+                        {trait.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex items-center gap-2"><Switch checked={editingBundle.isActive} onCheckedChange={(v) => setEditingBundle({ ...editingBundle, isActive: v })} /><Label className="text-xs">Active</Label></div>
+              <Button onClick={handleUpdateBundle} disabled={updateBundle.isPending} className="w-full gap-1.5">
+                {updateBundle.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save Changes
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

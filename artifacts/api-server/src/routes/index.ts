@@ -11,6 +11,8 @@ import marketRouter from "./market";
 import legendsRouter from "./legends";
 import metadataRouter from "./metadata";
 import bountiesRouter from "./bounties";
+import pointsRouter from "./points";
+import bundlesRouter from "./bundles";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,7 @@ router.use(marketRouter);
 router.use(legendsRouter);
 router.use(metadataRouter);
 router.use(bountiesRouter);
+router.use(pointsRouter);
+router.use(bundlesRouter);
 
 export default router;

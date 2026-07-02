@@ -18,6 +18,10 @@ tags:
     description: NFT operations
   - name: admin
     description: Admin operations
+  - name: points
+    description: Store points purchase and balance operations
+  - name: bundles
+    description: Trait bundle browsing and purchase operations
   - name: Storage
     description: Object storage upload and serving endpoints.
 paths:
@@ -853,6 +857,263 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
 
+  /point-packs:
+    get:
+      operationId: listPointPacks
+      tags: [points]
+      summary: List active point packs available for purchase
+      responses:
+        "200":
+          description: List of point packs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointPackListResponse"
+
+  /point-packs/{packId}/purchase:
+    post:
+      operationId: purchasePointPack
+      tags: [points]
+      summary: Purchase a point pack with ETH, crediting points to the wallet
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchasePointPackBody"
+      responses:
+        "201":
+          description: Points purchased and credited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorePointsBalance"
+        "404":
+          description: Point pack not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /wallet/{walletAddress}/points:
+    get:
+      operationId: getStorePoints
+      tags: [points]
+      summary: Get a wallet's store points balance
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Store points balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorePointsBalance"
+
+  /admin/point-packs:
+    get:
+      operationId: listAdminPointPacks
+      tags: [admin]
+      summary: List all point packs, including inactive ones (admin only)
+      responses:
+        "200":
+          description: List of point packs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointPackListResponse"
+    post:
+      operationId: createPointPack
+      tags: [admin]
+      summary: Create a new point pack (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePointPackBody"
+      responses:
+        "201":
+          description: Point pack created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointPack"
+
+  /admin/point-packs/{packId}:
+    put:
+      operationId: updatePointPack
+      tags: [admin]
+      summary: Update a point pack (admin only)
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePointPackBody"
+      responses:
+        "200":
+          description: Point pack updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointPack"
+    delete:
+      operationId: deletePointPack
+      tags: [admin]
+      summary: Delete a point pack (admin only)
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /bundles:
+    get:
+      operationId: listBundles
+      tags: [bundles]
+      summary: List active trait bundles available for purchase
+      responses:
+        "200":
+          description: List of trait bundles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BundleListResponse"
+
+  /bundles/{bundleId}/purchase:
+    post:
+      operationId: purchaseBundle
+      tags: [bundles]
+      summary: Purchase a trait bundle with ETH, adding all its traits to the wallet's locker
+      parameters:
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseBundleBody"
+      responses:
+        "201":
+          description: Bundle purchased and traits added to locker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseBundleResponse"
+        "404":
+          description: Bundle not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Bundle sold out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/bundles:
+    get:
+      operationId: listAdminBundles
+      tags: [admin]
+      summary: List all trait bundles, including inactive ones (admin only)
+      responses:
+        "200":
+          description: List of trait bundles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BundleListResponse"
+    post:
+      operationId: createBundle
+      tags: [admin]
+      summary: Create a new trait bundle (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBundleBody"
+      responses:
+        "201":
+          description: Bundle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bundle"
+
+  /admin/bundles/{bundleId}:
+    put:
+      operationId: updateBundle
+      tags: [admin]
+      summary: Update a trait bundle (admin only)
+      parameters:
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBundleBody"
+      responses:
+        "200":
+          description: Bundle updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bundle"
+    delete:
+      operationId: deleteBundle
+      tags: [admin]
+      summary: Delete a trait bundle (admin only)
+      parameters:
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1674,3 +1935,200 @@ components:
             $ref: "#/components/schemas/AdminNftItem"
         total:
           type: integer
+
+    PointPack:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        usdValue:
+          type: string
+          description: Fixed USD value of this pack (as string to avoid floating point issues)
+        pointsGranted:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - usdValue
+        - pointsGranted
+        - isActive
+        - createdAt
+
+    PointPackListResponse:
+      type: object
+      properties:
+        pointPacks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PointPack"
+      required:
+        - pointPacks
+
+    CreatePointPackBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        usdValue:
+          type: string
+        pointsGranted:
+          type: integer
+        isActive:
+          type: boolean
+          default: true
+      required:
+        - name
+        - usdValue
+        - pointsGranted
+
+    PurchasePointPackBody:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+        ethAmount:
+          type: string
+          description: ETH amount charged, computed client-side from the live ETH price
+        ethPriceAtPurchase:
+          type: string
+          description: USD price of ETH used to compute ethAmount
+        txHash:
+          type: string
+          nullable: true
+      required:
+        - walletAddress
+        - ethAmount
+        - ethPriceAtPurchase
+
+    StorePointsBalance:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+        totalPoints:
+          type: integer
+      required:
+        - walletAddress
+        - totalPoints
+
+    Bundle:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        priceEth:
+          type: string
+        priceWei:
+          type: string
+        totalSupply:
+          type: integer
+        remainingSupply:
+          type: integer
+        isActive:
+          type: boolean
+        traits:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trait"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - priceEth
+        - priceWei
+        - totalSupply
+        - remainingSupply
+        - isActive
+        - traits
+        - createdAt
+
+    BundleListResponse:
+      type: object
+      properties:
+        bundles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bundle"
+      required:
+        - bundles
+
+    CreateBundleBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        priceEth:
+          type: string
+        totalSupply:
+          type: integer
+          default: -1
+        isActive:
+          type: boolean
+          default: true
+        traitIds:
+          type: array
+          items:
+            type: integer
+          description: IDs of traits included in this bundle
+      required:
+        - name
+        - priceEth
+        - traitIds
+
+    PurchaseBundleBody:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+        txHash:
+          type: string
+          nullable: true
+      required:
+        - walletAddress
+
+    PurchaseBundleResponse:
+      type: object
+      properties:
+        bundleId:
+          type: integer
+        walletAddress:
+          type: string
+        lockerItemIds:
+          type: array
+          items:
+            type: integer
+      required:
+        - bundleId
+        - walletAddress
+        - lockerItemIds

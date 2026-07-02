@@ -6,3 +6,5 @@ export * from "./transactions";
 export * from "./swap";
 export * from "./legends";
 export * from "./bounties";
+export * from "./points";
+export * from "./bundles";

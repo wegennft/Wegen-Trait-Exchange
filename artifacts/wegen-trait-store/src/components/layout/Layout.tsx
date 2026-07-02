@@ -7,7 +7,7 @@ import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -178,6 +178,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/nfts", label: `My ${collectionLabel}`, icon: Gem },
     { href: "/my-legends", label: "Legends & 1/1's", icon: Crown },
     { href: "/bounties", label: "Bounties", icon: Trophy },
+    { href: "/bundles-points", label: "Packs & Points", icon: Coins },
     { href: "/swap", label: "Trait Swap", icon: Repeat2 },
     { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
   ];
@@ -469,7 +470,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* ── Nav (flexible middle) ── */}
           {!isAdminPage && (
-            <nav className="hidden md:flex items-center flex-1 min-w-0 overflow-hidden">
+            <nav className="hidden md:flex items-center flex-1 min-w-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location === item.href;

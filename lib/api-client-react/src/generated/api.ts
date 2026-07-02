@@ -21,13 +21,17 @@ import type {
   AdminStats,
   ApplyTraitBody,
   ApplyTraitResponse,
+  Bundle,
+  BundleListResponse,
   CategoriesResponse,
   ConfirmTraitsBody,
   ConfirmTraitsResponse,
+  CreateBundleBody,
   CreateLegend201,
   CreateLegendBody,
   CreateLegendVariant200,
   CreateLegendVariantBody,
+  CreatePointPackBody,
   CreateTraitBody,
   CreateTraitVariantBody,
   DeleteResponse,
@@ -48,9 +52,15 @@ import type {
   LockerItem,
   LockerResponse,
   NftListResponse,
+  PointPack,
+  PointPackListResponse,
+  PurchaseBundleBody,
+  PurchaseBundleResponse,
+  PurchasePointPackBody,
   PurchaseTraitBody,
   RemoveTraitBody,
   RemoveTraitResponse,
+  StorePointsBalance,
   StoreStats,
   ThemesResponse,
   Trait,
@@ -3400,4 +3410,1080 @@ export const useDeleteAdminNft = <
   TContext
 > => {
   return useMutation(getDeleteAdminNftMutationOptions(options));
+};
+
+/**
+ * @summary List active point packs available for purchase
+ */
+export const getListPointPacksUrl = () => {
+  return `/api/point-packs`;
+};
+
+export const listPointPacks = async (
+  options?: RequestInit,
+): Promise<PointPackListResponse> => {
+  return customFetch<PointPackListResponse>(getListPointPacksUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPointPacksQueryKey = () => {
+  return [`/api/point-packs`] as const;
+};
+
+export const getListPointPacksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPointPacks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPointPacks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPointPacksQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPointPacks>>> = ({
+    signal,
+  }) => listPointPacks({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPointPacks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPointPacksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPointPacks>>
+>;
+export type ListPointPacksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List active point packs available for purchase
+ */
+
+export function useListPointPacks<
+  TData = Awaited<ReturnType<typeof listPointPacks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPointPacks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPointPacksQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Purchase a point pack with ETH, crediting points to the wallet
+ */
+export const getPurchasePointPackUrl = (packId: number) => {
+  return `/api/point-packs/${packId}/purchase`;
+};
+
+export const purchasePointPack = async (
+  packId: number,
+  purchasePointPackBody: PurchasePointPackBody,
+  options?: RequestInit,
+): Promise<StorePointsBalance> => {
+  return customFetch<StorePointsBalance>(getPurchasePointPackUrl(packId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(purchasePointPackBody),
+  });
+};
+
+export const getPurchasePointPackMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof purchasePointPack>>,
+    TError,
+    { packId: number; data: BodyType<PurchasePointPackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof purchasePointPack>>,
+  TError,
+  { packId: number; data: BodyType<PurchasePointPackBody> },
+  TContext
+> => {
+  const mutationKey = ["purchasePointPack"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof purchasePointPack>>,
+    { packId: number; data: BodyType<PurchasePointPackBody> }
+  > = (props) => {
+    const { packId, data } = props ?? {};
+
+    return purchasePointPack(packId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PurchasePointPackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof purchasePointPack>>
+>;
+export type PurchasePointPackMutationBody = BodyType<PurchasePointPackBody>;
+export type PurchasePointPackMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Purchase a point pack with ETH, crediting points to the wallet
+ */
+export const usePurchasePointPack = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof purchasePointPack>>,
+    TError,
+    { packId: number; data: BodyType<PurchasePointPackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof purchasePointPack>>,
+  TError,
+  { packId: number; data: BodyType<PurchasePointPackBody> },
+  TContext
+> => {
+  return useMutation(getPurchasePointPackMutationOptions(options));
+};
+
+/**
+ * @summary Get a wallet's store points balance
+ */
+export const getGetStorePointsUrl = (walletAddress: string) => {
+  return `/api/wallet/${walletAddress}/points`;
+};
+
+export const getStorePoints = async (
+  walletAddress: string,
+  options?: RequestInit,
+): Promise<StorePointsBalance> => {
+  return customFetch<StorePointsBalance>(getGetStorePointsUrl(walletAddress), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStorePointsQueryKey = (walletAddress: string) => {
+  return [`/api/wallet/${walletAddress}/points`] as const;
+};
+
+export const getGetStorePointsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStorePoints>>,
+  TError = ErrorType<unknown>,
+>(
+  walletAddress: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorePoints>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStorePointsQueryKey(walletAddress);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStorePoints>>> = ({
+    signal,
+  }) => getStorePoints(walletAddress, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!walletAddress,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStorePoints>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStorePointsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStorePoints>>
+>;
+export type GetStorePointsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a wallet's store points balance
+ */
+
+export function useGetStorePoints<
+  TData = Awaited<ReturnType<typeof getStorePoints>>,
+  TError = ErrorType<unknown>,
+>(
+  walletAddress: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorePoints>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStorePointsQueryOptions(walletAddress, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all point packs, including inactive ones (admin only)
+ */
+export const getListAdminPointPacksUrl = () => {
+  return `/api/admin/point-packs`;
+};
+
+export const listAdminPointPacks = async (
+  options?: RequestInit,
+): Promise<PointPackListResponse> => {
+  return customFetch<PointPackListResponse>(getListAdminPointPacksUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdminPointPacksQueryKey = () => {
+  return [`/api/admin/point-packs`] as const;
+};
+
+export const getListAdminPointPacksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminPointPacks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminPointPacks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminPointPacksQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminPointPacks>>
+  > = ({ signal }) => listAdminPointPacks({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminPointPacks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminPointPacksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminPointPacks>>
+>;
+export type ListAdminPointPacksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all point packs, including inactive ones (admin only)
+ */
+
+export function useListAdminPointPacks<
+  TData = Awaited<ReturnType<typeof listAdminPointPacks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminPointPacks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminPointPacksQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new point pack (admin only)
+ */
+export const getCreatePointPackUrl = () => {
+  return `/api/admin/point-packs`;
+};
+
+export const createPointPack = async (
+  createPointPackBody: CreatePointPackBody,
+  options?: RequestInit,
+): Promise<PointPack> => {
+  return customFetch<PointPack>(getCreatePointPackUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPointPackBody),
+  });
+};
+
+export const getCreatePointPackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPointPack>>,
+    TError,
+    { data: BodyType<CreatePointPackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPointPack>>,
+  TError,
+  { data: BodyType<CreatePointPackBody> },
+  TContext
+> => {
+  const mutationKey = ["createPointPack"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPointPack>>,
+    { data: BodyType<CreatePointPackBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPointPack(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePointPackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPointPack>>
+>;
+export type CreatePointPackMutationBody = BodyType<CreatePointPackBody>;
+export type CreatePointPackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new point pack (admin only)
+ */
+export const useCreatePointPack = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPointPack>>,
+    TError,
+    { data: BodyType<CreatePointPackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPointPack>>,
+  TError,
+  { data: BodyType<CreatePointPackBody> },
+  TContext
+> => {
+  return useMutation(getCreatePointPackMutationOptions(options));
+};
+
+/**
+ * @summary Update a point pack (admin only)
+ */
+export const getUpdatePointPackUrl = (packId: number) => {
+  return `/api/admin/point-packs/${packId}`;
+};
+
+export const updatePointPack = async (
+  packId: number,
+  createPointPackBody: CreatePointPackBody,
+  options?: RequestInit,
+): Promise<PointPack> => {
+  return customFetch<PointPack>(getUpdatePointPackUrl(packId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPointPackBody),
+  });
+};
+
+export const getUpdatePointPackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePointPack>>,
+    TError,
+    { packId: number; data: BodyType<CreatePointPackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePointPack>>,
+  TError,
+  { packId: number; data: BodyType<CreatePointPackBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePointPack"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePointPack>>,
+    { packId: number; data: BodyType<CreatePointPackBody> }
+  > = (props) => {
+    const { packId, data } = props ?? {};
+
+    return updatePointPack(packId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePointPackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePointPack>>
+>;
+export type UpdatePointPackMutationBody = BodyType<CreatePointPackBody>;
+export type UpdatePointPackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a point pack (admin only)
+ */
+export const useUpdatePointPack = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePointPack>>,
+    TError,
+    { packId: number; data: BodyType<CreatePointPackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePointPack>>,
+  TError,
+  { packId: number; data: BodyType<CreatePointPackBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePointPackMutationOptions(options));
+};
+
+/**
+ * @summary Delete a point pack (admin only)
+ */
+export const getDeletePointPackUrl = (packId: number) => {
+  return `/api/admin/point-packs/${packId}`;
+};
+
+export const deletePointPack = async (
+  packId: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeletePointPackUrl(packId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePointPackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePointPack>>,
+    TError,
+    { packId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePointPack>>,
+  TError,
+  { packId: number },
+  TContext
+> => {
+  const mutationKey = ["deletePointPack"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePointPack>>,
+    { packId: number }
+  > = (props) => {
+    const { packId } = props ?? {};
+
+    return deletePointPack(packId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePointPackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePointPack>>
+>;
+
+export type DeletePointPackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a point pack (admin only)
+ */
+export const useDeletePointPack = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePointPack>>,
+    TError,
+    { packId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePointPack>>,
+  TError,
+  { packId: number },
+  TContext
+> => {
+  return useMutation(getDeletePointPackMutationOptions(options));
+};
+
+/**
+ * @summary List active trait bundles available for purchase
+ */
+export const getListBundlesUrl = () => {
+  return `/api/bundles`;
+};
+
+export const listBundles = async (
+  options?: RequestInit,
+): Promise<BundleListResponse> => {
+  return customFetch<BundleListResponse>(getListBundlesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListBundlesQueryKey = () => {
+  return [`/api/bundles`] as const;
+};
+
+export const getListBundlesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listBundles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBundles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListBundlesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listBundles>>> = ({
+    signal,
+  }) => listBundles({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listBundles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListBundlesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listBundles>>
+>;
+export type ListBundlesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List active trait bundles available for purchase
+ */
+
+export function useListBundles<
+  TData = Awaited<ReturnType<typeof listBundles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBundles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListBundlesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Purchase a trait bundle with ETH, adding all its traits to the wallet's locker
+ */
+export const getPurchaseBundleUrl = (bundleId: number) => {
+  return `/api/bundles/${bundleId}/purchase`;
+};
+
+export const purchaseBundle = async (
+  bundleId: number,
+  purchaseBundleBody: PurchaseBundleBody,
+  options?: RequestInit,
+): Promise<PurchaseBundleResponse> => {
+  return customFetch<PurchaseBundleResponse>(getPurchaseBundleUrl(bundleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(purchaseBundleBody),
+  });
+};
+
+export const getPurchaseBundleMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof purchaseBundle>>,
+    TError,
+    { bundleId: number; data: BodyType<PurchaseBundleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof purchaseBundle>>,
+  TError,
+  { bundleId: number; data: BodyType<PurchaseBundleBody> },
+  TContext
+> => {
+  const mutationKey = ["purchaseBundle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof purchaseBundle>>,
+    { bundleId: number; data: BodyType<PurchaseBundleBody> }
+  > = (props) => {
+    const { bundleId, data } = props ?? {};
+
+    return purchaseBundle(bundleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PurchaseBundleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof purchaseBundle>>
+>;
+export type PurchaseBundleMutationBody = BodyType<PurchaseBundleBody>;
+export type PurchaseBundleMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Purchase a trait bundle with ETH, adding all its traits to the wallet's locker
+ */
+export const usePurchaseBundle = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof purchaseBundle>>,
+    TError,
+    { bundleId: number; data: BodyType<PurchaseBundleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof purchaseBundle>>,
+  TError,
+  { bundleId: number; data: BodyType<PurchaseBundleBody> },
+  TContext
+> => {
+  return useMutation(getPurchaseBundleMutationOptions(options));
+};
+
+/**
+ * @summary List all trait bundles, including inactive ones (admin only)
+ */
+export const getListAdminBundlesUrl = () => {
+  return `/api/admin/bundles`;
+};
+
+export const listAdminBundles = async (
+  options?: RequestInit,
+): Promise<BundleListResponse> => {
+  return customFetch<BundleListResponse>(getListAdminBundlesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdminBundlesQueryKey = () => {
+  return [`/api/admin/bundles`] as const;
+};
+
+export const getListAdminBundlesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminBundles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminBundles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminBundlesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminBundles>>
+  > = ({ signal }) => listAdminBundles({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminBundles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminBundlesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminBundles>>
+>;
+export type ListAdminBundlesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all trait bundles, including inactive ones (admin only)
+ */
+
+export function useListAdminBundles<
+  TData = Awaited<ReturnType<typeof listAdminBundles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminBundles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminBundlesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new trait bundle (admin only)
+ */
+export const getCreateBundleUrl = () => {
+  return `/api/admin/bundles`;
+};
+
+export const createBundle = async (
+  createBundleBody: CreateBundleBody,
+  options?: RequestInit,
+): Promise<Bundle> => {
+  return customFetch<Bundle>(getCreateBundleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createBundleBody),
+  });
+};
+
+export const getCreateBundleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBundle>>,
+    TError,
+    { data: BodyType<CreateBundleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBundle>>,
+  TError,
+  { data: BodyType<CreateBundleBody> },
+  TContext
+> => {
+  const mutationKey = ["createBundle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBundle>>,
+    { data: BodyType<CreateBundleBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createBundle(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBundleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBundle>>
+>;
+export type CreateBundleMutationBody = BodyType<CreateBundleBody>;
+export type CreateBundleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new trait bundle (admin only)
+ */
+export const useCreateBundle = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBundle>>,
+    TError,
+    { data: BodyType<CreateBundleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBundle>>,
+  TError,
+  { data: BodyType<CreateBundleBody> },
+  TContext
+> => {
+  return useMutation(getCreateBundleMutationOptions(options));
+};
+
+/**
+ * @summary Update a trait bundle (admin only)
+ */
+export const getUpdateBundleUrl = (bundleId: number) => {
+  return `/api/admin/bundles/${bundleId}`;
+};
+
+export const updateBundle = async (
+  bundleId: number,
+  createBundleBody: CreateBundleBody,
+  options?: RequestInit,
+): Promise<Bundle> => {
+  return customFetch<Bundle>(getUpdateBundleUrl(bundleId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createBundleBody),
+  });
+};
+
+export const getUpdateBundleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBundle>>,
+    TError,
+    { bundleId: number; data: BodyType<CreateBundleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBundle>>,
+  TError,
+  { bundleId: number; data: BodyType<CreateBundleBody> },
+  TContext
+> => {
+  const mutationKey = ["updateBundle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBundle>>,
+    { bundleId: number; data: BodyType<CreateBundleBody> }
+  > = (props) => {
+    const { bundleId, data } = props ?? {};
+
+    return updateBundle(bundleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBundleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBundle>>
+>;
+export type UpdateBundleMutationBody = BodyType<CreateBundleBody>;
+export type UpdateBundleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a trait bundle (admin only)
+ */
+export const useUpdateBundle = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBundle>>,
+    TError,
+    { bundleId: number; data: BodyType<CreateBundleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBundle>>,
+  TError,
+  { bundleId: number; data: BodyType<CreateBundleBody> },
+  TContext
+> => {
+  return useMutation(getUpdateBundleMutationOptions(options));
+};
+
+/**
+ * @summary Delete a trait bundle (admin only)
+ */
+export const getDeleteBundleUrl = (bundleId: number) => {
+  return `/api/admin/bundles/${bundleId}`;
+};
+
+export const deleteBundle = async (
+  bundleId: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteBundleUrl(bundleId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteBundleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBundle>>,
+    TError,
+    { bundleId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBundle>>,
+  TError,
+  { bundleId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBundle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBundle>>,
+    { bundleId: number }
+  > = (props) => {
+    const { bundleId } = props ?? {};
+
+    return deleteBundle(bundleId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBundleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBundle>>
+>;
+
+export type DeleteBundleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a trait bundle (admin only)
+ */
+export const useDeleteBundle = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBundle>>,
+    TError,
+    { bundleId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBundle>>,
+  TError,
+  { bundleId: number },
+  TContext
+> => {
+  return useMutation(getDeleteBundleMutationOptions(options));
 };

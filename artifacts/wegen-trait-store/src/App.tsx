@@ -15,6 +15,7 @@ import { Swap } from "@/pages/Swap";
 import { Sandbox } from "@/pages/Sandbox";
 import { MyLegends } from "@/pages/MyLegends";
 import { Bounties } from "@/pages/Bounties";
+import { BundlesPoints } from "@/pages/BundlesPoints";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ function Router() {
         <Route path="/sandbox" component={Sandbox} />
         <Route path="/my-legends" component={MyLegends} />
         <Route path="/bounties" component={Bounties} />
+        <Route path="/bundles-points" component={BundlesPoints} />
         <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>

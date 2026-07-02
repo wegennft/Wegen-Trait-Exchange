@@ -417,6 +417,85 @@ export interface AdminNftListResponse {
   total: number;
 }
 
+export interface PointPack {
+  id: number;
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  /** Fixed USD value of this pack (as string to avoid floating point issues) */
+  usdValue: string;
+  pointsGranted: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface PointPackListResponse {
+  pointPacks: PointPack[];
+}
+
+export interface CreatePointPackBody {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  usdValue: string;
+  pointsGranted: number;
+  isActive?: boolean;
+}
+
+export interface PurchasePointPackBody {
+  walletAddress: string;
+  /** ETH amount charged, computed client-side from the live ETH price */
+  ethAmount: string;
+  /** USD price of ETH used to compute ethAmount */
+  ethPriceAtPurchase: string;
+  txHash?: string | null;
+}
+
+export interface StorePointsBalance {
+  walletAddress: string;
+  totalPoints: number;
+}
+
+export interface Bundle {
+  id: number;
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  priceEth: string;
+  priceWei: string;
+  totalSupply: number;
+  remainingSupply: number;
+  isActive: boolean;
+  traits: Trait[];
+  createdAt: string;
+}
+
+export interface BundleListResponse {
+  bundles: Bundle[];
+}
+
+export interface CreateBundleBody {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  priceEth: string;
+  totalSupply?: number;
+  isActive?: boolean;
+  /** IDs of traits included in this bundle */
+  traitIds: number[];
+}
+
+export interface PurchaseBundleBody {
+  walletAddress: string;
+  txHash?: string | null;
+}
+
+export interface PurchaseBundleResponse {
+  bundleId: number;
+  walletAddress: string;
+  lockerItemIds: number[];
+}
+
 export type ListTraitsParams = {
   category?: string;
   /**

@@ -1208,3 +1208,402 @@ export const DeleteAdminNftResponse = zod.object({
   success: zod.boolean(),
   message: zod.string(),
 });
+
+/**
+ * @summary List active point packs available for purchase
+ */
+export const ListPointPacksResponse = zod.object({
+  pointPacks: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      usdValue: zod
+        .string()
+        .describe(
+          "Fixed USD value of this pack (as string to avoid floating point issues)",
+        ),
+      pointsGranted: zod.number(),
+      isActive: zod.boolean(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Purchase a point pack with ETH, crediting points to the wallet
+ */
+export const PurchasePointPackParams = zod.object({
+  packId: zod.coerce.number(),
+});
+
+export const PurchasePointPackBody = zod.object({
+  walletAddress: zod.string(),
+  ethAmount: zod
+    .string()
+    .describe(
+      "ETH amount charged, computed client-side from the live ETH price",
+    ),
+  ethPriceAtPurchase: zod
+    .string()
+    .describe("USD price of ETH used to compute ethAmount"),
+  txHash: zod.string().nullish(),
+});
+
+/**
+ * @summary Get a wallet's store points balance
+ */
+export const GetStorePointsParams = zod.object({
+  walletAddress: zod.coerce.string(),
+});
+
+export const GetStorePointsResponse = zod.object({
+  walletAddress: zod.string(),
+  totalPoints: zod.number(),
+});
+
+/**
+ * @summary List all point packs, including inactive ones (admin only)
+ */
+export const ListAdminPointPacksResponse = zod.object({
+  pointPacks: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      usdValue: zod
+        .string()
+        .describe(
+          "Fixed USD value of this pack (as string to avoid floating point issues)",
+        ),
+      pointsGranted: zod.number(),
+      isActive: zod.boolean(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a new point pack (admin only)
+ */
+export const createPointPackBodyIsActiveDefault = true;
+
+export const CreatePointPackBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
+  imageUrl: zod.string().optional(),
+  usdValue: zod.string(),
+  pointsGranted: zod.number(),
+  isActive: zod.boolean().default(createPointPackBodyIsActiveDefault),
+});
+
+/**
+ * @summary Update a point pack (admin only)
+ */
+export const UpdatePointPackParams = zod.object({
+  packId: zod.coerce.number(),
+});
+
+export const updatePointPackBodyIsActiveDefault = true;
+
+export const UpdatePointPackBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
+  imageUrl: zod.string().optional(),
+  usdValue: zod.string(),
+  pointsGranted: zod.number(),
+  isActive: zod.boolean().default(updatePointPackBodyIsActiveDefault),
+});
+
+export const UpdatePointPackResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  usdValue: zod
+    .string()
+    .describe(
+      "Fixed USD value of this pack (as string to avoid floating point issues)",
+    ),
+  pointsGranted: zod.number(),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a point pack (admin only)
+ */
+export const DeletePointPackParams = zod.object({
+  packId: zod.coerce.number(),
+});
+
+export const DeletePointPackResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary List active trait bundles available for purchase
+ */
+export const listBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMin = 0;
+export const listBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMax = 100;
+
+export const ListBundlesResponse = zod.object({
+  bundles: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      priceEth: zod.string(),
+      priceWei: zod.string(),
+      totalSupply: zod.number(),
+      remainingSupply: zod.number(),
+      isActive: zod.boolean(),
+      traits: zod.array(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          category: zod.string(),
+          theme: zod
+            .string()
+            .nullish()
+            .describe(
+              'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+            ),
+          description: zod.string().nullish(),
+          imageUrl: zod.string().nullish(),
+          mediaType: zod.string().nullish(),
+          priceEth: zod
+            .string()
+            .describe(
+              "Price in ETH (as string to avoid floating point issues)",
+            ),
+          priceWei: zod.string().describe("Price in wei"),
+          totalSupply: zod.number(),
+          remainingSupply: zod.number(),
+          isActive: zod.boolean(),
+          rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          nftCollection: zod.string().nullish(),
+          payoutSplits: zod
+            .array(
+              zod.object({
+                walletAddress: zod
+                  .string()
+                  .describe("Ethereum wallet address receiving funds"),
+                percentage: zod
+                  .number()
+                  .min(
+                    listBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMin,
+                  )
+                  .max(
+                    listBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMax,
+                  )
+                  .describe("Percentage of sale proceeds (0-100)"),
+              }),
+            )
+            .describe(
+              "Wallet addresses and their percentage share of sale proceeds",
+            ),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Purchase a trait bundle with ETH, adding all its traits to the wallet's locker
+ */
+export const PurchaseBundleParams = zod.object({
+  bundleId: zod.coerce.number(),
+});
+
+export const PurchaseBundleBody = zod.object({
+  walletAddress: zod.string(),
+  txHash: zod.string().nullish(),
+});
+
+/**
+ * @summary List all trait bundles, including inactive ones (admin only)
+ */
+export const listAdminBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMin = 0;
+export const listAdminBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMax = 100;
+
+export const ListAdminBundlesResponse = zod.object({
+  bundles: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      priceEth: zod.string(),
+      priceWei: zod.string(),
+      totalSupply: zod.number(),
+      remainingSupply: zod.number(),
+      isActive: zod.boolean(),
+      traits: zod.array(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          category: zod.string(),
+          theme: zod
+            .string()
+            .nullish()
+            .describe(
+              'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+            ),
+          description: zod.string().nullish(),
+          imageUrl: zod.string().nullish(),
+          mediaType: zod.string().nullish(),
+          priceEth: zod
+            .string()
+            .describe(
+              "Price in ETH (as string to avoid floating point issues)",
+            ),
+          priceWei: zod.string().describe("Price in wei"),
+          totalSupply: zod.number(),
+          remainingSupply: zod.number(),
+          isActive: zod.boolean(),
+          rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+          nftCollection: zod.string().nullish(),
+          payoutSplits: zod
+            .array(
+              zod.object({
+                walletAddress: zod
+                  .string()
+                  .describe("Ethereum wallet address receiving funds"),
+                percentage: zod
+                  .number()
+                  .min(
+                    listAdminBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMin,
+                  )
+                  .max(
+                    listAdminBundlesResponseBundlesItemTraitsItemPayoutSplitsItemPercentageMax,
+                  )
+                  .describe("Percentage of sale proceeds (0-100)"),
+              }),
+            )
+            .describe(
+              "Wallet addresses and their percentage share of sale proceeds",
+            ),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a new trait bundle (admin only)
+ */
+export const createBundleBodyTotalSupplyDefault = -1;
+export const createBundleBodyIsActiveDefault = true;
+
+export const CreateBundleBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
+  imageUrl: zod.string().optional(),
+  priceEth: zod.string(),
+  totalSupply: zod.number().default(createBundleBodyTotalSupplyDefault),
+  isActive: zod.boolean().default(createBundleBodyIsActiveDefault),
+  traitIds: zod
+    .array(zod.number())
+    .describe("IDs of traits included in this bundle"),
+});
+
+/**
+ * @summary Update a trait bundle (admin only)
+ */
+export const UpdateBundleParams = zod.object({
+  bundleId: zod.coerce.number(),
+});
+
+export const updateBundleBodyTotalSupplyDefault = -1;
+export const updateBundleBodyIsActiveDefault = true;
+
+export const UpdateBundleBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
+  imageUrl: zod.string().optional(),
+  priceEth: zod.string(),
+  totalSupply: zod.number().default(updateBundleBodyTotalSupplyDefault),
+  isActive: zod.boolean().default(updateBundleBodyIsActiveDefault),
+  traitIds: zod
+    .array(zod.number())
+    .describe("IDs of traits included in this bundle"),
+});
+
+export const updateBundleResponseTraitsItemPayoutSplitsItemPercentageMin = 0;
+export const updateBundleResponseTraitsItemPayoutSplitsItemPercentageMax = 100;
+
+export const UpdateBundleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  priceEth: zod.string(),
+  priceWei: zod.string(),
+  totalSupply: zod.number(),
+  remainingSupply: zod.number(),
+  isActive: zod.boolean(),
+  traits: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      category: zod.string(),
+      theme: zod
+        .string()
+        .nullish()
+        .describe(
+          'Named collection\/theme this trait belongs to (e.g. \"Stoner Traits\", \"70s Vibes\")',
+        ),
+      description: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      mediaType: zod.string().nullish(),
+      priceEth: zod
+        .string()
+        .describe("Price in ETH (as string to avoid floating point issues)"),
+      priceWei: zod.string().describe("Price in wei"),
+      totalSupply: zod.number(),
+      remainingSupply: zod.number(),
+      isActive: zod.boolean(),
+      rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
+      nftCollection: zod.string().nullish(),
+      payoutSplits: zod
+        .array(
+          zod.object({
+            walletAddress: zod
+              .string()
+              .describe("Ethereum wallet address receiving funds"),
+            percentage: zod
+              .number()
+              .min(updateBundleResponseTraitsItemPayoutSplitsItemPercentageMin)
+              .max(updateBundleResponseTraitsItemPayoutSplitsItemPercentageMax)
+              .describe("Percentage of sale proceeds (0-100)"),
+          }),
+        )
+        .describe(
+          "Wallet addresses and their percentage share of sale proceeds",
+        ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a trait bundle (admin only)
+ */
+export const DeleteBundleParams = zod.object({
+  bundleId: zod.coerce.number(),
+});
+
+export const DeleteBundleResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});

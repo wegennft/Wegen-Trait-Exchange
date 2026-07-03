@@ -16,10 +16,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { TraitMedia } from "@/components/TraitMedia";
 import { TxConfirmModal, type TxDetail } from "@/components/wallet/TxConfirmModal";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, Package, Sparkles, Wallet, Zap, Gem } from "lucide-react";
+import { Coins, Package, Sparkles, Wallet, Zap, Gem, Search, X } from "lucide-react";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
 
@@ -33,6 +34,7 @@ export function BundlesPoints() {
 
   const [pendingPack, setPendingPack] = useState<{ id: number; name: string; usdValue: string; pointsGranted: number } | null>(null);
   const [pendingBundle, setPendingBundle] = useState<{ id: number; name: string; priceEth: string } | null>(null);
+  const [traitSearch, setTraitSearch] = useState("");
 
   const { data: packsData, isLoading: loadingPacks } = useListPointPacks();
   const { data: bundlesData, isLoading: loadingBundles } = useListBundles();
@@ -44,6 +46,14 @@ export function BundlesPoints() {
   const pointPacks = packsData?.pointPacks ?? [];
   const bundles = bundlesData?.bundles ?? [];
   const totalPoints = balanceData?.totalPoints ?? 0;
+
+  const normalizedSearch = traitSearch.trim().toLowerCase();
+  const filteredBundles = normalizedSearch
+    ? bundles.filter((bundle) =>
+        bundle.name.toLowerCase().includes(normalizedSearch) ||
+        bundle.traits.some((t) => t.name.toLowerCase().includes(normalizedSearch))
+      )
+    : bundles;
 
   const handlePackConfirm = async () => {
     if (!pendingPack || !walletAddress || ethUsd === null) return;
@@ -197,18 +207,41 @@ export function BundlesPoints() {
 
       {/* ── Bundles ── */}
       <section className="space-y-4">
-        <h2 className="text-xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
-          <Package className="w-5 h-5" /> Trait Bundles
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h2 className="text-xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
+            <Package className="w-5 h-5" /> Trait Bundles
+          </h2>
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={traitSearch}
+              onChange={(e) => setTraitSearch(e.target.value)}
+              placeholder="Search traits or bundles..."
+              className="pl-9 pr-9"
+            />
+            {traitSearch && (
+              <button
+                type="button"
+                onClick={() => setTraitSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
         {loadingBundles ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}
           </div>
         ) : bundles.length === 0 ? (
           <p className="text-sm text-muted-foreground">No bundles available right now.</p>
+        ) : filteredBundles.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No bundles match "{traitSearch}".</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {bundles.map((bundle) => {
+            {filteredBundles.map((bundle) => {
               const soldOut = bundle.totalSupply !== -1 && bundle.remainingSupply < 1;
               return (
                 <Card key={bundle.id} className="border-border/60 hover:border-primary/50 transition-colors overflow-hidden flex flex-col">

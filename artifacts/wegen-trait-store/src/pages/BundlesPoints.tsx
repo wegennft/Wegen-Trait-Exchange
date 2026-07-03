@@ -139,41 +139,54 @@ export function BundlesPoints() {
           <Coins className="w-5 h-5" /> Store Points
         </h2>
         {loadingPacks ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
           </div>
         ) : pointPacks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No point packs available right now.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pointPacks.map((pack) => (
               <Card key={pack.id} className="border-border/60 hover:border-primary/50 transition-colors overflow-hidden">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-base flex items-center gap-2.5">
                     {pack.imageUrl ? (
-                      <img src={pack.imageUrl} alt={pack.name} className="w-8 h-8 rounded-md object-cover" />
+                      <img src={pack.imageUrl} alt={pack.name} className="w-10 h-10 rounded-md object-cover" />
                     ) : (
-                      <Coins className="w-5 h-5" style={{ color: accent }} />
+                      <Coins className="w-6 h-6" style={{ color: accent }} />
                     )}
                     <span className="truncate">{pack.name}</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   {pack.description && <p className="text-xs text-muted-foreground line-clamp-2">{pack.description}</p>}
-                  <div className="flex items-baseline justify-between">
-                    <Badge variant="secondary" className="font-bold">{pack.pointsGranted.toLocaleString()} pts</Badge>
-                    <span className="text-lg font-bold" style={{ color: accent }}>${pack.usdValue}</span>
+                  <div
+                    className="rounded-lg p-4 flex items-center justify-between gap-3"
+                    style={{ background: `${accent}14`, border: `1px solid ${accent}30` }}
+                  >
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">You get</div>
+                      <div className="text-3xl leading-none" style={{ ...BANGERS, color: accent }}>
+                        {pack.pointsGranted.toLocaleString()}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">points</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Price</div>
+                      <div className="text-2xl font-bold leading-none">${pack.usdValue}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">USD</div>
+                    </div>
                   </div>
                   <Button
                     className="w-full gap-1.5"
-                    size="sm"
+                    size="lg"
                     disabled={ethUsd === null}
                     onClick={() => {
                       if (!isConnected) { connect(); return; }
                       setPendingPack(pack);
                     }}
                   >
-                    <Zap className="w-3.5 h-3.5" /> Buy Points
+                    <Zap className="w-4 h-4" /> Buy Points
                   </Button>
                 </CardContent>
               </Card>
@@ -188,57 +201,75 @@ export function BundlesPoints() {
           <Package className="w-5 h-5" /> Trait Bundles
         </h2>
         {loadingBundles ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}
           </div>
         ) : bundles.length === 0 ? (
           <p className="text-sm text-muted-foreground">No bundles available right now.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {bundles.map((bundle) => {
               const soldOut = bundle.totalSupply !== -1 && bundle.remainingSupply < 1;
               return (
                 <Card key={bundle.id} className="border-border/60 hover:border-primary/50 transition-colors overflow-hidden flex flex-col">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Gem className="w-4 h-4" style={{ color: accent }} />
+                    <CardTitle className="text-lg flex items-center gap-2.5">
+                      <Gem className="w-5 h-5" style={{ color: accent }} />
                       <span className="truncate">{bundle.name}</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 flex-1 flex flex-col">
-                    {bundle.description && <p className="text-xs text-muted-foreground line-clamp-2">{bundle.description}</p>}
-                    <div className="flex flex-wrap gap-1.5">
-                      {bundle.traits.slice(0, 4).map((t) => (
-                        <div key={t.id} className="w-9 h-9 rounded-md overflow-hidden border border-border/50 flex-shrink-0">
-                          <TraitMedia url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full" />
+                  <CardContent className="space-y-4 flex-1 flex flex-col">
+                    {bundle.description && <p className="text-sm text-muted-foreground line-clamp-2">{bundle.description}</p>}
+
+                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                      What's inside — {bundle.traits.length} trait{bundle.traits.length !== 1 ? "s" : ""}
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                      {bundle.traits.map((t) => (
+                        <div key={t.id} className="flex flex-col items-center gap-1">
+                          <div
+                            className="w-full aspect-square rounded-lg overflow-hidden border-2 flex-shrink-0"
+                            style={{ borderColor: `${accent}40` }}
+                          >
+                            <TraitMedia url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full object-cover" />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground text-center truncate w-full" title={t.name}>
+                            {t.name}
+                          </span>
                         </div>
                       ))}
-                      {bundle.traits.length > 4 && (
-                        <div className="w-9 h-9 rounded-md flex items-center justify-center text-[10px] text-muted-foreground border border-border/50 flex-shrink-0">
-                          +{bundle.traits.length - 4}
+                    </div>
+
+                    <div
+                      className="mt-auto rounded-lg p-4 flex items-center justify-between gap-3"
+                      style={{ background: `${accent}14`, border: `1px solid ${accent}30` }}
+                    >
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Price</div>
+                        <div className="text-2xl leading-none" style={{ ...BANGERS, color: accent }}>
+                          {bundle.priceEth} ETH
+                        </div>
+                        {formatUsd(bundle.priceEth, ethUsd) && (
+                          <div className="text-[11px] text-muted-foreground mt-0.5">≈ {formatUsd(bundle.priceEth, ethUsd)}</div>
+                        )}
+                      </div>
+                      {bundle.totalSupply !== -1 && (
+                        <div className="text-right">
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Remaining</div>
+                          <div className="text-xl font-bold leading-none">{bundle.remainingSupply} / {bundle.totalSupply}</div>
                         </div>
                       )}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">{bundle.traits.length} trait{bundle.traits.length !== 1 ? "s" : ""}</div>
-                    <div className="mt-auto flex items-baseline justify-between">
-                      <span className="text-lg font-bold" style={{ color: accent }}>{bundle.priceEth} ETH</span>
-                      {formatUsd(bundle.priceEth, ethUsd) && (
-                        <span className="text-[10px] text-muted-foreground">≈ {formatUsd(bundle.priceEth, ethUsd)}</span>
-                      )}
-                    </div>
-                    {bundle.totalSupply !== -1 && (
-                      <div className="text-[10px] text-muted-foreground">{bundle.remainingSupply} / {bundle.totalSupply} remaining</div>
-                    )}
                     <Button
                       className="w-full gap-1.5"
-                      size="sm"
+                      size="lg"
                       disabled={soldOut}
                       onClick={() => {
                         if (!isConnected) { connect(); return; }
                         setPendingBundle(bundle);
                       }}
                     >
-                      <Zap className="w-3.5 h-3.5" /> {soldOut ? "Sold Out" : "Buy Bundle"}
+                      <Zap className="w-4 h-4" /> {soldOut ? "Sold Out" : "Buy Bundle"}
                     </Button>
                   </CardContent>
                 </Card>

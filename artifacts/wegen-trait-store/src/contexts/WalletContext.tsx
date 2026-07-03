@@ -237,45 +237,89 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // 1. Request account access
       const accounts = await raw.request({ method: "eth_requestAccounts", params: [] }) as string[];
       if (!accounts.length) throw new Error("No accounts returned from wallet");
-      // Keep the original casing from the wallet — Phantom's personal_sign does a
-      // case-sensitive match on the address param and rejects if it differs from
-      // what the wallet has internally stored.
-      const rawAddress = accounts[0];
-      const address = rawAddress.toLowerCase(); // normalized lowercase for all server calls
 
       // 2. Get chain ID
       const chainHex = await raw.request({ method: "eth_chainId" }) as string;
       const networkChainId = parseInt(chainHex, 16).toString();
       setChainId(networkChainId);
 
-      // 3. Fetch one-time nonce challenge
-      const nonceRes = await fetch(
-        `/api/auth/nonce?address=${encodeURIComponent(address)}&chainId=${encodeURIComponent(networkChainId)}`,
-      );
-      if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
-      const { message } = (await nonceRes.json()) as { nonce: string; message: string };
+      const isAddressMismatchError = (err: unknown): boolean => {
+        const code = (err as { code?: number }).code;
+        const msg = ((err as { message?: string }).message ?? "").toLowerCase();
+        return (code === -32000 || code === 32000 || code === 4200) &&
+          (msg.includes("does not match") || msg.includes("address"));
+      };
 
-      // 4. Sign — try ethers signMessage first (MetaMask), fall back to raw personal_sign
-      //    (needed for Phantom, Backpack, and other wallets that reject the ethers wrapper)
-      setConnectStep("signing");
-      let signature: string;
-      try {
-        const browserProvider = new BrowserProvider(resolvedEth);
-        const signer = await browserProvider.getSigner();
-        signature = await signer.signMessage(message);
-      } catch (signErr) {
-        const code = (signErr as { code?: number }).code;
-        if (code === -32000 || code === 32000 || code === 4200) {
-          const hexMsg = hexlify(toUtf8Bytes(message));
-          // Use rawAddress (original wallet casing) — Phantom validates this
-          // strictly and rejects lowercase addresses with code -32000.
-          signature = await raw.request({
-            method: "personal_sign",
-            params: [hexMsg, rawAddress],
-          }) as string;
-        } else {
-          throw signErr;
+      // Some wallets (notably MetaMask) can report a stale `eth_requestAccounts`
+      // result if the active account was switched right around connect time,
+      // which then causes personal_sign to reject with an address-mismatch
+      // error. Re-derive the address fresh right before signing, and retry
+      // once end-to-end (new nonce + new signature) if it still mismatches.
+      let signature = "";
+      let address = "";
+      let message = "";
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        // Re-fetch the currently active account rather than trusting the
+        // possibly-stale result from step 1.
+        const freshAccounts = await raw.request({ method: "eth_accounts" }) as string[];
+        const rawAddress = freshAccounts[0] ?? accounts[0];
+        address = rawAddress.toLowerCase(); // normalized lowercase for all server calls
+
+        // 3. Fetch one-time nonce challenge for the (freshly-resolved) address
+        const nonceRes = await fetch(
+          `/api/auth/nonce?address=${encodeURIComponent(address)}&chainId=${encodeURIComponent(networkChainId)}`,
+        );
+        if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
+        const nonceData = (await nonceRes.json()) as { nonce: string; message: string };
+        message = nonceData.message;
+
+        // 4. Sign — try ethers signMessage first (MetaMask), fall back to raw personal_sign
+        //    (needed for Phantom, Backpack, and other wallets that reject the ethers wrapper)
+        setConnectStep("signing");
+        try {
+          const browserProvider = new BrowserProvider(resolvedEth);
+          const signer = await browserProvider.getSigner();
+          signature = await signer.signMessage(message);
+          lastError = undefined;
+          break;
+        } catch (signErr) {
+          const code = (signErr as { code?: number }).code;
+          if (code === -32000 || code === 32000 || code === 4200) {
+            try {
+              const hexMsg = hexlify(toUtf8Bytes(message));
+              // Use rawAddress (original wallet casing) — Phantom validates this
+              // strictly and rejects lowercase addresses with code -32000.
+              signature = await raw.request({
+                method: "personal_sign",
+                params: [hexMsg, rawAddress],
+              }) as string;
+              lastError = undefined;
+              break;
+            } catch (fallbackErr) {
+              lastError = fallbackErr;
+              if (isAddressMismatchError(fallbackErr) && attempt === 0) {
+                continue; // retry once with a freshly-resolved account + new nonce
+              }
+              throw fallbackErr;
+            }
+          } else {
+            lastError = signErr;
+            if (isAddressMismatchError(signErr) && attempt === 0) {
+              continue; // retry once with a freshly-resolved account + new nonce
+            }
+            throw signErr;
+          }
         }
+      }
+      if (lastError) {
+        throw Object.assign(
+          new Error(
+            "Your wallet reported a different account than the one being verified. " +
+            "Please make sure the correct account is selected in your wallet, then try connecting again."
+          ),
+          { code: -32000 }
+        );
       }
 
       // 5. Server verifies signature and creates a session

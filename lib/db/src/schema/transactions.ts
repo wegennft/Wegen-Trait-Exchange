@@ -21,6 +21,7 @@ export const transactionsTable = pgTable("transactions", {
   traitImageUrl: text("trait_image_url"),
   walletAddress: text("wallet_address").notNull(),
   ethAmount: text("eth_amount").notNull(),
+  ethPriceAtPurchase: text("eth_price_at_purchase"),
   txHash: text("tx_hash"),
   tokenId: integer("token_id"),
   nftCollection: text("nft_collection").notNull().default("wegens"),

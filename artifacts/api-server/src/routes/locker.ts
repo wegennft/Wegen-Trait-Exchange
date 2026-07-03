@@ -9,6 +9,7 @@ import {
   PurchaseTraitBody,
 } from "@workspace/api-zod";
 import { requireWalletOwnership } from "../middleware/requireAuth";
+import { convertUsdToEth, EthPriceUnavailableError } from "../lib/ethPriceService";
 
 const router: IRouter = Router();
 
@@ -119,6 +120,20 @@ router.post(
       return;
     }
 
+    let ethAmount: string;
+    let ethPriceAtPurchase: string;
+    try {
+      ({ ethAmount, ethPriceAtPurchase } = await convertUsdToEth(
+        Number(trait.priceUsd) * qty,
+      ));
+    } catch (err) {
+      if (err instanceof EthPriceUnavailableError) {
+        res.status(503).json({ error: err.message });
+        return;
+      }
+      throw err;
+    }
+
     await db
       .update(traitsTable)
       .set({ remainingSupply: trait.remainingSupply - qty })
@@ -142,7 +157,8 @@ router.post(
       traitCategory: trait.category,
       traitImageUrl: trait.imageUrl ?? null,
       walletAddress,
-      ethAmount: trait.priceEth,
+      ethAmount,
+      ethPriceAtPurchase,
       txHash: txHash ?? null,
       tokenId: null,
       nftCollection: trait.nftCollection,

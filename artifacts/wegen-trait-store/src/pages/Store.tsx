@@ -92,16 +92,17 @@ function NftPreviewBanner({
   connect,
   previewTrait,
   ineligibleNfts = [],
+  ethUsd,
 }: {
   walletAddress: string | null;
   isConnected: boolean;
   connect: () => void;
   previewTrait: Trait | null;
   ineligibleNfts?: string[];
+  ethUsd: number | null;
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const { ethUsd } = useEthPrice();
 
   const isNftIneligible = (nft: WegenNft) =>
     ineligibleNfts.includes(String(nft.tokenId).toLowerCase()) ||
@@ -877,6 +878,7 @@ export function Store() {
         connect={connect}
         previewTrait={previewTrait}
         ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
+        ethUsd={ethUsd}
       />
       )}
 

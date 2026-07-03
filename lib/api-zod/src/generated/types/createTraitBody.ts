@@ -16,9 +16,10 @@ export interface CreateTraitBody {
   theme?: string | null;
   description?: string;
   imageUrl?: string;
-  /** Canonical price in USD; ETH price is derived from this at save time using the live rate */
+  mediaType?: string | null;
+  dropName?: string | null;
+  /** Fixed USD price; the ETH equivalent is derived server-side from the live rate on save */
   priceUsd: string;
-  priceEth: string;
   totalSupply: number;
   rarity: CreateTraitBodyRarity;
   isActive?: boolean;

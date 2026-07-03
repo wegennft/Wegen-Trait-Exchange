@@ -47,6 +47,8 @@ export const bundlePurchasesTable = pgTable("bundle_purchases", {
   bundleId: integer("bundle_id")
     .notNull()
     .references(() => traitBundlesTable.id),
+  ethAmount: text("eth_amount"),
+  ethPriceAtPurchase: text("eth_price_at_purchase"),
   txHash: text("tx_hash"),
   purchasedAt: timestamp("purchased_at", { withTimezone: true })
     .notNull()

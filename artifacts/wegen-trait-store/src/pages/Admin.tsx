@@ -155,7 +155,7 @@ const traitSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().optional(),
   mediaType: z.enum(MEDIA_TYPES).default("image"),
-  priceUsd: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 5.00"),
+  priceUsd: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 25.00"),
   totalSupply: z.coerce.number().min(1, "Supply must be at least 1"),
   rarity: z.enum(RARITIES).default("common"),
   isActive: z.boolean().default(false),
@@ -955,7 +955,6 @@ export function Admin() {
     createTrait.mutate({
       data: {
         ...data,
-        priceEth: usdToEth(data.priceUsd, ethUsd)?.toFixed(8) ?? "0",
         nftCollection: traitCollection,
       },
     });
@@ -971,7 +970,6 @@ export function Admin() {
         imageUrl: data.imageUrl,
         mediaType: data.mediaType,
         priceUsd: data.priceUsd,
-        priceEth: usdToEth(data.priceUsd, ethUsd)?.toFixed(8) ?? "0",
         totalSupply: data.totalSupply,
         rarity: data.rarity,
         isActive: data.isActive,
@@ -1641,12 +1639,7 @@ export function Admin() {
                       </div>
                     </TableCell>
                     <TableCell className="capitalize">{trait.category}</TableCell>
-                    <TableCell className="font-mono text-sm">
-                      <div>${trait.priceUsd}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatEth(trait.priceEth, ethUsd) ?? `${trait.priceEth} ETH`}
-                      </div>
-                    </TableCell>
+                    <TableCell className="font-mono text-sm">${trait.priceUsd}</TableCell>
                     <TableCell>
                       <div className="text-sm">
                         <span className={trait.remainingSupply === 0 ? "text-destructive font-bold" : ""}>
@@ -4197,7 +4190,7 @@ function getImageDimensions(file: File): Promise<{ width: number; height: number
 function BatchTraitUploadDialog({ onClose, activeCollection }: { onClose: () => void; activeCollection: "wegens" | "wegenettes" }) {
   const [queue, setQueue] = useState<BatchQueueItem[]>([]);
   const [category, setCategory] = useState("");
-  const [priceUsd, setPriceUsd] = useState("5.00");
+  const [priceUsd, setPriceUsd] = useState("25.00");
   const [totalSupply, setTotalSupply] = useState(100);
   const { ethUsd } = useEthPrice();
   const [theme, setTheme] = useState("");
@@ -4348,7 +4341,7 @@ function BatchTraitUploadDialog({ onClose, activeCollection }: { onClose: () => 
   async function createTraitAsync(data: TraitFormValues): Promise<number> {
     return new Promise((resolve, reject) => {
       batchCreateTrait.mutate(
-        { data: { ...data, priceEth: usdToEth(data.priceUsd, ethUsd)?.toFixed(8) ?? "0", nftCollection: activeCollection } },
+        { data: { ...data, nftCollection: activeCollection } },
         {
           onSuccess: (trait) => resolve(trait.id),
           onError: (err) => reject(err),
@@ -4974,6 +4967,21 @@ function TraitImageUploader({
 }
 
 // ── Trait form (create + edit) ─────────────────────────────────────────────────
+function LiveEthEstimate({ usdValue }: { usdValue: string | undefined }) {
+  const { ethUsd, isError } = useEthPrice();
+  const usd = Number(usdValue);
+  if (!usdValue || isNaN(usd) || usd <= 0) return null;
+  if (isError || ethUsd === null) {
+    return <p className="text-xs text-muted-foreground">Live ETH rate unavailable</p>;
+  }
+  const eth = usd / ethUsd;
+  return (
+    <p className="text-xs text-muted-foreground">
+      ≈ {eth.toFixed(6)} ETH <span className="opacity-70">(live rate, computed at purchase)</span>
+    </p>
+  );
+}
+
 function TraitForm({
   defaultValues,
   onSubmit,
@@ -5007,7 +5015,7 @@ function TraitForm({
       description: defaultValues?.description ?? "",
       imageUrl: defaultValues?.imageUrl ?? "",
       mediaType: ((defaultValues as Record<string, unknown>)?.mediaType as MediaType) ?? "image",
-      priceUsd: (defaultValues as Record<string, unknown>)?.priceUsd as string ?? "5.00",
+      priceUsd: defaultValues?.priceUsd ?? "25.00",
       totalSupply: defaultValues?.totalSupply ?? 100,
       rarity: (defaultValues?.rarity as Rarity) ?? "common",
       isActive: defaultValues?.isActive ?? false,
@@ -5115,7 +5123,7 @@ function TraitForm({
           <Input
             id="priceUsd"
             {...form.register("priceUsd")}
-            placeholder="5.00"
+            placeholder="25.00"
             className="bg-secondary/50 font-mono"
             data-testid="input-price"
           />
@@ -5124,11 +5132,7 @@ function TraitForm({
               {form.formState.errors.priceUsd.message}
             </p>
           )}
-          <p className="text-xs text-muted-foreground font-mono">
-            {ethUsd
-              ? `≈ ${formatEth(form.watch("priceUsd") || "0", ethUsd)} at current rate`
-              : "Fetching live ETH rate..."}
-          </p>
+          <LiveEthEstimate usdValue={form.watch("priceUsd")} />
         </div>
 
         <div className="space-y-2">
@@ -7575,7 +7579,6 @@ function BundlesPointsAdminTab() {
       {
         data: {
           ...bundleForm,
-          priceEth: usdToEth(bundleForm.priceUsd, bundleEthUsd)?.toFixed(8) ?? "0",
           description: bundleForm.description || undefined,
           imageUrl: bundleForm.imageUrl || undefined,
         },
@@ -7601,7 +7604,6 @@ function BundlesPointsAdminTab() {
           description: editingBundle.description ?? undefined,
           imageUrl: editingBundle.imageUrl ?? undefined,
           priceUsd: editingBundle.priceUsd,
-          priceEth: usdToEth(editingBundle.priceUsd, bundleEthUsd)?.toFixed(8) ?? editingBundle.priceEth,
           totalSupply: editingBundle.totalSupply,
           isActive: editingBundle.isActive,
           traitIds: editingBundle.traits.map((t) => t.id),
@@ -7711,9 +7713,7 @@ function BundlesPointsAdminTab() {
               <div className="space-y-1">
                 <Label className="text-xs">Price (USD)</Label>
                 <Input type="number" step="0.01" value={bundleForm.priceUsd} onChange={(e) => setBundleForm((f) => ({ ...f, priceUsd: e.target.value }))} />
-                <p className="text-[10px] text-muted-foreground font-mono">
-                  {bundleEthUsd ? `≈ ${formatEth(bundleForm.priceUsd || "0", bundleEthUsd)}` : "..."}
-                </p>
+                <LiveEthEstimate usdValue={bundleForm.priceUsd} />
               </div>
               <div className="space-y-1"><Label className="text-xs">Total Supply (-1 = unlimited)</Label><Input type="number" value={bundleForm.totalSupply} onChange={(e) => setBundleForm((f) => ({ ...f, totalSupply: Number(e.target.value) }))} /></div>
               <div className="space-y-1"><Label className="text-xs">Image URL (optional)</Label><Input value={bundleForm.imageUrl} onChange={(e) => setBundleForm((f) => ({ ...f, imageUrl: e.target.value }))} /></div>
@@ -7757,12 +7757,7 @@ function BundlesPointsAdminTab() {
             {bundles.map((bundle) => (
               <TableRow key={bundle.id}>
                 <TableCell className="font-medium">{bundle.name}</TableCell>
-                <TableCell>
-                  <div>${bundle.priceUsd}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatEth(bundle.priceEth, bundleEthUsd) ?? `${bundle.priceEth} ETH`}
-                  </div>
-                </TableCell>
+                <TableCell>${bundle.priceUsd}</TableCell>
                 <TableCell>{bundle.traits.length}</TableCell>
                 <TableCell>{bundle.totalSupply === -1 ? "∞" : `${bundle.remainingSupply}/${bundle.totalSupply}`}</TableCell>
                 <TableCell>{bundle.isActive ? <Badge variant="secondary">Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
@@ -7809,9 +7804,7 @@ function BundlesPointsAdminTab() {
               <div className="space-y-1">
                 <Label className="text-xs">Price (USD)</Label>
                 <Input type="number" step="0.01" value={editingBundle.priceUsd} onChange={(e) => setEditingBundle({ ...editingBundle, priceUsd: e.target.value })} />
-                <p className="text-[10px] text-muted-foreground font-mono">
-                  {bundleEthUsd ? `≈ ${formatEth(editingBundle.priceUsd || "0", bundleEthUsd)}` : "..."}
-                </p>
+                <LiveEthEstimate usdValue={editingBundle.priceUsd} />
               </div>
               <div className="space-y-1"><Label className="text-xs">Total Supply (-1 = unlimited)</Label><Input type="number" value={editingBundle.totalSupply} onChange={(e) => setEditingBundle({ ...editingBundle, totalSupply: Number(e.target.value) })} /></div>
               <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={editingBundle.imageUrl ?? ""} onChange={(e) => setEditingBundle({ ...editingBundle, imageUrl: e.target.value })} /></div>

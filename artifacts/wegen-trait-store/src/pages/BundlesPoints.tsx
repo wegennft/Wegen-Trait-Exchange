@@ -33,7 +33,7 @@ export function BundlesPoints() {
   const queryClient = useQueryClient();
 
   const [pendingPack, setPendingPack] = useState<{ id: number; name: string; usdValue: string; pointsGranted: number } | null>(null);
-  const [pendingBundle, setPendingBundle] = useState<{ id: number; name: string; priceEth: string; priceUsd: string } | null>(null);
+  const [pendingBundle, setPendingBundle] = useState<{ id: number; name: string; priceUsd: string } | null>(null);
   const [traitSearch, setTraitSearch] = useState("");
 
   const { data: packsData, isLoading: loadingPacks } = useListPointPacks();
@@ -106,7 +106,7 @@ export function BundlesPoints() {
     ? [
         { label: "Bundle", value: pendingBundle.name },
         { label: "Price", value: `$${pendingBundle.priceUsd}`, accent: true },
-        { label: "ETH Amount", value: formatEth(pendingBundle.priceUsd, ethUsd) ?? `${pendingBundle.priceEth} ETH` },
+        ...(formatEth(pendingBundle.priceUsd, ethUsd) ? [{ label: "ETH Amount", value: formatEth(pendingBundle.priceUsd, ethUsd)! }] : []),
       ]
     : [];
 
@@ -282,9 +282,9 @@ export function BundlesPoints() {
                         <div className="text-2xl leading-none" style={{ ...BANGERS, color: accent }}>
                           ${bundle.priceUsd}
                         </div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5">
-                          ≈ {formatEth(bundle.priceUsd, ethUsd) ?? `${bundle.priceEth} ETH`}
-                        </div>
+                        {formatEth(bundle.priceUsd, ethUsd) && (
+                          <div className="text-[11px] text-muted-foreground mt-0.5">≈ {formatEth(bundle.priceUsd, ethUsd)}</div>
+                        )}
                       </div>
                       {bundle.totalSupply !== -1 && (
                         <div className="text-right">

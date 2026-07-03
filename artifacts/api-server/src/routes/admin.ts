@@ -25,6 +25,7 @@ async function getOrCreateSettings(nftCollection: string) {
 }
 import { z } from "zod";
 import { encryptAuthorityKey, verifyStoredKey } from "../keyEncryption.js";
+import { getEthUsdRate, EthPriceUnavailableError } from "../lib/ethPriceService";
 
 const UpdateFeesBody = z.object({
   buyingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number"),
@@ -75,7 +76,7 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, category, theme, dropName, description, imageUrl, mediaType, priceUsd, priceEth, totalSupply, rarity, isActive, payoutSplits } =
+  const { name, category, theme, dropName, description, imageUrl, mediaType, priceUsd, totalSupply, rarity, isActive, payoutSplits } =
     body.data;
 
   const splits = payoutSplits ?? [];
@@ -85,6 +86,18 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
     return;
   }
 
+  let ethUsdRate: number;
+  try {
+    ethUsdRate = await getEthUsdRate();
+  } catch (err) {
+    if (err instanceof EthPriceUnavailableError) {
+      res.status(503).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  const priceEth = (Number(priceUsd) / ethUsdRate).toString();
   let priceWei: string;
   try {
     priceWei = ethers.parseEther(priceEth).toString();
@@ -155,12 +168,23 @@ router.put("/admin/traits/:traitId", async (req, res): Promise<void> => {
   if ("theme" in body.data) updates.theme = body.data.theme ?? null;
   if ("dropName" in body.data) updates.dropName = body.data.dropName ?? null;
 
-  if (body.data.priceUsd !== undefined) updates.priceUsd = body.data.priceUsd;
-
-  if (body.data.priceEth !== undefined) {
-    updates.priceEth = body.data.priceEth;
+  if (body.data.priceUsd !== undefined) {
+    let ethUsdRate: number;
     try {
-      updates.priceWei = ethers.parseEther(body.data.priceEth).toString();
+      ethUsdRate = await getEthUsdRate();
+    } catch (err) {
+      if (err instanceof EthPriceUnavailableError) {
+        res.status(503).json({ error: err.message });
+        return;
+      }
+      throw err;
+    }
+
+    const priceEth = (Number(body.data.priceUsd) / ethUsdRate).toString();
+    updates.priceUsd = body.data.priceUsd;
+    updates.priceEth = priceEth;
+    try {
+      updates.priceWei = ethers.parseEther(priceEth).toString();
     } catch {
       updates.priceWei = "0";
     }

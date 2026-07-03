@@ -9,7 +9,7 @@ import {
   getGetUserNftsQueryKey,
   getGetLockerQueryKey,
 } from "@workspace/api-client-react";
-import { WegenNft, LockerItem } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { WegenNft, LockerItem } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

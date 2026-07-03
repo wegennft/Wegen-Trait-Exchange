@@ -16,6 +16,7 @@ import {
   PurchaseBundleBody,
 } from "@workspace/api-zod";
 import { requireWalletOwnership } from "../middleware/requireAuth";
+import { getEthUsdRate, convertUsdToEth, EthPriceUnavailableError } from "../lib/ethPriceService";
 
 const router: IRouter = Router();
 
@@ -108,6 +109,18 @@ router.post(
       return;
     }
 
+    let ethAmount: string;
+    let ethPriceAtPurchase: string;
+    try {
+      ({ ethAmount, ethPriceAtPurchase } = await convertUsdToEth(Number(bundle.priceUsd)));
+    } catch (err) {
+      if (err instanceof EthPriceUnavailableError) {
+        res.status(503).json({ error: err.message });
+        return;
+      }
+      throw err;
+    }
+
     if (bundle.totalSupply !== -1) {
       await db
         .update(traitBundlesTable)
@@ -118,6 +131,8 @@ router.post(
     await db.insert(bundlePurchasesTable).values({
       walletAddress,
       bundleId,
+      ethAmount,
+      ethPriceAtPurchase,
       txHash: txHash ?? null,
     });
 
@@ -167,9 +182,21 @@ router.post("/admin/bundles", async (req, res): Promise<void> => {
     return;
   }
 
+  let ethUsdRate: number;
+  try {
+    ethUsdRate = await getEthUsdRate();
+  } catch (err) {
+    if (err instanceof EthPriceUnavailableError) {
+      res.status(503).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  const priceEth = (Number(body.data.priceUsd) / ethUsdRate).toString();
   let priceWei: string;
   try {
-    priceWei = ethers.parseEther(body.data.priceEth).toString();
+    priceWei = ethers.parseEther(priceEth).toString();
   } catch {
     priceWei = "0";
   }
@@ -183,7 +210,7 @@ router.post("/admin/bundles", async (req, res): Promise<void> => {
       description: body.data.description ?? null,
       imageUrl: body.data.imageUrl ?? null,
       priceUsd: body.data.priceUsd,
-      priceEth: body.data.priceEth,
+      priceEth,
       priceWei,
       totalSupply,
       remainingSupply: totalSupply,
@@ -231,9 +258,21 @@ router.put("/admin/bundles/:bundleId", async (req, res): Promise<void> => {
     return;
   }
 
+  let updateEthUsdRate: number;
+  try {
+    updateEthUsdRate = await getEthUsdRate();
+  } catch (err) {
+    if (err instanceof EthPriceUnavailableError) {
+      res.status(503).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  const updatedPriceEth = (Number(body.data.priceUsd) / updateEthUsdRate).toString();
   let priceWei: string;
   try {
-    priceWei = ethers.parseEther(body.data.priceEth).toString();
+    priceWei = ethers.parseEther(updatedPriceEth).toString();
   } catch {
     priceWei = "0";
   }
@@ -250,7 +289,7 @@ router.put("/admin/bundles/:bundleId", async (req, res): Promise<void> => {
       description: body.data.description ?? null,
       imageUrl: body.data.imageUrl ?? null,
       priceUsd: body.data.priceUsd,
-      priceEth: body.data.priceEth,
+      priceEth: updatedPriceEth,
       priceWei,
       totalSupply,
       remainingSupply,

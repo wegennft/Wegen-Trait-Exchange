@@ -12,8 +12,10 @@ export interface UpdateTraitBody {
   name?: string;
   description?: string;
   imageUrl?: string;
+  mediaType?: string | null;
+  dropName?: string | null;
+  /** Fixed USD price; the ETH equivalent is derived server-side from the live rate on save */
   priceUsd?: string;
-  priceEth?: string;
   totalSupply?: number;
   isActive?: boolean;
   rarity?: UpdateTraitBodyRarity;

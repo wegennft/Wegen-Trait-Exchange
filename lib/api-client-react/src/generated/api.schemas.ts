@@ -38,9 +38,9 @@ export interface Trait {
   description?: string | null;
   imageUrl?: string | null;
   mediaType?: string | null;
-  /** Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate */
+  /** Fixed USD price (source of truth, as string to avoid floating point issues) */
   priceUsd: string;
-  /** Price in ETH (as string to avoid floating point issues) */
+  /** Live-computed ETH equivalent, snapshotted from priceUsd on last save (as string) */
   priceEth: string;
   /** Price in wei */
   priceWei: string;
@@ -237,9 +237,10 @@ export interface CreateTraitBody {
   theme?: string | null;
   description?: string;
   imageUrl?: string;
-  /** Canonical price in USD; ETH price is derived from this at save time using the live rate */
+  mediaType?: string | null;
+  dropName?: string | null;
+  /** Fixed USD price; the ETH equivalent is derived server-side from the live rate on save */
   priceUsd: string;
-  priceEth: string;
   totalSupply: number;
   rarity: CreateTraitBodyRarity;
   isActive?: boolean;
@@ -263,8 +264,10 @@ export interface UpdateTraitBody {
   name?: string;
   description?: string;
   imageUrl?: string;
+  mediaType?: string | null;
+  dropName?: string | null;
+  /** Fixed USD price; the ETH equivalent is derived server-side from the live rate on save */
   priceUsd?: string;
-  priceEth?: string;
   totalSupply?: number;
   isActive?: boolean;
   rarity?: UpdateTraitBodyRarity;
@@ -466,8 +469,9 @@ export interface Bundle {
   name: string;
   description?: string | null;
   imageUrl?: string | null;
-  /** Canonical price in USD; the fixed value that never changes with the ETH rate */
+  /** Fixed USD price (source of truth, as string to avoid floating point issues) */
   priceUsd: string;
+  /** Live-computed ETH equivalent, snapshotted from priceUsd on last save (as string) */
   priceEth: string;
   priceWei: string;
   totalSupply: number;
@@ -485,9 +489,8 @@ export interface CreateBundleBody {
   name: string;
   description?: string;
   imageUrl?: string;
-  /** Canonical price in USD; ETH price is derived from this at save time using the live rate */
+  /** Fixed USD price; the ETH equivalent is derived server-side from the live rate on save */
   priceUsd: string;
-  priceEth: string;
   totalSupply?: number;
   isActive?: boolean;
   /** IDs of traits included in this bundle */

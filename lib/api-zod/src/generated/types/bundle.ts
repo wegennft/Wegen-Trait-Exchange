@@ -12,6 +12,8 @@ export interface Bundle {
   name: string;
   description?: string | null;
   imageUrl?: string | null;
+  /** Canonical price in USD; the fixed value that never changes with the ETH rate */
+  priceUsd: string;
   priceEth: string;
   priceWei: string;
   totalSupply: number;

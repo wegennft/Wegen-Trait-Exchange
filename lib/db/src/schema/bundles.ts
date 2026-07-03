@@ -15,6 +15,7 @@ export const traitBundlesTable = pgTable("trait_bundles", {
   name: text("name").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
+  priceUsd: text("price_usd").notNull().default("0"),
   priceEth: text("price_eth").notNull(),
   priceWei: text("price_wei").notNull(),
   totalSupply: integer("total_supply").notNull().default(-1),

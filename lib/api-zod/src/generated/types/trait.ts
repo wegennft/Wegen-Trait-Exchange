@@ -17,6 +17,8 @@ export interface Trait {
   description?: string | null;
   imageUrl?: string | null;
   mediaType?: string | null;
+  /** Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate */
+  priceUsd: string;
   /** Price in ETH (as string to avoid floating point issues) */
   priceEth: string;
   /** Price in wei */

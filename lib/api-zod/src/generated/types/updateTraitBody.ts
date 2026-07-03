@@ -12,6 +12,7 @@ export interface UpdateTraitBody {
   name?: string;
   description?: string;
   imageUrl?: string;
+  priceUsd?: string;
   priceEth?: string;
   totalSupply?: number;
   isActive?: boolean;

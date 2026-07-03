@@ -59,3 +59,21 @@ export function formatUsd(ethAmount: string | number, ethUsd: number | null): st
   if (usd < 10) return `$${usd.toFixed(2)}`;
   return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
+
+/**
+ * Converts a fixed USD amount into its live ETH equivalent, given the current
+ * ETH/USD rate. Returns a formatted ETH string (e.g. "0.012345 ETH"), or null
+ * while the live rate is unavailable.
+ */
+export function usdToEth(usdAmount: string | number, ethUsd: number | null): number | null {
+  if (ethUsd === null || ethUsd <= 0) return null;
+  const usd = typeof usdAmount === "string" ? parseFloat(usdAmount) : usdAmount;
+  if (isNaN(usd)) return null;
+  return usd / ethUsd;
+}
+
+export function formatEth(usdAmount: string | number, ethUsd: number | null): string | null {
+  const eth = usdToEth(usdAmount, ethUsd);
+  if (eth === null) return null;
+  return `${eth.toFixed(6)} ETH`;
+}

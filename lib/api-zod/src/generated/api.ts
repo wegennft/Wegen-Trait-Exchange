@@ -87,6 +87,11 @@ export const ListTraitsResponse = zod.object({
       description: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
       mediaType: zod.string().nullish(),
+      priceUsd: zod
+        .string()
+        .describe(
+          "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+        ),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -234,6 +239,11 @@ export const GetTraitResponse = zod.object({
   description: zod.string().nullish(),
   imageUrl: zod.string().nullish(),
   mediaType: zod.string().nullish(),
+  priceUsd: zod
+    .string()
+    .describe(
+      "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+    ),
   priceEth: zod
     .string()
     .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -304,6 +314,11 @@ export const GetLockerResponse = zod.object({
         description: zod.string().nullish(),
         imageUrl: zod.string().nullish(),
         mediaType: zod.string().nullish(),
+        priceUsd: zod
+          .string()
+          .describe(
+            "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+          ),
         priceEth: zod
           .string()
           .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -396,6 +411,11 @@ export const GetUserNftsResponse = zod.object({
             description: zod.string().nullish(),
             imageUrl: zod.string().nullish(),
             mediaType: zod.string().nullish(),
+            priceUsd: zod
+              .string()
+              .describe(
+                "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+              ),
             priceEth: zod
               .string()
               .describe(
@@ -481,6 +501,11 @@ export const ApplyTraitResponse = zod.object({
           description: zod.string().nullish(),
           imageUrl: zod.string().nullish(),
           mediaType: zod.string().nullish(),
+          priceUsd: zod
+            .string()
+            .describe(
+              "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+            ),
           priceEth: zod
             .string()
             .describe(
@@ -534,6 +559,11 @@ export const ApplyTraitResponse = zod.object({
       description: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
       mediaType: zod.string().nullish(),
+      priceUsd: zod
+        .string()
+        .describe(
+          "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+        ),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -617,6 +647,11 @@ export const RemoveTraitResponse = zod.object({
           description: zod.string().nullish(),
           imageUrl: zod.string().nullish(),
           mediaType: zod.string().nullish(),
+          priceUsd: zod
+            .string()
+            .describe(
+              "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+            ),
           priceEth: zod
             .string()
             .describe(
@@ -670,6 +705,11 @@ export const RemoveTraitResponse = zod.object({
       description: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
       mediaType: zod.string().nullish(),
+      priceUsd: zod
+        .string()
+        .describe(
+          "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+        ),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -1005,6 +1045,11 @@ export const CreateTraitBody = zod.object({
     ),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  priceUsd: zod
+    .string()
+    .describe(
+      "Canonical price in USD; ETH price is derived from this at save time using the live rate",
+    ),
   priceEth: zod.string(),
   totalSupply: zod.number(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
@@ -1044,6 +1089,7 @@ export const UpdateTraitBody = zod.object({
   name: zod.string().optional(),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  priceUsd: zod.string().optional(),
   priceEth: zod.string().optional(),
   totalSupply: zod.number().optional(),
   isActive: zod.boolean().optional(),
@@ -1087,6 +1133,11 @@ export const UpdateTraitResponse = zod.object({
   description: zod.string().nullish(),
   imageUrl: zod.string().nullish(),
   mediaType: zod.string().nullish(),
+  priceUsd: zod
+    .string()
+    .describe(
+      "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+    ),
   priceEth: zod
     .string()
     .describe("Price in ETH (as string to avoid floating point issues)"),
@@ -1357,6 +1408,11 @@ export const ListBundlesResponse = zod.object({
       name: zod.string(),
       description: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
+      priceUsd: zod
+        .string()
+        .describe(
+          "Canonical price in USD; the fixed value that never changes with the ETH rate",
+        ),
       priceEth: zod.string(),
       priceWei: zod.string(),
       totalSupply: zod.number(),
@@ -1376,6 +1432,11 @@ export const ListBundlesResponse = zod.object({
           description: zod.string().nullish(),
           imageUrl: zod.string().nullish(),
           mediaType: zod.string().nullish(),
+          priceUsd: zod
+            .string()
+            .describe(
+              "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+            ),
           priceEth: zod
             .string()
             .describe(
@@ -1440,6 +1501,11 @@ export const ListAdminBundlesResponse = zod.object({
       name: zod.string(),
       description: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
+      priceUsd: zod
+        .string()
+        .describe(
+          "Canonical price in USD; the fixed value that never changes with the ETH rate",
+        ),
       priceEth: zod.string(),
       priceWei: zod.string(),
       totalSupply: zod.number(),
@@ -1459,6 +1525,11 @@ export const ListAdminBundlesResponse = zod.object({
           description: zod.string().nullish(),
           imageUrl: zod.string().nullish(),
           mediaType: zod.string().nullish(),
+          priceUsd: zod
+            .string()
+            .describe(
+              "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+            ),
           priceEth: zod
             .string()
             .describe(
@@ -1508,6 +1579,11 @@ export const CreateBundleBody = zod.object({
   name: zod.string(),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  priceUsd: zod
+    .string()
+    .describe(
+      "Canonical price in USD; ETH price is derived from this at save time using the live rate",
+    ),
   priceEth: zod.string(),
   totalSupply: zod.number().default(createBundleBodyTotalSupplyDefault),
   isActive: zod.boolean().default(createBundleBodyIsActiveDefault),
@@ -1530,6 +1606,11 @@ export const UpdateBundleBody = zod.object({
   name: zod.string(),
   description: zod.string().optional(),
   imageUrl: zod.string().optional(),
+  priceUsd: zod
+    .string()
+    .describe(
+      "Canonical price in USD; ETH price is derived from this at save time using the live rate",
+    ),
   priceEth: zod.string(),
   totalSupply: zod.number().default(updateBundleBodyTotalSupplyDefault),
   isActive: zod.boolean().default(updateBundleBodyIsActiveDefault),
@@ -1546,6 +1627,11 @@ export const UpdateBundleResponse = zod.object({
   name: zod.string(),
   description: zod.string().nullish(),
   imageUrl: zod.string().nullish(),
+  priceUsd: zod
+    .string()
+    .describe(
+      "Canonical price in USD; the fixed value that never changes with the ETH rate",
+    ),
   priceEth: zod.string(),
   priceWei: zod.string(),
   totalSupply: zod.number(),
@@ -1565,6 +1651,11 @@ export const UpdateBundleResponse = zod.object({
       description: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
       mediaType: zod.string().nullish(),
+      priceUsd: zod
+        .string()
+        .describe(
+          "Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate",
+        ),
       priceEth: zod
         .string()
         .describe("Price in ETH (as string to avoid floating point issues)"),

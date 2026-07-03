@@ -38,6 +38,8 @@ export interface Trait {
   description?: string | null;
   imageUrl?: string | null;
   mediaType?: string | null;
+  /** Canonical price in USD (as string to avoid floating point issues); the fixed value that never changes with the ETH rate */
+  priceUsd: string;
   /** Price in ETH (as string to avoid floating point issues) */
   priceEth: string;
   /** Price in wei */
@@ -235,6 +237,8 @@ export interface CreateTraitBody {
   theme?: string | null;
   description?: string;
   imageUrl?: string;
+  /** Canonical price in USD; ETH price is derived from this at save time using the live rate */
+  priceUsd: string;
   priceEth: string;
   totalSupply: number;
   rarity: CreateTraitBodyRarity;
@@ -259,6 +263,7 @@ export interface UpdateTraitBody {
   name?: string;
   description?: string;
   imageUrl?: string;
+  priceUsd?: string;
   priceEth?: string;
   totalSupply?: number;
   isActive?: boolean;
@@ -461,6 +466,8 @@ export interface Bundle {
   name: string;
   description?: string | null;
   imageUrl?: string | null;
+  /** Canonical price in USD; the fixed value that never changes with the ETH rate */
+  priceUsd: string;
   priceEth: string;
   priceWei: string;
   totalSupply: number;
@@ -478,6 +485,8 @@ export interface CreateBundleBody {
   name: string;
   description?: string;
   imageUrl?: string;
+  /** Canonical price in USD; ETH price is derived from this at save time using the live rate */
+  priceUsd: string;
   priceEth: string;
   totalSupply?: number;
   isActive?: boolean;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCollection } from "@/contexts/CollectionContext";
-import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
+import { useEthPrice, formatUsd, formatEth } from "@/hooks/useEthPrice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListPointPacks,
@@ -33,7 +33,7 @@ export function BundlesPoints() {
   const queryClient = useQueryClient();
 
   const [pendingPack, setPendingPack] = useState<{ id: number; name: string; usdValue: string; pointsGranted: number } | null>(null);
-  const [pendingBundle, setPendingBundle] = useState<{ id: number; name: string; priceEth: string } | null>(null);
+  const [pendingBundle, setPendingBundle] = useState<{ id: number; name: string; priceEth: string; priceUsd: string } | null>(null);
   const [traitSearch, setTraitSearch] = useState("");
 
   const { data: packsData, isLoading: loadingPacks } = useListPointPacks();
@@ -105,8 +105,8 @@ export function BundlesPoints() {
   const bundleDetails: TxDetail[] = pendingBundle
     ? [
         { label: "Bundle", value: pendingBundle.name },
-        { label: "Price", value: `${pendingBundle.priceEth} ETH`, accent: true },
-        ...(formatUsd(pendingBundle.priceEth, ethUsd) ? [{ label: "USD", value: formatUsd(pendingBundle.priceEth, ethUsd)! }] : []),
+        { label: "Price", value: `$${pendingBundle.priceUsd}`, accent: true },
+        { label: "ETH Amount", value: formatEth(pendingBundle.priceUsd, ethUsd) ?? `${pendingBundle.priceEth} ETH` },
       ]
     : [];
 
@@ -280,11 +280,11 @@ export function BundlesPoints() {
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Price</div>
                         <div className="text-2xl leading-none" style={{ ...BANGERS, color: accent }}>
-                          {bundle.priceEth} ETH
+                          ${bundle.priceUsd}
                         </div>
-                        {formatUsd(bundle.priceEth, ethUsd) && (
-                          <div className="text-[11px] text-muted-foreground mt-0.5">≈ {formatUsd(bundle.priceEth, ethUsd)}</div>
-                        )}
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          ≈ {formatEth(bundle.priceUsd, ethUsd) ?? `${bundle.priceEth} ETH`}
+                        </div>
                       </div>
                       {bundle.totalSupply !== -1 && (
                         <div className="text-right">

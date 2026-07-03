@@ -10,6 +10,8 @@ export interface CreateBundleBody {
   name: string;
   description?: string;
   imageUrl?: string;
+  /** Canonical price in USD; ETH price is derived from this at save time using the live rate */
+  priceUsd: string;
   priceEth: string;
   totalSupply?: number;
   isActive?: boolean;

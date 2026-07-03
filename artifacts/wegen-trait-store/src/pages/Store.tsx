@@ -27,7 +27,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { useEthPrice, formatUsd } from "@/hooks/useEthPrice";
+import { useEthPrice, formatUsd, formatEth } from "@/hooks/useEthPrice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
@@ -101,6 +101,7 @@ function NftPreviewBanner({
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const { ethUsd } = useEthPrice();
 
   const isNftIneligible = (nft: WegenNft) =>
     ineligibleNfts.includes(String(nft.tokenId).toLowerCase()) ||
@@ -399,13 +400,11 @@ function NftPreviewBanner({
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1 text-primary font-bold text-sm">
                             <Coins className="w-3.5 h-3.5" />
-                            {effectivePreviewTrait.priceEth} ETH
+                            ${effectivePreviewTrait.priceUsd}
                           </div>
-                          {formatUsd(effectivePreviewTrait.priceEth ?? 0, ethUsd) && (
-                            <span className="text-[10px] text-muted-foreground/60 font-mono pl-5">
-                              ≈ {formatUsd(effectivePreviewTrait.priceEth ?? 0, ethUsd)}
-                            </span>
-                          )}
+                          <span className="text-[10px] text-muted-foreground/60 font-mono pl-5">
+                            ≈ {formatEth(effectivePreviewTrait.priceUsd, ethUsd) ?? "..."}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -523,6 +522,7 @@ export function Store() {
   // ── Cart helpers ──
   const cartCount = cart.size;
   const cartItems = Array.from(cart.values());
+  const cartTotalUsd = cartItems.reduce((sum, t) => sum + parseFloat(t.priceUsd || "0"), 0);
   const cartTotal = cartItems.reduce((sum, t) => sum + parseFloat(t.priceEth || "0"), 0);
   const isInCart = (id: number) => cart.has(id);
 
@@ -782,7 +782,7 @@ export function Store() {
             </div>
             {cartCount > 0 && (
               <div className="text-xs text-accent font-semibold font-mono">
-                {cartTotal.toFixed(4)} ETH total
+                ${cartTotalUsd.toFixed(2)} total
               </div>
             )}
           </div>
@@ -1198,14 +1198,11 @@ export function Store() {
                   <div className="px-3 py-2.5 rounded mb-2" style={{ background: `${accent}1a`, border: `1px solid ${accent}40` }}>
                     <div className="flex items-baseline gap-2" style={{ ...BANGERS, color: accent }}>
                       <Coins className="w-6 h-6 flex-shrink-0 self-center" style={{ color: 'hsl(43 100% 60%)' }} />
-                      <span className="text-4xl leading-none">{trait.priceEth}</span>
-                      <span className="text-xl opacity-70">ETH</span>
+                      <span className="text-4xl leading-none">${trait.priceUsd}</span>
                     </div>
-                    {formatUsd(trait.priceEth ?? 0, ethUsd) && (
-                      <div className="text-sm font-mono mt-1 pl-8" style={{ color: 'hsl(43 100% 62%)', opacity: 0.85 }}>
-                        ≈ {formatUsd(trait.priceEth ?? 0, ethUsd)}
-                      </div>
-                    )}
+                    <div className="text-sm font-mono mt-1 pl-8" style={{ color: 'hsl(43 100% 62%)', opacity: 0.85 }}>
+                      ≈ {formatEth(trait.priceUsd, ethUsd) ?? "fetching rate..."}
+                    </div>
                   </div>
                   {/* Supply meter */}
                   {(() => {
@@ -1472,12 +1469,10 @@ export function Store() {
                     <div className="text-xs text-muted-foreground/60 capitalize">{trait.category} · {trait.rarity}</div>
                     <div className="flex items-center gap-1 text-accent text-xs font-bold font-mono mt-0.5">
                       <Coins className="w-3 h-3" />
-                      {trait.priceEth} ETH
-                      {formatUsd(trait.priceEth ?? 0, ethUsd) && (
-                        <span className="text-muted-foreground/50 font-normal ml-1">
-                          · {formatUsd(trait.priceEth ?? 0, ethUsd)}
-                        </span>
-                      )}
+                      ${trait.priceUsd}
+                      <span className="text-muted-foreground/50 font-normal ml-1">
+                        · {formatEth(trait.priceUsd, ethUsd) ?? "..."}
+                      </span>
                     </div>
                   </div>
 
@@ -1503,7 +1498,7 @@ export function Store() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground/60">
                   <span>{cartCount} trait{cartCount > 1 ? "s" : ""}</span>
-                  <span className="font-mono">{cartTotal.toFixed(4)} ETH</span>
+                  <span className="font-mono">${cartTotalUsd.toFixed(2)}</span>
                 </div>
                 {walletAddress && (
                   <div className="flex justify-between text-muted-foreground/50 text-xs">
@@ -1517,12 +1512,10 @@ export function Store() {
                 >
                   <span style={BANGERS}>TOTAL</span>
                   <div className="text-right">
-                    <div className="font-mono text-base">{cartTotal.toFixed(4)} ETH</div>
-                    {formatUsd(cartTotal, ethUsd) && (
-                      <div className="text-xs text-muted-foreground/50 font-mono font-normal">
-                        ≈ {formatUsd(cartTotal, ethUsd)}
-                      </div>
-                    )}
+                    <div className="font-mono text-base">${cartTotalUsd.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground/50 font-mono font-normal">
+                      ≈ {formatEth(cartTotalUsd, ethUsd) ?? `${cartTotal.toFixed(4)} ETH`}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1579,7 +1572,7 @@ export function Store() {
                   ) : (
                     <>
                       <Zap className="w-4 h-4" />
-                      CHECKOUT — {cartTotal.toFixed(4)} ETH
+                      CHECKOUT — ${cartTotalUsd.toFixed(2)}
                     </>
                   )}
                 </button>

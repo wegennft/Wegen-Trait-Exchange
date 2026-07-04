@@ -6857,6 +6857,7 @@ interface BountyTrait {
   totalSupply: number;
   remainingSupply: number;
   isActive: number;
+  sourceTraitId: number | null;
   totalRedeemed: number;
 }
 
@@ -6865,7 +6866,9 @@ function BountiesAdminTab() {
   const { toast } = useToast();
   const upload = useUpload();
 
-  const [form, setForm] = useState({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1 });
+  const [form, setForm] = useState<{
+    name: string; description: string; imageUrl: string; pointCost: number; totalSupply: number; sourceTraitId: number | null;
+  }>({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1, sourceTraitId: null });
   const [formUploading, setFormUploading] = useState(false);
   const [editImageUploading, setEditImageUploading] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -6874,6 +6877,8 @@ function BountiesAdminTab() {
   const [sendToAll, setSendToAll] = useState(false);
   const [sendResults, setSendResults] = useState<{ wallet: string; ok: boolean; error?: string }[] | null>(null);
   const [sendTotal, setSendTotal] = useState(0);
+  const [rewardCollection, setRewardCollection] = useState<"wegens" | "wegenettes">("wegens");
+  const [vaultOnly, setVaultOnly] = useState(true);
 
   const { data } = useQuery({
     queryKey: ["admin-bounty-traits"],
@@ -6882,6 +6887,9 @@ function BountiesAdminTab() {
       return r.json() as Promise<{ traits: BountyTrait[] }>;
     },
   });
+
+  const { data: rewardTraitsData } = useListTraits({ includeAll: true, limit: 9999, nftCollection: rewardCollection });
+  const rewardTraitPool = (rewardTraitsData?.traits ?? []).filter((t) => !vaultOnly || !t.isActive);
 
   const { data: lbData } = useQuery({
     queryKey: ["admin-bounty-leaderboard"],
@@ -6933,11 +6941,12 @@ function BountiesAdminTab() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
+          name: form.name || undefined,
           description: form.description || undefined,
           imageUrl: form.imageUrl || undefined,
           pointCost: form.pointCost,
           totalSupply: form.totalSupply,
+          sourceTraitId: form.sourceTraitId ?? undefined,
         }),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
@@ -6945,7 +6954,7 @@ function BountiesAdminTab() {
     },
     onSuccess: () => {
       toast({ title: "Bounty trait created!" });
-      setForm({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1 });
+      setForm({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1, sourceTraitId: null });
       qc.invalidateQueries({ queryKey: ["admin-bounty-traits"] });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -7102,6 +7111,84 @@ function BountiesAdminTab() {
       {/* ── Create Form ── */}
       <div className="rounded-xl border border-border/40 p-5 space-y-4">
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">New Reward Trait</h3>
+
+        {/* ── Pick from Vault ── */}
+        <div className="space-y-2 rounded-lg border border-border/40 p-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <Label className="text-xs font-semibold">Pick a Trait from the Vault (optional)</Label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setVaultOnly((v) => !v)}
+                className={`text-[11px] px-2 py-0.5 rounded border ${
+                  vaultOnly ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                }`}
+              >
+                {vaultOnly ? "Vault only ✓" : "Show all traits"}
+              </button>
+              <div className="flex gap-1">
+                {(["wegens", "wegenettes"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setRewardCollection(c)}
+                    className={`text-[11px] px-2 py-0.5 rounded border ${
+                      rewardCollection === c ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                    }`}
+                  >
+                    {c === "wegens" ? "Wegens" : "Wegenettes"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Selecting a trait links this reward to it — redeeming will deliver the real trait straight into the wallet's Trait Locker.
+          </p>
+          <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 p-2 rounded-md border border-border/50">
+            {rewardTraitPool.length === 0 && (
+              <div className="col-span-full text-center text-xs text-muted-foreground py-3">
+                No {vaultOnly ? "vaulted " : ""}traits found in this collection.
+              </div>
+            )}
+            {rewardTraitPool.map((trait) => {
+              const isSelected = form.sourceTraitId === trait.id;
+              return (
+                <button
+                  key={trait.id}
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      sourceTraitId: isSelected ? null : trait.id,
+                      name: isSelected ? f.name : (f.name || trait.name),
+                      imageUrl: isSelected ? f.imageUrl : (f.imageUrl || trait.imageUrl || ""),
+                    }))
+                  }
+                  className={`flex items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded border truncate ${
+                    isSelected ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                  }`}
+                >
+                  {trait.imageUrl && <img src={trait.imageUrl} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />}
+                  <span className="truncate">{trait.name}</span>
+                </button>
+              );
+            })}
+          </div>
+          {form.sourceTraitId !== null && (
+            <div className="flex items-center gap-2 text-[11px] text-primary">
+              <span>✓ Linked to trait #{form.sourceTraitId}</span>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-destructive underline"
+                onClick={() => setForm((f) => ({ ...f, sourceTraitId: null }))}
+              >
+                Unlink
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <Label className="text-xs">Name *</Label>
@@ -7235,7 +7322,14 @@ function BountiesAdminTab() {
                   <div className="flex items-center gap-4">
                     {t.imageUrl && <img src={t.imageUrl} alt={t.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />}
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm truncate">{t.name}</div>
+                      <div className="font-semibold text-sm truncate flex items-center gap-2">
+                        {t.name}
+                        {t.sourceTraitId !== null && (
+                          <Badge variant="outline" className="text-[9px] font-normal border-primary/40 text-primary">
+                            Vault-linked #{t.sourceTraitId}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
                         <span className="text-yellow-400 font-bold">{t.pointCost} pts</span>
                         <span>{t.totalSupply === -1 ? "∞" : `${t.remainingSupply}/${t.totalSupply}`} supply</span>

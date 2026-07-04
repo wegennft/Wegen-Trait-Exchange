@@ -1,2 +1,3 @@
 - [On-Chain Metadata Flow](on-chain-metadata.md) — confirm-traits stores variantPack + txHash in wegen_nfts; metadata endpoints at /api/metadata/:collection/:tokenId[/image] serve ERC-721 JSON + sharp-composited PNG.
 - [USD-primary pricing pattern](usd-primary-pricing.md) — priceUsd is source of truth; priceEth always re-derived server-side from live rate, 503 if rate unavailable, never trust client ETH amounts.
+- [Vault-linked bounty rewards](vault-linked-bounty-rewards.md) — bounty reward traits can optionally link to a real vault trait; redeem then delivers a real locker item instead of a cosmetic-only reward record.

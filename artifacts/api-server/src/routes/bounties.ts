@@ -9,6 +9,7 @@ import {
   dailyBountyCompletionsTable,
   lockerItemsTable,
   wegenNftsTable,
+  traitsTable,
 } from "@workspace/db";
 import { requireWalletOwnership } from "../middleware/requireAuth";
 
@@ -337,11 +338,30 @@ router.post(
         .where(eq(bountyTraitsTable.id, traitId));
     }
 
+    // If this reward is linked to a real vault trait, deliver it into the wallet's Trait Locker
+    let deliveredTraitId: number | null = null;
+    if (trait.sourceTraitId) {
+      const [sourceTrait] = await db
+        .select()
+        .from(traitsTable)
+        .where(eq(traitsTable.id, trait.sourceTraitId));
+
+      if (sourceTrait) {
+        await db.insert(lockerItemsTable).values({
+          traitId: sourceTrait.id,
+          walletAddress,
+          quantity: 1,
+        });
+        deliveredTraitId = sourceTrait.id;
+      }
+    }
+
     res.json({
       success: true,
       traitName: trait.name,
       pointsSpent: trait.pointCost,
       remainingPoints: currentPoints - trait.pointCost,
+      deliveredTraitId,
     });
   },
 );
@@ -426,13 +446,33 @@ router.get("/admin/bounties/traits", async (_req, res): Promise<void> => {
 // ── Admin: POST /admin/bounties/traits ────────────────────────────────────────
 
 router.post("/admin/bounties/traits", async (req, res): Promise<void> => {
-  const { name, description, imageUrl, pointCost, totalSupply } = req.body as {
+  const { name, description, imageUrl, pointCost, totalSupply, sourceTraitId } = req.body as {
     name?: string; description?: string; imageUrl?: string;
-    pointCost?: number; totalSupply?: number;
+    pointCost?: number; totalSupply?: number; sourceTraitId?: number;
   };
 
-  if (!name || typeof name !== "string") {
-    res.status(400).json({ error: "name is required" });
+  let resolvedName = name;
+  let resolvedDescription = description ?? null;
+  let resolvedImageUrl = imageUrl ?? null;
+
+  if (typeof sourceTraitId === "number") {
+    const [sourceTrait] = await db
+      .select()
+      .from(traitsTable)
+      .where(eq(traitsTable.id, sourceTraitId));
+
+    if (!sourceTrait) {
+      res.status(400).json({ error: "sourceTraitId does not reference an existing trait" });
+      return;
+    }
+
+    resolvedName = resolvedName || sourceTrait.name;
+    resolvedDescription = resolvedDescription ?? sourceTrait.description ?? null;
+    resolvedImageUrl = resolvedImageUrl ?? sourceTrait.imageUrl ?? null;
+  }
+
+  if (!resolvedName || typeof resolvedName !== "string") {
+    res.status(400).json({ error: "name is required (or pick a source trait)" });
     return;
   }
 
@@ -441,13 +481,14 @@ router.post("/admin/bounties/traits", async (req, res): Promise<void> => {
   const [trait] = await db
     .insert(bountyTraitsTable)
     .values({
-      name,
-      description: description ?? null,
-      imageUrl: imageUrl ?? null,
+      name: resolvedName,
+      description: resolvedDescription,
+      imageUrl: resolvedImageUrl,
       pointCost: typeof pointCost === "number" ? pointCost : 100,
       totalSupply: supply,
       remainingSupply: supply,
       isActive: 1,
+      sourceTraitId: typeof sourceTraitId === "number" ? sourceTraitId : null,
     })
     .returning();
 
@@ -461,7 +502,7 @@ router.patch("/admin/bounties/traits/:id", async (req, res): Promise<void> => {
   const traitId = parseInt(rawId, 10);
   if (isNaN(traitId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { name, description, imageUrl, pointCost, totalSupply, remainingSupply, isActive } = req.body as Record<string, unknown>;
+  const { name, description, imageUrl, pointCost, totalSupply, remainingSupply, isActive, sourceTraitId } = req.body as Record<string, unknown>;
 
   const update: Partial<typeof bountyTraitsTable.$inferInsert> = {};
   if (typeof name === "string") update.name = name;
@@ -471,6 +512,9 @@ router.patch("/admin/bounties/traits/:id", async (req, res): Promise<void> => {
   if (typeof totalSupply === "number") update.totalSupply = totalSupply;
   if (typeof remainingSupply === "number") update.remainingSupply = remainingSupply;
   if (typeof isActive === "number") update.isActive = isActive;
+  if (typeof sourceTraitId === "number" || sourceTraitId === null) {
+    update.sourceTraitId = sourceTraitId as number | null;
+  }
 
   const [updated] = await db
     .update(bountyTraitsTable)

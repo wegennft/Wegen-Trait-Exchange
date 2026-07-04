@@ -7488,10 +7488,12 @@ function NftRegistryTab() {
 function BundlesPointsAdminTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { collection } = useCollection();
 
   const { data: packsData } = useListAdminPointPacks();
   const { data: bundlesData } = useListAdminBundles();
-  const { data: traitsData } = useListTraits({ includeAll: true, limit: 9999 });
+  const [traitCollection, setTraitCollection] = useState<"wegens" | "wegenettes">(collection);
+  const { data: traitsData } = useListTraits({ includeAll: true, limit: 9999, nftCollection: traitCollection });
 
   const createPointPack = useCreatePointPack();
   const updatePointPack = useUpdatePointPack();
@@ -7720,7 +7722,23 @@ function BundlesPointsAdminTab() {
             </div>
             <div className="space-y-1"><Label className="text-xs">Description (optional)</Label><Textarea value={bundleForm.description} onChange={(e) => setBundleForm((f) => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="space-y-1">
-              <Label className="text-xs">Traits ({bundleForm.traitIds.length} selected)</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Traits ({bundleForm.traitIds.length} selected)</Label>
+                <div className="flex gap-1">
+                  {(["wegens", "wegenettes"] as const).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setTraitCollection(c)}
+                      className={`text-[11px] px-2 py-0.5 rounded border ${
+                        traitCollection === c ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                      }`}
+                    >
+                      {c === "wegens" ? "Wegens" : "Wegenettes"}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 p-2 rounded-md border border-border/50">
                 {allTraits.map((trait) => (
                   <button
@@ -7810,7 +7828,23 @@ function BundlesPointsAdminTab() {
               <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={editingBundle.imageUrl ?? ""} onChange={(e) => setEditingBundle({ ...editingBundle, imageUrl: e.target.value })} /></div>
               <div className="space-y-1"><Label className="text-xs">Description</Label><Textarea value={editingBundle.description ?? ""} onChange={(e) => setEditingBundle({ ...editingBundle, description: e.target.value })} rows={2} /></div>
               <div className="space-y-1">
-                <Label className="text-xs">Traits ({editingBundle.traits.length} selected)</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Traits ({editingBundle.traits.length} selected)</Label>
+                  <div className="flex gap-1">
+                    {(["wegens", "wegenettes"] as const).map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setTraitCollection(c)}
+                        className={`text-[11px] px-2 py-0.5 rounded border ${
+                          traitCollection === c ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                        }`}
+                      >
+                        {c === "wegens" ? "Wegens" : "Wegenettes"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-2 rounded-md border border-border/50">
                   {allTraits.map((trait) => {
                     const selected = editingBundle.traits.some((t) => t.id === trait.id);

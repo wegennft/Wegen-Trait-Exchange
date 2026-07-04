@@ -7502,7 +7502,9 @@ function BundlesPointsAdminTab() {
   const updateBundle = useUpdateBundle();
   const deleteBundle = useDeleteBundle();
 
-  const pointPacks = packsData?.pointPacks ?? [];
+  const pointPacks = [...(packsData?.pointPacks ?? [])].sort(
+    (a, b) => parseFloat(a.usdValue) - parseFloat(b.usdValue)
+  );
   const bundles = bundlesData?.bundles ?? [];
   const allTraits = traitsData?.traits ?? [];
 

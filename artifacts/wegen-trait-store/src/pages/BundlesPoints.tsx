@@ -43,7 +43,9 @@ export function BundlesPoints() {
   const purchasePointPack = usePurchasePointPack();
   const purchaseBundle = usePurchaseBundle();
 
-  const pointPacks = packsData?.pointPacks ?? [];
+  const pointPacks = [...(packsData?.pointPacks ?? [])].sort(
+    (a, b) => parseFloat(a.usdValue) - parseFloat(b.usdValue)
+  );
   const bundles = bundlesData?.bundles ?? [];
   const totalPoints = balanceData?.totalPoints ?? 0;
 

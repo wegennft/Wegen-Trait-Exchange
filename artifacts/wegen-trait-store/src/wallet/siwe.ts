@@ -6,6 +6,7 @@ import {
   toUtf8Bytes,
 } from "ethers";
 import type { ConnectStep, WalletId } from "./types";
+import { hasMultipleEvmWallets } from "./evm-wallets";
 
 type RawProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -38,9 +39,19 @@ function formatWalletError(err: unknown, walletId?: WalletId): string {
   const msg = (err as { message?: string }).message ?? String(err);
   if (msg.toLowerCase().includes("coalesce") || msg.includes("-32000")) {
     if (walletId === "phantom") {
+      const multiHint = hasMultipleEvmWallets()
+        ? " With Rabby installed, try clicking Rabby instead, or pick Phantom from Rabby's wallet list."
+        : "";
       return (
-        "Phantom could not sign the login message. Open Phantom → Settings → Developer Settings, " +
-        "enable Ethereum, pick your EVM account, then try again."
+        "Phantom could not sign the login message. Switch to your Ethereum account in Phantom " +
+        "(top-left picker) on Ethereum Mainnet, then try again." +
+        multiHint
+      );
+    }
+    if (walletId === "rabby") {
+      return (
+        "Rabby could not sign the login message. Confirm the correct account is selected in Rabby, " +
+        "then try again."
       );
     }
     return (
@@ -77,8 +88,14 @@ function buildSignAttempts(
 
   const attempts: [string, string][] = [];
   for (const from of fromOrder) {
-    attempts.push([message, from]);
-    attempts.push([hexMsg, from]);
+    if (preferRawFrom) {
+      // Phantom / Backpack — hex-encoded message per EIP-1474 first
+      attempts.push([hexMsg, from]);
+      attempts.push([message, from]);
+    } else {
+      attempts.push([message, from]);
+      attempts.push([hexMsg, from]);
+    }
   }
 
   // Some wallets (Phantom, Backpack, legacy) accept [address, message]
@@ -90,6 +107,21 @@ function buildSignAttempts(
   }
 
   return uniquePairs(attempts);
+}
+
+const ACCEPTED_CHAIN_HEX = new Set(["0x1", "0xaa36a7"]);
+
+async function ensureAcceptedChain(raw: RawProvider, chainHex: string): Promise<string> {
+  if (ACCEPTED_CHAIN_HEX.has(chainHex.toLowerCase())) return chainHex;
+  try {
+    await raw.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x1" }],
+    });
+    return (await raw.request({ method: "eth_chainId" })) as string;
+  } catch {
+    return chainHex;
+  }
 }
 
 async function signSiweMessage(
@@ -150,7 +182,8 @@ export async function signInWithEvmProvider(
   })) as string[];
   if (!accounts.length) throw new Error("No accounts returned from wallet");
 
-  const chainHex = (await raw.request({ method: "eth_chainId" })) as string;
+  let chainHex = (await raw.request({ method: "eth_chainId" })) as string;
+  chainHex = await ensureAcceptedChain(raw, chainHex);
   const chainId = parseInt(chainHex, 16).toString();
 
   let signature = "";

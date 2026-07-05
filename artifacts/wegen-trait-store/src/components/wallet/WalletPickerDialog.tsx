@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import type { Eip1193Provider } from "ethers";
 import { useWallet, getEvmWalletOptions, WALLET_COLORS, WALLET_ICONS, type WalletId } from "@/contexts/WalletContext";
 import { detectSolanaWallets, type DetectedSolanaWallet } from "@/wallet/solana-adapter";
-import { isMobileBrowser } from "@/wallet/evm-wallets";
+import { isMobileBrowser, requestEip6963Providers } from "@/wallet/evm-wallets";
+import type { EvmWalletOption } from "@/wallet/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -78,11 +79,14 @@ export function WalletPickerDialog() {
   } = useWallet();
   const { toast } = useToast();
   const [solanaWallets, setSolanaWallets] = useState<DetectedSolanaWallet[]>([]);
-  const evmWalletOptions = getEvmWalletOptions();
+  const [evmWalletOptions, setEvmWalletOptions] = useState<EvmWalletOption[]>(() => getEvmWalletOptions());
 
   useEffect(() => {
     if (walletPickerOpen) {
       setSolanaWallets(detectSolanaWallets());
+      void requestEip6963Providers().then(() => {
+        setEvmWalletOptions(getEvmWalletOptions());
+      });
     }
   }, [walletPickerOpen]);
 
@@ -94,7 +98,7 @@ export function WalletPickerDialog() {
     setWalletPickerOpen(false);
     try {
       if (provider) {
-        await connect(provider, walletId);
+        await connectWallet(walletId);
         return;
       }
       if (isWalletConnectAvailable) {
@@ -118,7 +122,8 @@ export function WalletPickerDialog() {
       let description = err instanceof Error ? err.message : "Could not connect wallet";
       if (code === -32000 || code === 32000) {
         const hints: Partial<Record<WalletId, string>> = {
-          phantom: "Open Phantom → Settings → Developer Settings and enable Ethereum, then retry.",
+          phantom:
+            "In Phantom, switch to your Ethereum account (top-left picker) and set network to Ethereum Mainnet, then retry.",
           backpack: "Open Backpack → Settings and ensure the Ethereum network is enabled, then retry.",
           metamask: "Make sure the correct account is selected in MetaMask, then retry.",
         };

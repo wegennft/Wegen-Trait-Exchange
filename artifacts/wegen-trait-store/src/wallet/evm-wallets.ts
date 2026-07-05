@@ -1,5 +1,14 @@
 import type { Eip1193Provider } from "ethers";
 import type { DetectedWallet, EvmWalletOption, WalletChain, WalletId } from "./types";
+import {
+  getDiscoveredProviders,
+  getEip6963Provider,
+  rdnsToWalletId,
+  requestEip6963Providers,
+  startEip6963Discovery,
+} from "./eip6963";
+
+export { requestEip6963Providers, startEip6963Discovery, hasMultipleEvmWallets } from "./eip6963";
 
 type EvmProvider = Eip1193Provider & {
   isMetaMask?: boolean;
@@ -150,7 +159,15 @@ export function detectWallets(): DetectedWallet[] {
     results.push({ id, name, provider, chain });
   };
 
-  // Dedicated provider paths — important when Rabby/MetaMask owns window.ethereum
+  // EIP-6963 providers first — each wallet gets its own isolated provider object
+  for (const detail of getDiscoveredProviders().values()) {
+    const id = rdnsToWalletId(detail.info.rdns, detail.info.name);
+    if (!id) continue;
+    const chain: WalletChain = id === "phantom" || id === "backpack" || id === "okx" ? "evm+sol" : "evm";
+    tryAdd(id, detail.info.name, detail.provider, chain);
+  }
+
+  // Dedicated namespace fallbacks — when EIP-6963 not available yet
   tryAdd("phantom", "Phantom", w.phantom?.ethereum, "evm+sol");
   tryAdd("backpack", "Backpack", w.backpack?.ethereum, "evm+sol");
   tryAdd("coinbase", "Coinbase Wallet", w.coinbaseWalletExtension, "evm");
@@ -216,6 +233,16 @@ export function getEvmWalletOptions(): EvmWalletOption[] {
 }
 
 export function getInstalledWallet(id: WalletId): DetectedWallet | undefined {
+  const eip6963 = getEip6963Provider(id);
+  if (eip6963) {
+    const catalog = EVM_WALLET_CATALOG.find((e) => e.id === id);
+    return {
+      id,
+      name: catalog?.name ?? id,
+      provider: eip6963,
+      chain: catalog?.chain ?? "evm",
+    };
+  }
   return detectWallets().find((w) => w.id === id);
 }
 

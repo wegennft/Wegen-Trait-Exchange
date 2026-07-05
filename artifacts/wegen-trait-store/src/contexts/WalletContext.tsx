@@ -15,7 +15,7 @@ import {
   restoreSolanaSession,
   type SolanaProvider,
 } from "@/wallet/solana-adapter";
-import { detectWallets, getInstalledWallet } from "@/wallet/evm-wallets";
+import { detectWallets, getInstalledWallet, requestEip6963Providers } from "@/wallet/evm-wallets";
 import { signInWithEvmProvider } from "@/wallet/siwe";
 import { isWalletConnectConfigured } from "@/wallet/appkit-config";
 import type { ConnectStep, WalletId } from "@/wallet/types";
@@ -164,6 +164,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
   };
 
   const connectWallet = async (walletId: WalletId) => {
+    await requestEip6963Providers();
     const installed = getInstalledWallet(walletId);
     if (installed?.provider) {
       await connect(installed.provider, walletId);

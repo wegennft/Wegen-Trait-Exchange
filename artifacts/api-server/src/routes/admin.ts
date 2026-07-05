@@ -547,6 +547,7 @@ const UpdateGameSettingsBody = z.object({
   dailyGameEnabled: z.boolean().optional(),
   dailyGameOverrides: z.record(z.string(), z.record(z.string(), z.number().nullable())).optional(),
   celebrationGifUrl: z.string().nullable().optional(),
+  celebrationMediaType: z.string().nullable().optional(),
 });
 
 function serializeGameSettings(settings: typeof storeSettingsTable.$inferSelect) {
@@ -554,6 +555,7 @@ function serializeGameSettings(settings: typeof storeSettingsTable.$inferSelect)
     dailyGameEnabled: settings.dailyGameEnabled ?? true,
     dailyGameOverrides: JSON.parse(settings.dailyGameOverrides ?? "{}") as Record<string, Record<string, number | null>>,
     celebrationGifUrl: settings.celebrationGifUrl ?? null,
+    celebrationMediaType: settings.celebrationMediaType ?? null,
   };
 }
 
@@ -575,6 +577,7 @@ router.put("/admin/game-settings", async (req, res): Promise<void> => {
   const d = body.data;
   if (d.dailyGameEnabled !== undefined) toUpdate.dailyGameEnabled = d.dailyGameEnabled;
   if (d.celebrationGifUrl !== undefined) toUpdate.celebrationGifUrl = d.celebrationGifUrl || null;
+  if (d.celebrationMediaType !== undefined) toUpdate.celebrationMediaType = d.celebrationMediaType || null;
   if (d.dailyGameOverrides !== undefined) toUpdate.dailyGameOverrides = JSON.stringify(d.dailyGameOverrides);
   const [updated] = await db.update(storeSettingsTable).set(toUpdate).where(eq(storeSettingsTable.id, existing.id)).returning();
   res.json(serializeGameSettings(updated));

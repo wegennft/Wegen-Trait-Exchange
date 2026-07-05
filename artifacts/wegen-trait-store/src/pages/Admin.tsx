@@ -5661,6 +5661,7 @@ type GameSettings = {
   dailyGameEnabled: boolean;
   dailyGameOverrides: Record<string, Record<string, number | null>>;
   celebrationGifUrl: string | null;
+  celebrationMediaType: string | null;
 };
 
 function GamesTab() {
@@ -5688,12 +5689,14 @@ function GamesTab() {
 
   const [enabled, setEnabled] = useState(true);
   const [gifUrl, setGifUrl] = useState("");
+  const [celebrationMediaType, setCelebrationMediaType] = useState<string | null>(null);
   const [inited, setInited] = useState(false);
 
   useEffect(() => {
     if (gameSettings && !inited) {
       setEnabled(gameSettings.dailyGameEnabled);
       setGifUrl(gameSettings.celebrationGifUrl ?? "");
+      setCelebrationMediaType(gameSettings.celebrationMediaType ?? null);
       setInited(true);
     }
   }, [gameSettings, inited]);
@@ -5706,6 +5709,7 @@ function GamesTab() {
         body: JSON.stringify({
           dailyGameEnabled: enabled,
           celebrationGifUrl: gifUrl || null,
+          celebrationMediaType: gifUrl ? celebrationMediaType : null,
           dailyGameOverrides: gameSettings?.dailyGameOverrides ?? {},
         }),
       });
@@ -5788,22 +5792,31 @@ function GamesTab() {
 
         <Separator />
 
-        {/* Custom GIF */}
+        {/* Custom celebration media */}
         <div className="space-y-2">
-          <Label>Celebration GIF URL</Label>
-          <Input
-            placeholder="https://media.giphy.com/media/.../giphy.gif"
-            value={gifUrl}
-            onChange={(e) => setGifUrl(e.target.value)}
-          />
+          <Label>Celebration Media</Label>
           <p className="text-xs text-muted-foreground">
-            Shown in the win overlay when a player completes a bounty. Leave blank for the default.
+            Shown in the win overlay when a player completes a bounty. Upload a GIF or MP4, or paste a URL below. Leave blank for the default.
           </p>
-          {gifUrl && (
-            <div className="mt-2 rounded-lg overflow-hidden border border-border/40 inline-block">
-              <img src={gifUrl} alt="GIF preview" className="max-w-[200px] block" />
-            </div>
-          )}
+          <div className="max-w-40">
+            <TraitImageUploader
+              currentImageUrl={gifUrl || undefined}
+              onUploadComplete={(url) => setGifUrl(url)}
+              onMediaTypeChange={(type) => setCelebrationMediaType(type)}
+              onClear={() => {
+                setGifUrl("");
+                setCelebrationMediaType(null);
+              }}
+            />
+          </div>
+          <Input
+            placeholder="Or paste a URL: https://media.giphy.com/media/.../giphy.gif"
+            value={gifUrl}
+            onChange={(e) => {
+              setGifUrl(e.target.value);
+              setCelebrationMediaType(null);
+            }}
+          />
         </div>
       </div>
 

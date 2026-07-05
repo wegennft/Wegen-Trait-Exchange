@@ -102,6 +102,7 @@ type GameSettings = {
   dailyGameEnabled: boolean;
   dailyGameOverrides: Record<string, Record<string, number | null>>;
   celebrationGifUrl: string | null;
+  celebrationMediaType: string | null;
 };
 
 export function Sandbox() {
@@ -336,6 +337,7 @@ export function Sandbox() {
   const totalLayers = layerOrder.length;
   const gameEnabled = gameSettings?.dailyGameEnabled ?? true;
   const celebGif = gameSettings?.celebrationGifUrl ?? DEFAULT_CELEBRATION_GIF;
+  const celebMediaType = gameSettings?.celebrationGifUrl ? gameSettings?.celebrationMediaType : "gif";
 
   return (
     <div className="flex flex-col gap-5">
@@ -993,16 +995,17 @@ export function Sandbox() {
               A new bounty is ready — keep going!
             </p>
 
-            {/* GIF */}
+            {/* Celebration media */}
             <div
               className="rounded-xl overflow-hidden"
               style={{ border: "2px solid hsl(120 100% 45% / 0.3)", maxWidth: 260, width: "100%" }}
             >
-              <img
-                src={celebGif}
+              <TraitMedia
+                url={celebGif}
+                mediaType={celebMediaType}
                 alt="Celebration!"
                 className="w-full"
-                style={{ display: "block" }}
+                autoPlay
               />
             </div>
 

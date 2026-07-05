@@ -31,7 +31,7 @@ interface WalletContextState {
   isConnecting: boolean;
   connectStep: ConnectStep;
   chainId: string | null;
-  connect: (provider?: Eip1193Provider) => Promise<void>;
+  connect: (provider?: Eip1193Provider, walletId?: WalletId) => Promise<void>;
   connectWallet: (walletId: WalletId) => Promise<void>;
   connectWalletConnect: () => Promise<void>;
   isWalletConnectAvailable: boolean;
@@ -121,15 +121,15 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
     };
   }, [walletAddress, handleAccountsChanged, handleChainChanged]);
 
-  const completeSignIn = async (provider: Eip1193Provider) => {
-    const result = await signInWithEvmProvider(provider, setConnectStep);
+  const completeSignIn = async (provider: Eip1193Provider, walletId?: WalletId) => {
+    const result = await signInWithEvmProvider(provider, setConnectStep, walletId);
     activeProviderRef.current = provider;
     setWalletAddress(result.address);
     setChainId(result.chainId);
     setIsVerified(true);
   };
 
-  const connect = async (eth?: Eip1193Provider) => {
+  const connect = async (eth?: Eip1193Provider, walletId?: WalletId) => {
     const resolvedEth: Eip1193Provider | null =
       eth ??
       (() => {
@@ -156,7 +156,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
     setIsConnecting(true);
     setConnectStep("requesting");
     try {
-      await completeSignIn(resolvedEth);
+      await completeSignIn(resolvedEth, walletId);
     } finally {
       setIsConnecting(false);
       setConnectStep(null);
@@ -166,7 +166,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
   const connectWallet = async (walletId: WalletId) => {
     const installed = getInstalledWallet(walletId);
     if (installed?.provider) {
-      await connect(installed.provider);
+      await connect(installed.provider, walletId);
       return;
     }
     if (isWalletConnectConfigured) {
@@ -207,6 +207,8 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
         }, 300);
       });
 
+      // Brief pause so WalletConnect session is ready before personal_sign
+      await new Promise((r) => setTimeout(r, 400));
       await completeSignIn(provider);
     } finally {
       setIsConnecting(false);

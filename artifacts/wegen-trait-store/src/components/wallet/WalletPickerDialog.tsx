@@ -94,7 +94,7 @@ export function WalletPickerDialog() {
     setWalletPickerOpen(false);
     try {
       if (provider) {
-        await connect(provider);
+        await connect(provider, walletId);
         return;
       }
       if (isWalletConnectAvailable) {

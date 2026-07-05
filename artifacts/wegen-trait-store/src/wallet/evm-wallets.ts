@@ -150,6 +150,7 @@ export function detectWallets(): DetectedWallet[] {
     results.push({ id, name, provider, chain });
   };
 
+  // Dedicated provider paths — important when Rabby/MetaMask owns window.ethereum
   tryAdd("phantom", "Phantom", w.phantom?.ethereum, "evm+sol");
   tryAdd("backpack", "Backpack", w.backpack?.ethereum, "evm+sol");
   tryAdd("coinbase", "Coinbase Wallet", w.coinbaseWalletExtension, "evm");
@@ -158,7 +159,9 @@ export function detectWallets(): DetectedWallet[] {
 
   const eth = w.ethereum;
   if (eth?.request && !seen.has(eth)) {
-    if (eth.isBackpack) {
+    if (eth.isPhantom) {
+      tryAdd("phantom", "Phantom", eth, "evm+sol");
+    } else if (eth.isBackpack) {
       tryAdd("backpack", "Backpack", eth, "evm+sol");
     } else if (eth.isCoinbaseWallet) {
       tryAdd("coinbase", "Coinbase Wallet", eth, "evm");

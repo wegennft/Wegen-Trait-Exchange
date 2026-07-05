@@ -19,6 +19,7 @@ import { detectWallets, getInstalledWallet } from "@/wallet/evm-wallets";
 import { signInWithEvmProvider } from "@/wallet/siwe";
 import { isWalletConnectConfigured } from "@/wallet/appkit-config";
 import type { ConnectStep, WalletId } from "@/wallet/types";
+import { WalletPickerDialog } from "@/components/wallet/WalletPickerDialog";
 
 export type { WalletId, WalletChain, DetectedWallet } from "@/wallet/types";
 export { detectWallets, getEvmWalletOptions, WALLET_COLORS, WALLET_ICONS } from "@/wallet/evm-wallets";
@@ -41,6 +42,10 @@ interface WalletContextState {
   isSolanaConnecting: boolean;
   connectSolana: (provider: SolanaProvider) => Promise<string>;
   disconnectSolana: () => void;
+
+  walletPickerOpen: boolean;
+  setWalletPickerOpen: (open: boolean) => void;
+  openWalletPicker: () => void;
 }
 
 const WalletContext = createContext<WalletContextState | undefined>(undefined);
@@ -55,6 +60,11 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
   const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
   const [isSolanaConnecting, setIsSolanaConnecting] = useState(false);
   const [_activeSolanaProvider, setActiveSolanaProvider] = useState<SolanaProvider | null>(null);
+  const [walletPickerOpen, setWalletPickerOpen] = useState(false);
+
+  const openWalletPicker = useCallback(() => {
+    setWalletPickerOpen(true);
+  }, []);
 
   const activeProviderRef = useRef<Eip1193Provider | null>(null);
   const { open: openAppKit } = useAppKit();
@@ -262,9 +272,13 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
         isSolanaConnecting,
         connectSolana,
         disconnectSolana,
+        walletPickerOpen,
+        setWalletPickerOpen,
+        openWalletPicker,
       }}
     >
       {children}
+      <WalletPickerDialog />
     </WalletContext.Provider>
   );
 }

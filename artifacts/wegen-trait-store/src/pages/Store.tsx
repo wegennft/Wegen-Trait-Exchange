@@ -90,14 +90,14 @@ function getRarityGlow(rarity: string) {
 function NftPreviewBanner({
   walletAddress,
   isConnected,
-  connect,
+  onConnect,
   previewTrait,
   ineligibleNfts = [],
   ethUsd,
 }: {
   walletAddress: string | null;
   isConnected: boolean;
-  connect: () => void;
+  onConnect: () => void;
   previewTrait: Trait | null;
   ineligibleNfts?: string[];
   ethUsd: number | null;
@@ -163,7 +163,7 @@ function NftPreviewBanner({
                 <Wallet className="w-10 h-10 mx-auto mb-2 opacity-40" />
                 <p className="text-sm">Connect your wallet to preview traits on your Wegen NFTs.</p>
               </div>
-              <Button size="sm" onClick={connect} className="bg-primary text-white gap-2 flex-shrink-0">
+              <Button size="sm" onClick={onConnect} className="bg-primary text-white gap-2 flex-shrink-0">
                 <Wallet className="w-3.5 h-3.5" />
                 Connect Wallet
               </Button>
@@ -444,7 +444,7 @@ export function Store() {
   const [storeMode, setStoreMode] = useState<"traits" | "legends">("traits");
   const [legendPack, setLegendPack] = useState<string | undefined>();
 
-  const { walletAddress, isConnected, connect } = useWallet();
+  const { walletAddress, isConnected, connect, openWalletPicker } = useWallet();
   const { collection, theme } = useCollection();
   const { accent, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { toast } = useToast();
@@ -529,7 +529,7 @@ export function Store() {
   const isInCart = (id: number) => cart.has(id);
 
   const toggleCart = (trait: Trait) => {
-    if (!isConnected) { connect(); return; }
+    if (!isConnected) { openWalletPicker(); return; }
     setCart(prev => {
       const next = new Map(prev);
       if (next.has(trait.id)) next.delete(trait.id);
@@ -641,7 +641,8 @@ export function Store() {
           {/* Action */}
           {!isConnected ? (
             <button
-              onClick={connect}
+              type="button"
+              onClick={openWalletPicker}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold hover:bg-amber-500/25 transition-all text-sm uppercase tracking-widest"
               style={{ fontFamily: "'Bangers', cursive", letterSpacing: "0.1em" }}
             >
@@ -755,7 +756,7 @@ export function Store() {
 
           {/* Cart button ── */}
           <button
-            onClick={() => { if (!isConnected) { connect(); return; } setCartOpen(true); }}
+            onClick={() => { if (!isConnected) { openWalletPicker(); return; } setCartOpen(true); }}
           className="relative flex items-center gap-3 px-5 py-3 rounded-xl border transition-all group"
           style={{
             background: cartCount > 0
@@ -876,7 +877,7 @@ export function Store() {
       <NftPreviewBanner
         walletAddress={walletAddress}
         isConnected={isConnected}
-        connect={connect}
+        onConnect={openWalletPicker}
         previewTrait={previewTrait}
         ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
         ethUsd={ethUsd}

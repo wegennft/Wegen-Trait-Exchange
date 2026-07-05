@@ -2,7 +2,6 @@ import { ReactNode, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/button";
 import { Wallet, PenLine, Loader2, CheckCircle2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.1em' };
 
@@ -12,8 +11,7 @@ interface WalletConnectGuardProps {
 }
 
 export function WalletConnectGuard({ children, message = "Connect your wallet to view this page" }: WalletConnectGuardProps) {
-  const { isConnected, connect, isConnecting, connectStep } = useWallet();
-  const { toast } = useToast();
+  const { isConnected, isConnecting, connectStep, openWalletPicker } = useWallet();
   const [connectError, setConnectError] = useState<string | null>(null);
 
   if (isConnected) {
@@ -22,18 +20,7 @@ export function WalletConnectGuard({ children, message = "Connect your wallet to
 
   const handleConnect = async () => {
     setConnectError(null);
-    try {
-      await connect();
-    } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4001) {
-        setConnectError("You declined the sign-in request. Click below to try again.");
-      } else {
-        const msg = err instanceof Error ? err.message : "Connection failed";
-        setConnectError(msg);
-        toast({ title: "Connection failed", description: msg, variant: "destructive" });
-      }
-    }
+    openWalletPicker();
   };
 
   const buttonLabel = connectStep === "signing"

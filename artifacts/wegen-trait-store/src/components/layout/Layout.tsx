@@ -1,7 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useWallet, detectWallets, type DetectedWallet, type WalletId } from "@/contexts/WalletContext";
-import { detectSolanaWallets, type DetectedSolanaWallet } from "@/wallet/solana-adapter";
 import { NetworkMismatchBanner } from "@/components/wallet/NetworkMismatchBanner";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
@@ -45,9 +44,9 @@ const WALLET_ICONS: Partial<Record<WalletId, string>> = {
 const WALLET_DESC: Partial<Record<WalletId, string>> = {
   metamask: "MetaMask browser extension",
   phantom:  "Phantom — Ethereum provider",
-  backpack: "Backpack — EVM + Solana",
+  backpack: "Backpack — Ethereum provider",
   coinbase: "Coinbase Wallet extension",
-  okx:      "OKX Wallet — EVM + Solana",
+  okx:      "OKX Wallet — Ethereum provider",
   trust:    "Trust Wallet browser extension",
   rabby:    "Rabby — EVM-focused wallet",
   rainbow:  "Rainbow — Ethereum wallet",
@@ -96,15 +95,13 @@ function WalletIcon({ id, name }: { id: WalletId; name: string }) {
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { walletAddress, isConnected, connect, disconnect, isConnecting, connectStep,
-          solanaAddress, isSolanaConnected, isSolanaConnecting, connectSolana, disconnectSolana } = useWallet();
+  const { walletAddress, isConnected, connect, disconnect, isConnecting, connectStep } = useWallet();
   const { settings } = useSiteSettings();
   const { collection, collectionLabel, setCollection, theme } = useCollection();
   const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { toast } = useToast();
   const [walletPickerOpen, setWalletPickerOpen] = useState(false);
   const [detectedWallets, setDetectedWallets] = useState<DetectedWallet[]>([]);
-  const [solanaWallets, setSolanaWallets] = useState<DetectedSolanaWallet[]>([]);
 
   const doConnect = async (wallet: DetectedWallet) => {
     setWalletPickerOpen(false);
@@ -128,24 +125,10 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   };
 
-  const doConnectSolana = async (wallet: DetectedSolanaWallet) => {
-    setWalletPickerOpen(false);
-    try {
-      const addr = await connectSolana(wallet.provider);
-      toast({ title: `${wallet.name} connected`, description: `${addr.slice(0, 6)}…${addr.slice(-4)}` });
-    } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4001) return; // user cancelled
-      toast({ title: "Solana connection failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
-    }
-  };
-
   const handleConnect = () => {
     const evmWallets = detectWallets();
-    const solWallets = detectSolanaWallets();
-    const totalWallets = evmWallets.length + solWallets.length;
 
-    if (totalWallets === 0) {
+    if (evmWallets.length === 0) {
       toast({
         title: "No wallet found",
         description:
@@ -155,14 +138,13 @@ export function Layout({ children }: { children: ReactNode }) {
       });
       return;
     }
-    // Single EVM wallet and no Solana — connect immediately
-    if (evmWallets.length === 1 && solWallets.length === 0) {
+    // Single EVM wallet — connect immediately
+    if (evmWallets.length === 1) {
       void doConnect(evmWallets[0]);
       return;
     }
-    // Show picker for multiple or mixed wallets
+    // Show picker for multiple wallets
     setDetectedWallets(evmWallets);
-    setSolanaWallets(solWallets);
     setWalletPickerOpen(true);
   };
 
@@ -717,81 +699,27 @@ export function Layout({ children }: { children: ReactNode }) {
           </DialogHeader>
 
           <div className="flex flex-col gap-2 mt-2">
-            {/* ── EVM wallets ── */}
-            {detectedWallets.length > 0 && (
-              <>
-                {(detectedWallets.length > 0 || solanaWallets.length > 0) && solanaWallets.length > 0 && (
-                  <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest px-1 pt-1">
-                    EVM Wallets
-                  </p>
-                )}
-                {detectedWallets.map((w) => (
-                  <button
-                    key={w.id}
-                    onClick={() => void doConnect(w)}
-                    className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
-                  >
-                    <WalletIcon id={w.id} name={w.name} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm leading-tight">{w.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {WALLET_DESC[w.id] ?? "Browser wallet"}
-                      </div>
-                    </div>
-                    <span
-                      className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
-                      style={
-                        w.chain === "evm+sol"
-                          ? { color: "#a78bfa", borderColor: "#a78bfa44", background: "#a78bfa11" }
-                          : { color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }
-                      }
-                    >
-                      {w.chain === "evm+sol" ? "EVM + SOL" : "EVM"}
-                    </span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* ── Solana wallets ── */}
-            {solanaWallets.length > 0 && (
-              <>
-                <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest px-1 pt-2">
-                  Solana Wallets
-                </p>
-                <p className="text-[10px] font-mono text-amber-500/60 px-1 -mt-1">
-                  ⚡ Trait purchases require EVM. Solana connects for display only.
-                </p>
-                {solanaWallets.map((w) => (
-                  <button
-                    key={w.id}
-                    onClick={() => void doConnectSolana(w)}
-                    disabled={isSolanaConnecting}
-                    className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group disabled:opacity-50"
-                    style={{ borderColor: "rgba(20,241,149,0.2)" }}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white text-base"
-                      style={{ background: "rgba(20,241,149,0.15)", border: "1px solid rgba(20,241,149,0.4)" }}
-                    >
-                      <span style={{ color: "#14F195" }}>{w.name.charAt(0)}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm leading-tight">{w.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {isSolanaConnected && solanaAddress ? `${solanaAddress.slice(0, 6)}…${solanaAddress.slice(-4)}` : "Native Solana"}
-                      </div>
-                    </div>
-                    <span
-                      className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
-                      style={{ color: "#14F195", borderColor: "rgba(20,241,149,0.35)", background: "rgba(20,241,149,0.08)" }}
-                    >
-                      SOL
-                    </span>
-                  </button>
-                ))}
-              </>
-            )}
+            {detectedWallets.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => void doConnect(w)}
+                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
+              >
+                <WalletIcon id={w.id} name={w.name} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm leading-tight">{w.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {WALLET_DESC[w.id] ?? "Browser wallet"}
+                  </div>
+                </div>
+                <span
+                  className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                  style={{ color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }}
+                >
+                  EVM
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* Mobile deep-link hint */}

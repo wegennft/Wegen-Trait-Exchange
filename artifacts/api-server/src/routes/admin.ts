@@ -583,6 +583,71 @@ router.put("/admin/game-settings", async (req, res): Promise<void> => {
   res.json(serializeGameSettings(updated));
 });
 
+// ── Appearance Settings ────────────────────────────────────────────────────────
+
+const AppearanceColors = z.object({
+  primary: z.string(),
+  secondary: z.string(),
+  text: z.string(),
+  headerLine: z.string(),
+  cardPanel: z.string(),
+});
+
+const UpdateAppearanceSettingsBody = z.object({
+  logoUrl: z.string().nullable().optional(),
+  backgroundUrl: z.string().nullable().optional(),
+  bannerUrl: z.string().nullable().optional(),
+  colors: AppearanceColors.optional(),
+});
+
+const DEFAULT_APPEARANCE_COLORS = {
+  primary: "#8800ee",
+  secondary: "#17091f",
+  text: "#f5ede0",
+  headerLine: "#c8920a",
+  cardPanel: "#110714",
+};
+
+function serializeAppearanceSettings(settings: typeof storeSettingsTable.$inferSelect) {
+  let colors = DEFAULT_APPEARANCE_COLORS;
+  if (settings.themeColors) {
+    try { colors = { ...DEFAULT_APPEARANCE_COLORS, ...JSON.parse(settings.themeColors) }; } catch { /* ignore */ }
+  }
+  return {
+    logoUrl: settings.logoUrl ?? null,
+    backgroundUrl: settings.backgroundUrl ?? "/graffiti-bg.png",
+    bannerUrl: settings.bannerUrl ?? null,
+    colors,
+  };
+}
+
+router.get("/admin/appearance-settings", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req);
+  const settings = await getOrCreateSettings(nftCollection);
+  res.json(serializeAppearanceSettings(settings));
+});
+
+router.put("/admin/appearance-settings", async (req, res): Promise<void> => {
+  const body = UpdateAppearanceSettingsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.issues.map(i => i.message).join(", ") });
+    return;
+  }
+  const nftCollection = getNftCollection(req);
+  const existing = await getOrCreateSettings(nftCollection);
+  const toUpdate: Record<string, unknown> = {};
+  const d = body.data;
+  if (d.logoUrl !== undefined) toUpdate.logoUrl = d.logoUrl || null;
+  if (d.backgroundUrl !== undefined) toUpdate.backgroundUrl = d.backgroundUrl || null;
+  if (d.bannerUrl !== undefined) toUpdate.bannerUrl = d.bannerUrl || null;
+  if (d.colors !== undefined) {
+    const existingColors = existing.themeColors ? JSON.parse(existing.themeColors) : DEFAULT_APPEARANCE_COLORS;
+    toUpdate.themeColors = JSON.stringify({ ...existingColors, ...d.colors });
+  }
+  const [updated] = await db.update(storeSettingsTable).set(toUpdate).where(eq(storeSettingsTable.id, existing.id)).returning();
+  res.json(serializeAppearanceSettings(updated));
+});
+
 // ── Update Authority Key (set / clear) ────────────────────────────────────────
 
 const SetAuthorityKeyBody = z.object({

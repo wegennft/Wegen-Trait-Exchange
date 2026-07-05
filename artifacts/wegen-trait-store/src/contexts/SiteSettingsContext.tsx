@@ -34,6 +34,17 @@ const DEFAULT_SETTINGS: SiteSettings = {
 
 const STORAGE_KEY = "wegen-site-settings";
 
+function getInitialCollection(): string {
+  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const urlParam = params?.get("c");
+  if (urlParam === "wegenettes") return "wegenettes";
+  if (urlParam === "wegens") return "wegens";
+  if (typeof localStorage !== "undefined") {
+    return localStorage.getItem("nftCollection") === "wegenettes" ? "wegenettes" : "wegens";
+  }
+  return "wegens";
+}
+
 function hexToHsl(hex: string): string {
   const clean = hex.replace("#", "");
   const r = parseInt(clean.slice(0, 2), 16) / 255;
@@ -98,6 +109,47 @@ interface SiteSettingsContextValue {
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue | undefined>(undefined);
 
+async function fetchRemoteSettings(collection: string): Promise<SiteSettings | null> {
+  try {
+    const res = await fetch(`/api/admin/appearance-settings?nftCollection=${encodeURIComponent(collection)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      logoUrl: data.logoUrl ?? null,
+      backgroundUrl: data.backgroundUrl ?? DEFAULT_SETTINGS.backgroundUrl,
+      bannerUrl: data.bannerUrl ?? null,
+      colors: { ...DEFAULT_COLORS, ...(data.colors ?? {}) },
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function saveRemoteSettings(collection: string, patch: Partial<SiteSettings>): Promise<SiteSettings | null> {
+  try {
+    const body: Record<string, unknown> = {};
+    if (patch.logoUrl !== undefined) body.logoUrl = patch.logoUrl;
+    if (patch.backgroundUrl !== undefined) body.backgroundUrl = patch.backgroundUrl;
+    if (patch.bannerUrl !== undefined) body.bannerUrl = patch.bannerUrl;
+    if (patch.colors !== undefined) body.colors = patch.colors;
+    const res = await fetch(`/api/admin/appearance-settings?nftCollection=${encodeURIComponent(collection)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      logoUrl: data.logoUrl ?? null,
+      backgroundUrl: data.backgroundUrl ?? DEFAULT_SETTINGS.backgroundUrl,
+      bannerUrl: data.bannerUrl ?? null,
+      colors: { ...DEFAULT_COLORS, ...(data.colors ?? {}) },
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(() => {
     try {
@@ -107,7 +159,6 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         if ((parsed._version ?? 0) >= SETTINGS_VERSION) {
           return { ...DEFAULT_SETTINGS, ...parsed };
         }
-        // Version mismatch — wipe stale settings and apply fresh defaults
         localStorage.removeItem(STORAGE_KEY);
       }
     } catch {
@@ -115,6 +166,18 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     }
     return DEFAULT_SETTINGS;
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const collection = getInitialCollection();
+    fetchRemoteSettings(collection).then(remote => {
+      if (remote && !cancelled) {
+        setSettings(remote);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...remote, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     applyColorsToRoot(settings.colors);
@@ -128,22 +191,30 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     body.style.backgroundBlendMode = "";
   }, [settings.backgroundUrl]);
 
-  const persist = useCallback((next: SiteSettings) => {
+  const persist = useCallback((next: SiteSettings, patch: Partial<SiteSettings>) => {
     setSettings(next);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
+    const collection = getInitialCollection();
+    saveRemoteSettings(collection, patch).then(remote => {
+      if (remote) {
+        setSettings(remote);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...remote, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
+      }
+    });
   }, []);
 
   const updateColors = useCallback((colors: Partial<SiteColors>) => {
     setSettings(prev => {
       const next = { ...prev, colors: { ...prev.colors, ...colors } };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
+      persist(next, { colors: next.colors });
       return next;
     });
-  }, []);
+  }, [persist]);
 
   const updateImages = useCallback(
     (images: Partial<Pick<SiteSettings, "logoUrl" | "backgroundUrl" | "bannerUrl">>) => {
-      persist({ ...settings, ...images });
+      const next = { ...settings, ...images };
+      persist(next, images);
     },
     [persist, settings]
   );
@@ -151,10 +222,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const resetColors = useCallback(() => {
     setSettings(prev => {
       const next = { ...prev, colors: DEFAULT_COLORS };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      persist(next, { colors: DEFAULT_COLORS });
       return next;
     });
-  }, []);
+  }, [persist]);
 
   return (
     <SiteSettingsContext.Provider value={{ settings, updateColors, updateImages, resetColors }}>

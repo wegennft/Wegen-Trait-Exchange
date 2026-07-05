@@ -38,6 +38,10 @@ export const storeSettingsTable = pgTable("store_settings", {
   dailyGameOverrides: text("daily_game_overrides").default("{}"),
   celebrationGifUrl: text("celebration_gif_url"),
   celebrationMediaType: text("celebration_media_type"),
+  logoUrl: text("logo_url"),
+  backgroundUrl: text("background_url"),
+  bannerUrl: text("banner_url"),
+  themeColors: text("theme_colors"),
   nftCollection: text("nft_collection").notNull().default("wegens"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

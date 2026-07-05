@@ -121,7 +121,7 @@ export function BundlesPoints() {
             <Sparkles className="w-8 h-8" style={{ color: accent }} />
             Packs &amp; Points
           </h1>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-base mt-2" style={{ color: "hsl(var(--muted-foreground))" }}>
             Buy store points with a fixed USD value, or grab a bundle of traits straight into your Trait Locker.
           </p>
         </div>
@@ -130,10 +130,10 @@ export function BundlesPoints() {
           className="flex items-center gap-3 px-5 py-3 rounded-xl flex-shrink-0"
           style={{ background: gradient, border: `1px solid ${accent}55`, boxShadow: `0 0 14px ${glow}` }}
         >
-          <Coins className="w-6 h-6" style={{ color: accent }} />
+          <Coins className="w-7 h-7" style={{ color: accent }} />
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Your Balance</div>
-            <div className="text-xl font-bold" style={{ ...BANGERS, color: accent }}>
+            <div className="text-xs uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>Your Balance</div>
+            <div className="text-2xl font-bold" style={{ ...BANGERS, color: accent }}>
               {isConnected ? totalPoints.toLocaleString() : "—"} pts
             </div>
           </div>
@@ -147,46 +147,46 @@ export function BundlesPoints() {
 
       {/* ── Point Packs ── */}
       <section className="space-y-4">
-        <h2 className="text-xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
-          <Coins className="w-5 h-5" /> Store Points
+        <h2 className="text-2xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
+          <Coins className="w-6 h-6" /> Store Points
         </h2>
         {loadingPacks ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
           </div>
         ) : pointPacks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No point packs available right now.</p>
+          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No point packs available right now.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pointPacks.map((pack) => (
               <Card key={pack.id} className="border-border/60 hover:border-primary/50 transition-colors overflow-hidden">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2.5">
+                  <CardTitle className="text-lg flex items-center gap-3">
                     {pack.imageUrl ? (
-                      <img src={pack.imageUrl} alt={pack.name} className="w-10 h-10 rounded-md object-cover" />
+                      <img src={pack.imageUrl} alt={pack.name} className="w-14 h-14 rounded-md object-cover" />
                     ) : (
-                      <Coins className="w-6 h-6" style={{ color: accent }} />
+                      <Coins className="w-8 h-8" style={{ color: accent }} />
                     )}
                     <span className="truncate">{pack.name}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {pack.description && <p className="text-xs text-muted-foreground line-clamp-2">{pack.description}</p>}
+                  {pack.description && <p className="text-sm line-clamp-2" style={{ color: "hsl(var(--muted-foreground))" }}>{pack.description}</p>}
                   <div
                     className="rounded-lg p-4 flex items-center justify-between gap-3"
                     style={{ background: `${accent}14`, border: `1px solid ${accent}30` }}
                   >
                     <div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">You get</div>
-                      <div className="text-3xl leading-none" style={{ ...BANGERS, color: accent }}>
+                      <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>You get</div>
+                      <div className="text-4xl leading-none" style={{ ...BANGERS, color: accent }}>
                         {pack.pointsGranted.toLocaleString()}
                       </div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">points</div>
+                      <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>points</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Price</div>
-                      <div className="text-2xl font-bold leading-none">${pack.usdValue}</div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">USD</div>
+                      <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Price</div>
+                      <div className="text-3xl font-bold leading-none">${pack.usdValue}</div>
+                      <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>USD</div>
                     </div>
                   </div>
                   <Button
@@ -210,8 +210,8 @@ export function BundlesPoints() {
       {/* ── Bundles ── */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h2 className="text-xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
-            <Package className="w-5 h-5" /> Trait Bundles
+          <h2 className="text-2xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
+            <Package className="w-6 h-6" /> Trait Bundles
           </h2>
           <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -238,9 +238,9 @@ export function BundlesPoints() {
             {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}
           </div>
         ) : bundles.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No bundles available right now.</p>
+          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No bundles available right now.</p>
         ) : filteredBundles.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No bundles match "{traitSearch}".</p>
+          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No bundles match "{traitSearch}".</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {filteredBundles.map((bundle) => {
@@ -248,27 +248,27 @@ export function BundlesPoints() {
               return (
                 <Card key={bundle.id} className="border-border/60 hover:border-primary/50 transition-colors overflow-hidden flex flex-col">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg flex items-center gap-2.5">
-                      <Gem className="w-5 h-5" style={{ color: accent }} />
+                    <CardTitle className="text-xl flex items-center gap-2.5">
+                      <Gem className="w-6 h-6" style={{ color: accent }} />
                       <span className="truncate">{bundle.name}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 flex-1 flex flex-col">
-                    {bundle.description && <p className="text-sm text-muted-foreground line-clamp-2">{bundle.description}</p>}
+                    {bundle.description && <p className="text-sm line-clamp-2" style={{ color: "hsl(var(--muted-foreground))" }}>{bundle.description}</p>}
 
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                    <div className="text-xs uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>
                       What's inside — {bundle.traits.length} trait{bundle.traits.length !== 1 ? "s" : ""}
                     </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {bundle.traits.map((t) => (
-                        <div key={t.id} className="flex flex-col items-center gap-1">
+                        <div key={t.id} className="flex flex-col items-center gap-1.5">
                           <div
                             className="w-full aspect-square rounded-lg overflow-hidden border-2 flex-shrink-0"
                             style={{ borderColor: `${accent}40` }}
                           >
                             <TraitMedia url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full object-cover" />
                           </div>
-                          <span className="text-[10px] text-muted-foreground text-center truncate w-full" title={t.name}>
+                          <span className="text-xs text-center truncate w-full" style={{ color: "hsl(var(--muted-foreground))" }} title={t.name}>
                             {t.name}
                           </span>
                         </div>
@@ -280,18 +280,18 @@ export function BundlesPoints() {
                       style={{ background: `${accent}14`, border: `1px solid ${accent}30` }}
                     >
                       <div>
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Price</div>
-                        <div className="text-2xl leading-none" style={{ ...BANGERS, color: accent }}>
+                        <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Price</div>
+                        <div className="text-3xl leading-none" style={{ ...BANGERS, color: accent }}>
                           ${bundle.priceUsd}
                         </div>
                         {formatEth(bundle.priceUsd, ethUsd) && (
-                          <div className="text-[11px] text-muted-foreground mt-0.5">≈ {formatEth(bundle.priceUsd, ethUsd)}</div>
+                          <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>≈ {formatEth(bundle.priceUsd, ethUsd)}</div>
                         )}
                       </div>
                       {bundle.totalSupply !== -1 && (
                         <div className="text-right">
-                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Remaining</div>
-                          <div className="text-xl font-bold leading-none">{bundle.remainingSupply} / {bundle.totalSupply}</div>
+                          <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Remaining</div>
+                          <div className="text-2xl font-bold leading-none">{bundle.remainingSupply} / {bundle.totalSupply}</div>
                         </div>
                       )}
                     </div>

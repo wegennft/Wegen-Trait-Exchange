@@ -255,12 +255,12 @@ export function Bounties() {
       {traits.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ ...BANGERS, color: `hsl(${accentHsl} / 0.7)`, letterSpacing: "0.12em" }}>
+            <h2 className="text-base font-bold uppercase tracking-widest" style={{ ...BANGERS, color: `hsl(${accentHsl} / 0.85)`, letterSpacing: "0.12em" }}>
               Exclusive Rewards
             </h2>
-            <span className="text-[11px] text-muted-foreground">Redeem with points in the Rewards Store</span>
+            <span className="text-sm font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>Redeem with points in the Rewards Store</span>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
             {traits.map((trait) => {
               const canAfford = myPoints >= trait.pointCost;
               const soldOut = trait.remainingSupply !== -1 && trait.remainingSupply <= 0;
@@ -268,7 +268,7 @@ export function Bounties() {
               return (
                 <div
                   key={trait.id}
-                  className="flex-shrink-0 rounded-xl overflow-hidden w-36"
+                  className="flex-shrink-0 rounded-xl overflow-hidden w-48"
                   style={{
                     background: "hsl(272 20% 6%)",
                     border: `1px solid hsl(${accentHsl} / ${canAfford && !soldOut && !atLimit ? "0.35" : "0.12"})`,
@@ -281,31 +281,31 @@ export function Bounties() {
                       <img src={trait.imageUrl} alt={trait.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Gift className="w-8 h-8 opacity-20" />
+                        <Gift className="w-10 h-10 opacity-20" />
                       </div>
                     )}
                     {atLimit && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <CheckCircle2 className="w-5 h-5" style={{ color: accent }} />
+                        <CheckCircle2 className="w-6 h-6" style={{ color: accent }} />
                       </div>
                     )}
                     {soldOut && !atLimit && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-red-400">SOLD OUT</span>
+                        <span className="text-xs font-bold text-red-400">SOLD OUT</span>
                       </div>
                     )}
                   </div>
-                  <div className="p-2.5 space-y-1">
-                    <div className="text-xs font-semibold truncate">{trait.name}</div>
+                  <div className="p-3 space-y-1.5">
+                    <div className="text-sm font-semibold truncate text-foreground">{trait.name}</div>
                     <div
-                      className="text-xs font-bold flex items-center gap-1"
+                      className="text-sm font-bold flex items-center gap-1"
                       style={{ color: canAfford && !soldOut && !atLimit ? accent : "hsl(var(--muted-foreground))" }}
                     >
-                      <Star className="w-3 h-3 flex-shrink-0" />
+                      <Star className="w-3.5 h-3.5 flex-shrink-0" />
                       {trait.pointCost.toLocaleString()} pts
                     </div>
                     {trait.totalSupply !== -1 && (
-                      <div className="text-[10px] text-muted-foreground">{trait.remainingSupply}/{trait.totalSupply} left</div>
+                      <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{trait.remainingSupply}/{trait.totalSupply} left</div>
                     )}
                   </div>
                 </div>
@@ -557,14 +557,14 @@ export function Bounties() {
                         <img src={trait.imageUrl} alt={trait.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Gift className="w-12 h-12 opacity-20" />
+                          <Gift className="w-14 h-14 opacity-20" />
                         </div>
                       )}
                       {atLimit && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                           <div className="text-center">
-                            <CheckCircle2 className="w-8 h-8 mx-auto mb-1" style={{ color: accent }} />
-                            <div className="text-xs font-bold" style={{ color: accent }}>Max Owned</div>
+                            <CheckCircle2 className="w-9 h-9 mx-auto mb-1" style={{ color: accent }} />
+                            <div className="text-sm font-bold" style={{ color: accent }}>Max Owned</div>
                           </div>
                         </div>
                       )}
@@ -578,9 +578,9 @@ export function Bounties() {
                     {/* Info */}
                     <div className="p-4 space-y-3">
                       <div>
-                        <h3 className="font-bold text-sm text-foreground">{trait.name}</h3>
+                        <h3 className="font-bold text-base text-foreground">{trait.name}</h3>
                         {trait.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{trait.description}</p>
+                          <p className="text-sm mt-1 line-clamp-2" style={{ color: "hsl(var(--muted-foreground))" }}>{trait.description}</p>
                         )}
                       </div>
 
@@ -588,25 +588,25 @@ export function Bounties() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge
                           variant="outline"
-                          className="text-[10px]"
+                          className="text-xs font-semibold"
                           style={{ color: accent, borderColor: `${accent}40` }}
                         >
-                          <Star className="w-2.5 h-2.5 mr-1" />
+                          <Star className="w-3 h-3 mr-1" />
                           {trait.pointCost.toLocaleString()} pts
                         </Badge>
                         {trait.totalSupply !== -1 && (
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground border-border/40">
+                          <Badge variant="outline" className="text-xs border-border/40" style={{ color: "hsl(var(--muted-foreground))" }}>
                             {trait.remainingSupply}/{trait.totalSupply} left
                           </Badge>
                         )}
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground border-border/40">
-                          <Lock className="w-2.5 h-2.5 mr-1" />
+                        <Badge variant="outline" className="text-xs border-border/40" style={{ color: "hsl(var(--muted-foreground))" }}>
+                          <Lock className="w-3 h-3 mr-1" />
                           {trait.walletPurchaseCount}/2 owned
                         </Badge>
                       </div>
 
                       <Button
-                        className="w-full text-xs font-bold"
+                        className="w-full text-sm font-bold"
                         disabled={locked || redeemMutation.isPending}
                         onClick={() => redeemMutation.mutate(trait.id)}
                         style={
@@ -647,9 +647,9 @@ export function Bounties() {
                     className="rounded-xl p-4 text-center"
                     style={{ background: "hsl(272 20% 6%)", border: `1px solid hsl(${accentHsl} / 0.15)` }}
                   >
-                    <Icon className="w-5 h-5 mx-auto mb-2" style={{ color: accent }} />
-                    <div className="text-2xl font-bold" style={{ ...BANGERS, color: accent }}>{value}</div>
-                    <div className="text-[11px] text-muted-foreground mt-1">{label}</div>
+                    <Icon className="w-6 h-6 mx-auto mb-2" style={{ color: accent }} />
+                    <div className="text-3xl font-bold" style={{ ...BANGERS, color: accent }}>{value}</div>
+                    <div className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</div>
                   </div>
                 ))}
               </div>

@@ -243,6 +243,15 @@ export function getInstalledWallet(id: WalletId): DetectedWallet | undefined {
       chain: catalog?.chain ?? "evm",
     };
   }
+
+  // Phantom: always use window.phantom.ethereum — never a Rabby-proxied provider
+  if (id === "phantom") {
+    const phantomEth = (window as AnyWindow).phantom?.ethereum;
+    if (phantomEth?.request) {
+      return { id: "phantom", name: "Phantom", provider: phantomEth, chain: "evm+sol" };
+    }
+  }
+
   return detectWallets().find((w) => w.id === id);
 }
 

@@ -1,66 +1,15 @@
-import {
-  BrowserProvider,
-  Eip1193Provider,
-  getAddress,
-  hexlify,
-  toUtf8Bytes,
-} from "ethers";
+import { Eip1193Provider, getAddress, hexlify, toUtf8Bytes } from "ethers";
 import type { ConnectStep, WalletId } from "./types";
-import { hasMultipleEvmWallets } from "./evm-wallets";
+import {
+  formatWalletError,
+  isSignFailure,
+  isUserRejection,
+  toWalletError,
+} from "./wallet-errors";
 
 type RawProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 };
-
-function isUserRejection(err: unknown): boolean {
-  const code = (err as { code?: number | string }).code;
-  return code === 4001 || code === "ACTION_REJECTED";
-}
-
-function isRetryableSignError(err: unknown): boolean {
-  if (isUserRejection(err)) return false;
-  const code = (err as { code?: number }).code;
-  const msg = ((err as { message?: string }).message ?? "").toLowerCase();
-  return (
-    code === -32000 ||
-    code === 32000 ||
-    code === 4200 ||
-    msg.includes("does not match") ||
-    msg.includes("address") ||
-    msg.includes("coalesce") ||
-    msg.includes("not authorized")
-  );
-}
-
-function formatWalletError(err: unknown, walletId?: WalletId): string {
-  if (isUserRejection(err)) {
-    return "You declined the sign-in request in your wallet.";
-  }
-  const msg = (err as { message?: string }).message ?? String(err);
-  if (msg.toLowerCase().includes("coalesce") || msg.includes("-32000")) {
-    if (walletId === "phantom") {
-      const multiHint = hasMultipleEvmWallets()
-        ? " With Rabby installed, try clicking Rabby instead, or pick Phantom from Rabby's wallet list."
-        : "";
-      return (
-        "Phantom could not sign the login message. Switch to your Ethereum account in Phantom " +
-        "(top-left picker) on Ethereum Mainnet, then try again." +
-        multiHint
-      );
-    }
-    if (walletId === "rabby") {
-      return (
-        "Rabby could not sign the login message. Confirm the correct account is selected in Rabby, " +
-        "then try again."
-      );
-    }
-    return (
-      "Your wallet could not sign the login message. Make sure the correct account is selected, " +
-      "then try again. If it keeps failing, disconnect this site from the wallet and reconnect."
-    );
-  }
-  return msg.length > 200 ? "Wallet sign-in failed. Please try again." : msg;
-}
 
 function uniquePairs(pairs: [string, string][]): [string, string][] {
   const seen = new Set<string>();
@@ -72,7 +21,6 @@ function uniquePairs(pairs: [string, string][]): [string, string][] {
   });
 }
 
-/** Build personal_sign param attempts — wallets disagree on address casing and param order. */
 function buildSignAttempts(
   message: string,
   hexMsg: string,
@@ -89,7 +37,6 @@ function buildSignAttempts(
   const attempts: [string, string][] = [];
   for (const from of fromOrder) {
     if (preferRawFrom) {
-      // Phantom / Backpack — hex-encoded message per EIP-1474 first
       attempts.push([hexMsg, from]);
       attempts.push([message, from]);
     } else {
@@ -98,7 +45,6 @@ function buildSignAttempts(
     }
   }
 
-  // Some wallets (Phantom, Backpack, legacy) accept [address, message]
   if (preferRawFrom) {
     for (const from of fromOrder) {
       attempts.push([from, message]);
@@ -124,6 +70,37 @@ async function ensureAcceptedChain(raw: RawProvider, chainHex: string): Promise<
   }
 }
 
+/** Phantom docs: personal_sign with plain message + exact account from eth_requestAccounts. */
+async function signWithPhantom(raw: RawProvider, message: string): Promise<string> {
+  const accounts = (await raw.request({
+    method: "eth_requestAccounts",
+    params: [],
+  })) as string[];
+  if (!accounts.length) {
+    throw new Error(
+      "No Ethereum account in Phantom. Open Phantom, switch to Ethereum (top-left), then retry.",
+    );
+  }
+
+  const from = accounts[0];
+  const hexMsg = hexlify(toUtf8Bytes(message));
+
+  for (const params of [
+    [message, from] as [string, string],
+    [hexMsg, from],
+    [from, message],
+    [from, hexMsg],
+  ]) {
+    try {
+      return (await raw.request({ method: "personal_sign", params })) as string;
+    } catch (err) {
+      if (isUserRejection(err)) throw err;
+    }
+  }
+
+  throw toWalletError(new Error("Phantom personal_sign failed"), "phantom");
+}
+
 async function signSiweMessage(
   provider: Eip1193Provider,
   raw: RawProvider,
@@ -131,6 +108,10 @@ async function signSiweMessage(
   accountFromWallet: string,
   walletId?: WalletId,
 ): Promise<string> {
+  if (walletId === "phantom") {
+    return signWithPhantom(raw, message);
+  }
+
   const checksum = getAddress(accountFromWallet);
   const hexMsg = hexlify(toUtf8Bytes(message));
   const attempts = buildSignAttempts(message, hexMsg, accountFromWallet, checksum, walletId);
@@ -148,15 +129,7 @@ async function signSiweMessage(
     }
   }
 
-  // ethers signer fallback — use exact account the wallet returned
-  try {
-    const browserProvider = new BrowserProvider(provider);
-    const signer = await browserProvider.getSigner(accountFromWallet);
-    return signer.signMessage(message);
-  } catch (signerErr) {
-    if (isUserRejection(signerErr)) throw signerErr;
-    throw lastErr ?? signerErr;
-  }
+  throw toWalletError(lastErr ?? new Error("personal_sign failed"), walletId);
 }
 
 export interface SiweResult {
@@ -164,10 +137,6 @@ export interface SiweResult {
   chainId: string;
 }
 
-/**
- * Connect an EVM provider and complete SIWE sign-in with the API.
- * Used by injected wallets and WalletConnect alike.
- */
 export async function signInWithEvmProvider(
   provider: Eip1193Provider,
   onStep?: (step: ConnectStep) => void,
@@ -218,15 +187,13 @@ export async function signInWithEvmProvider(
     } catch (signErr) {
       lastError = signErr;
       if (isUserRejection(signErr)) throw signErr;
-      if (isRetryableSignError(signErr) && attempt === 0) continue;
-      throw Object.assign(new Error(formatWalletError(signErr, walletId)), {
-        code: (signErr as { code?: number }).code,
-      });
+      if (isSignFailure(signErr) && attempt === 0) continue;
+      throw toWalletError(signErr, walletId);
     }
   }
 
   if (lastError) {
-    throw Object.assign(new Error(formatWalletError(lastError, walletId)), { code: -32000 });
+    throw toWalletError(lastError, walletId);
   }
 
   const verifyRes = await fetch("/api/auth/verify", {

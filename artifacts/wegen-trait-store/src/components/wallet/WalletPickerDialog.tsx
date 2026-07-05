@@ -4,6 +4,7 @@ import { useWallet, getEvmWalletOptions, WALLET_COLORS, WALLET_ICONS, type Walle
 import { detectSolanaWallets, type DetectedSolanaWallet } from "@/wallet/solana-adapter";
 import { isMobileBrowser, requestEip6963Providers } from "@/wallet/evm-wallets";
 import type { EvmWalletOption } from "@/wallet/types";
+import { formatWalletError, isUserRejection } from "@/wallet/wallet-errors";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -116,22 +117,12 @@ export function WalletPickerDialog() {
       }
       await connectWallet(walletId);
     } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4001) return;
-
-      let description = err instanceof Error ? err.message : "Could not connect wallet";
-      if (code === -32000 || code === 32000) {
-        const hints: Partial<Record<WalletId, string>> = {
-          phantom:
-            "In Phantom, switch to your Ethereum account (top-left picker) and set network to Ethereum Mainnet, then retry.",
-          backpack: "Open Backpack → Settings and ensure the Ethereum network is enabled, then retry.",
-          metamask: "Make sure the correct account is selected in MetaMask, then retry.",
-        };
-        description =
-          `${description} ` +
-          (hints[walletId] ?? "Try disconnecting this site from the wallet and reconnecting.");
-      }
-      toast({ title: "Connection failed", description, variant: "destructive" });
+      if (isUserRejection(err)) return;
+      toast({
+        title: "Connection failed",
+        description: formatWalletError(err, walletId),
+        variant: "destructive",
+      });
     }
   };
 
@@ -140,11 +131,10 @@ export function WalletPickerDialog() {
     try {
       await connectWalletConnect();
     } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4001) return;
+      if (isUserRejection(err)) return;
       toast({
         title: "WalletConnect failed",
-        description: err instanceof Error ? err.message : "Could not connect",
+        description: formatWalletError(err),
         variant: "destructive",
       });
     }

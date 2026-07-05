@@ -338,14 +338,15 @@ export function Bounties() {
 
               {/* ── Podium: Top 3 ── */}
               {leaderboard.length >= 1 && (
+                <div className="marquee-lights-gold marquee-lights rounded-2xl" style={{ background: `radial-gradient(ellipse 80% 100% at 50% 0%, hsl(${accentHsl} / 0.08), transparent 70%)` }}>
                 <div className="flex items-end justify-center gap-3 pt-4 pb-2">
                   {/* 2nd place */}
                   {leaderboard[1] && (() => {
                     const entry = leaderboard[1];
                     const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
                     return (
-                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
-                        <div className="text-2xl">🥈</div>
+                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[170px]">
+                        <div className="text-3xl">🥈</div>
                         <div
                           className="w-full rounded-t-2xl pt-5 pb-4 px-3 text-center"
                           style={{
@@ -354,20 +355,20 @@ export function Bounties() {
                               : "linear-gradient(180deg, hsl(220 15% 16%), hsl(220 15% 10%))",
                             border: `1px solid ${isMe ? `hsl(${accentHsl} / 0.5)` : "hsl(220 15% 22%)"}`,
                             borderBottom: "none",
-                            height: 110,
+                            height: 118,
                           }}
                         >
-                          <div className="text-3xl font-black" style={{ ...BANGERS, color: "#94a3b8" }}>
+                          <div className="text-4xl font-black" style={{ ...BANGERS, color: "#cbd5e1" }}>
                             {entry.totalPoints.toLocaleString()}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">pts</div>
-                          <div className="font-mono text-[10px] mt-2 truncate" style={{ color: isMe ? accent : "#94a3b8" }}>
+                          <div className="text-xs text-slate-400 mt-0.5 font-bold">pts</div>
+                          <div className="font-mono text-xs mt-2 truncate font-bold" style={{ color: isMe ? accent : "#cbd5e1" }}>
                             {truncate(entry.walletAddress)}
                             {isMe && <span className="ml-1 font-bold">(you)</span>}
                           </div>
                         </div>
                         <div
-                          className="w-full text-center text-xs font-bold py-1 rounded-b-sm"
+                          className="w-full text-center text-sm font-bold py-1.5 rounded-b-sm"
                           style={{ background: "#475569", color: "white" }}
                         >
                           #2
@@ -381,10 +382,10 @@ export function Bounties() {
                     const entry = leaderboard[0];
                     const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
                     return (
-                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[190px]">
-                        <div className="text-3xl animate-bounce">👑</div>
+                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[210px]">
+                        <div className="text-4xl animate-bounce">👑</div>
                         <div
-                          className="w-full rounded-t-2xl pt-6 pb-4 px-3 text-center relative overflow-hidden"
+                          className="marquee-lights-gold marquee-lights w-full rounded-t-2xl pt-6 pb-4 px-3 text-center relative overflow-hidden"
                           style={{
                             background: isMe
                               ? `linear-gradient(180deg, hsl(${accentHsl} / 0.35), hsl(${accentHsl} / 0.12))`
@@ -392,24 +393,24 @@ export function Bounties() {
                             border: `2px solid ${isMe ? `hsl(${accentHsl} / 0.7)` : "#c8920a"}`,
                             borderBottom: "none",
                             boxShadow: isMe ? `0 0 32px ${glow}` : "0 0 32px #c8920a60",
-                            height: 140,
+                            height: 160,
                           }}
                         >
                           {/* shimmer */}
                           <div className="absolute inset-0 pointer-events-none" style={{
                             background: "linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%)",
                           }} />
-                          <div className="text-4xl font-black" style={{ ...BANGERS, color: isMe ? accent : "#f59e0b", textShadow: `0 0 20px ${isMe ? glow : "#f59e0b80"}` }}>
+                          <div className="text-5xl font-black" style={{ ...BANGERS, color: isMe ? accent : "#f59e0b", textShadow: `0 0 24px ${isMe ? glow : "#f59e0b80"}` }}>
                             {entry.totalPoints.toLocaleString()}
                           </div>
-                          <div className="text-[11px] mt-0.5" style={{ color: isMe ? accent : "#d97706" }}>pts</div>
-                          <div className="font-mono text-[11px] mt-2 truncate font-bold" style={{ color: isMe ? accent : "#fbbf24" }}>
+                          <div className="text-sm mt-0.5 font-bold" style={{ color: isMe ? accent : "#d97706" }}>pts</div>
+                          <div className="font-mono text-sm mt-2 truncate font-bold" style={{ color: isMe ? accent : "#fbbf24" }}>
                             {truncate(entry.walletAddress)}
                             {isMe && <span className="ml-1">(you)</span>}
                           </div>
                         </div>
                         <div
-                          className="w-full text-center text-xs font-bold py-1.5 rounded-b-sm"
+                          className="w-full text-center text-base font-bold py-2 rounded-b-sm"
                           style={{ background: "linear-gradient(90deg, #b45309, #d97706)", color: "white" }}
                         >
                           🏆 #1
@@ -423,8 +424,8 @@ export function Bounties() {
                     const entry = leaderboard[2];
                     const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
                     return (
-                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
-                        <div className="text-2xl">🥉</div>
+                      <div className="flex flex-col items-center gap-2 flex-1 max-w-[170px]">
+                        <div className="text-3xl">🥉</div>
                         <div
                           className="w-full rounded-t-2xl pt-5 pb-4 px-3 text-center"
                           style={{
@@ -433,20 +434,20 @@ export function Bounties() {
                               : "linear-gradient(180deg, hsl(25 40% 14%), hsl(25 30% 8%))",
                             border: `1px solid ${isMe ? `hsl(${accentHsl} / 0.5)` : "hsl(25 40% 22%)"}`,
                             borderBottom: "none",
-                            height: 90,
+                            height: 96,
                           }}
                         >
-                          <div className="text-3xl font-black" style={{ ...BANGERS, color: "#cd7f32" }}>
+                          <div className="text-4xl font-black" style={{ ...BANGERS, color: "#cd7f32" }}>
                             {entry.totalPoints.toLocaleString()}
                           </div>
-                          <div className="text-[10px] text-orange-800 mt-0.5">pts</div>
-                          <div className="font-mono text-[10px] mt-2 truncate" style={{ color: isMe ? accent : "#cd7f32" }}>
+                          <div className="text-xs text-orange-800 mt-0.5 font-bold">pts</div>
+                          <div className="font-mono text-xs mt-2 truncate font-bold" style={{ color: isMe ? accent : "#cd7f32" }}>
                             {truncate(entry.walletAddress)}
                             {isMe && <span className="ml-1 font-bold">(you)</span>}
                           </div>
                         </div>
                         <div
-                          className="w-full text-center text-xs font-bold py-1 rounded-b-sm"
+                          className="w-full text-center text-sm font-bold py-1.5 rounded-b-sm"
                           style={{ background: "#78350f", color: "#fde68a" }}
                         >
                           #3
@@ -455,14 +456,15 @@ export function Bounties() {
                     );
                   })()}
                 </div>
+                </div>
               )}
 
               {/* ── Rest of leaderboard ── */}
               {leaderboard.length > 3 && (
-                <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid hsl(${accentHsl} / 0.12)` }}>
+                <div className="marquee-lights rounded-2xl overflow-hidden" style={{ border: `1px solid hsl(${accentHsl} / 0.12)` }}>
                   {/* Header */}
                   <div
-                    className="grid grid-cols-[48px_1fr_auto] px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest"
+                    className="grid grid-cols-[60px_1fr_auto] px-4 py-3 text-xs font-bold uppercase tracking-widest"
                     style={{ background: "hsl(272 20% 6%)", color: "hsl(var(--muted-foreground))" }}
                   >
                     <span>Rank</span>
@@ -475,7 +477,7 @@ export function Bounties() {
                     return (
                       <div
                         key={entry.walletAddress}
-                        className="grid grid-cols-[48px_1fr_auto] items-center px-4 py-3 transition-colors"
+                        className="grid grid-cols-[60px_1fr_auto] items-center px-4 py-4 transition-colors"
                         style={{
                           background: isMe
                             ? `linear-gradient(90deg, hsl(${accentHsl} / 0.1), transparent)`
@@ -484,23 +486,23 @@ export function Bounties() {
                           boxShadow: isMe ? `inset 3px 0 0 hsl(${accentHsl})` : "none",
                         }}
                       >
-                        <span className="font-mono text-xs font-bold" style={{ color: "hsl(var(--muted-foreground))" }}>
+                        <span className="font-mono text-base font-bold" style={{ color: isMe ? accent : "hsl(var(--muted-foreground))" }}>
                           #{i + 1}
                         </span>
-                        <span className="font-mono text-sm truncate pr-4" style={{ color: isMe ? accent : "hsl(var(--foreground))" }}>
+                        <span className="font-mono text-base truncate pr-4" style={{ color: isMe ? accent : "hsl(var(--foreground))" }}>
                           {truncate(entry.walletAddress)}
                           {isMe && (
                             <span
-                              className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ background: `hsl(${accentHsl} / 0.15)`, color: accent }}
+                              className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full animate-pulse"
+                              style={{ background: `hsl(${accentHsl} / 0.2)`, color: accent }}
                             >
                               you
                             </span>
                           )}
                         </span>
-                        <span className="font-bold text-sm tabular-nums" style={{ ...BANGERS, color: "hsl(var(--foreground))" }}>
+                        <span className="font-bold text-xl tabular-nums" style={{ ...BANGERS, color: isMe ? accent : "hsl(var(--foreground))", textShadow: isMe ? `0 0 12px ${glow}` : "none" }}>
                           {entry.totalPoints.toLocaleString()}
-                          <span className="text-[10px] font-normal text-muted-foreground ml-1">pts</span>
+                          <span className="text-xs font-normal text-muted-foreground ml-1">pts</span>
                         </span>
                       </div>
                     );
@@ -511,16 +513,17 @@ export function Bounties() {
               {/* ── My rank callout (if not in top 50) ── */}
               {isConnected && myRank && myRank > leaderboard.length && (
                 <div
-                  className="rounded-xl px-4 py-3 flex items-center gap-4"
+                  className="marquee-lights rounded-xl px-4 py-4 flex items-center gap-4"
                   style={{
                     background: `linear-gradient(135deg, hsl(${accentHsl} / 0.12), hsl(${accentHsl} / 0.04))`,
                     border: `1px solid hsl(${accentHsl} / 0.3)`,
+                    boxShadow: `0 0 24px ${glow}`,
                   }}
                 >
-                  <div className="font-mono text-xs text-muted-foreground">Your rank</div>
-                  <div className="font-black text-2xl" style={{ ...BANGERS, color: accent }}>#{myRank}</div>
+                  <div className="font-mono text-sm text-muted-foreground font-bold">Your rank</div>
+                  <div className="font-black text-4xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>#{myRank}</div>
                   <div className="flex-1" />
-                  <div className="font-bold" style={{ ...BANGERS, color: accent }}>{myPoints.toLocaleString()} pts</div>
+                  <div className="font-bold text-2xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>{myPoints.toLocaleString()} pts</div>
                 </div>
               )}
             </div>

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { TraitMedia } from "@/components/TraitMedia";
+import { TraitImageZoom } from "@/components/TraitImageZoom";
 import { TxConfirmModal, type TxDetail } from "@/components/wallet/TxConfirmModal";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package, Sparkles, Wallet, Zap, Gem, Search, X } from "lucide-react";
@@ -163,7 +164,9 @@ export function BundlesPoints() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-3">
                     {pack.imageUrl ? (
-                      <img src={pack.imageUrl} alt={pack.name} className="w-14 h-14 rounded-md object-cover" />
+                      <TraitImageZoom url={pack.imageUrl} alt={pack.name} className="w-14 h-14 rounded-md flex-shrink-0">
+                        <img src={pack.imageUrl} alt={pack.name} className="w-14 h-14 rounded-md object-cover" />
+                      </TraitImageZoom>
                     ) : (
                       <Coins className="w-8 h-8" style={{ color: accent }} />
                     )}
@@ -266,7 +269,9 @@ export function BundlesPoints() {
                             className="w-full aspect-square rounded-lg overflow-hidden border-2 flex-shrink-0"
                             style={{ borderColor: `${accent}40` }}
                           >
-                            <TraitMedia url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full object-cover" />
+                            <TraitImageZoom url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full">
+                              <TraitMedia url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full object-cover" />
+                            </TraitImageZoom>
                           </div>
                           <span className="text-xs text-center truncate w-full" style={{ color: "hsl(var(--muted-foreground))" }} title={t.name}>
                             {t.name}

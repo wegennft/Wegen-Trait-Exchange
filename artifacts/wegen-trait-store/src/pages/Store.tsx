@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
+import { TraitImageZoom } from "@/components/TraitImageZoom";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCollection } from "@/contexts/CollectionContext";
 import {
@@ -1149,13 +1150,15 @@ export function Store() {
             >
               <div className="relative aspect-square overflow-hidden bg-secondary flex items-center justify-center p-6">
                 {trait.imageUrl ? (
-                  <TraitMedia
-                    url={trait.imageUrl}
-                    mediaType={(trait as Record<string, unknown>).mediaType as string}
-                    alt={trait.name}
-                    className="w-full h-full group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl"
-                    showBadge
-                  />
+                  <TraitImageZoom url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
+                    <TraitMedia
+                      url={trait.imageUrl}
+                      mediaType={(trait as unknown as Record<string, unknown>).mediaType as string}
+                      alt={trait.name}
+                      className="w-full h-full group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl"
+                      showBadge
+                    />
+                  </TraitImageZoom>
                 ) : (
                   <div className="text-6xl font-black text-muted-foreground/20 uppercase tracking-tighter mix-blend-overlay">
                     {trait.category.slice(0, 3)}
@@ -1311,12 +1314,14 @@ export function Store() {
                     style={{ filter: 'grayscale(100%) brightness(0.45)' }}
                   >
                     {trait.imageUrl ? (
-                      <TraitMedia
-                        url={trait.imageUrl}
-                        mediaType={(trait as Record<string, unknown>).mediaType as string}
-                        alt={trait.name}
-                        className="w-full h-full object-cover group-hover/vault:scale-105 transition-transform duration-500"
-                      />
+                      <TraitImageZoom url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
+                        <TraitMedia
+                          url={trait.imageUrl}
+                          mediaType={(trait as unknown as Record<string, unknown>).mediaType as string}
+                          alt={trait.name}
+                          className="w-full h-full object-cover group-hover/vault:scale-105 transition-transform duration-500"
+                        />
+                      </TraitImageZoom>
                     ) : (
                       <div className="text-5xl font-black text-white/10 uppercase tracking-tighter mix-blend-overlay">
                         {trait.category.slice(0, 3)}

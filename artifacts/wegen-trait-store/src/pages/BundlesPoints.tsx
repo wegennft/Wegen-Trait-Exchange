@@ -25,6 +25,25 @@ import { Coins, Package, Sparkles, Wallet, Zap, Gem, Search, X } from "lucide-re
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
 
+const CATEGORY_ORDER = ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
+
+function groupTraitsByCategory<T extends { category: string }>(traits: T[]): { category: string; traits: T[] }[] {
+  const groups = new Map<string, T[]>();
+  for (const trait of traits) {
+    const list = groups.get(trait.category);
+    if (list) {
+      list.push(trait);
+    } else {
+      groups.set(trait.category, [trait]);
+    }
+  }
+  const orderedCategories = [
+    ...CATEGORY_ORDER.filter((c) => groups.has(c)),
+    ...[...groups.keys()].filter((c) => !CATEGORY_ORDER.includes(c)),
+  ];
+  return orderedCategories.map((category) => ({ category, traits: groups.get(category)! }));
+}
+
 export function BundlesPoints() {
   const { walletAddress, isConnected, connect } = useWallet();
   const { theme } = useCollection();
@@ -262,20 +281,37 @@ export function BundlesPoints() {
                     <div className="text-xs uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>
                       What's inside — {bundle.traits.length} trait{bundle.traits.length !== 1 ? "s" : ""}
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {bundle.traits.map((t) => (
-                        <div key={t.id} className="flex flex-col items-center gap-1.5">
+                    <div className="space-y-3">
+                      {groupTraitsByCategory(bundle.traits).map((group) => (
+                        <div key={group.category} className="space-y-1.5">
                           <div
-                            className="w-full aspect-square rounded-lg overflow-hidden border-2 flex-shrink-0"
-                            style={{ borderColor: `${accent}40` }}
+                            className="text-[11px] uppercase tracking-widest font-semibold flex items-center gap-1.5"
+                            style={{ color: accent }}
                           >
-                            <TraitImageZoom url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full">
-                              <TraitMedia url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full object-cover" />
-                            </TraitImageZoom>
+                            {group.category}
+                            <span
+                              className="h-px flex-1"
+                              style={{ background: `${accent}30` }}
+                            />
+                            <span style={{ color: "hsl(var(--muted-foreground))" }}>{group.traits.length}</span>
                           </div>
-                          <span className="text-xs text-center truncate w-full" style={{ color: "hsl(var(--muted-foreground))" }} title={t.name}>
-                            {t.name}
-                          </span>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {group.traits.map((t) => (
+                              <div key={t.id} className="flex flex-col items-center gap-1.5">
+                                <div
+                                  className="w-full aspect-square rounded-lg overflow-hidden border-2 flex-shrink-0"
+                                  style={{ borderColor: `${accent}40` }}
+                                >
+                                  <TraitImageZoom url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full">
+                                    <TraitMedia url={t.imageUrl} mediaType={t.mediaType} alt={t.name} className="w-full h-full object-cover" />
+                                  </TraitImageZoom>
+                                </div>
+                                <span className="text-xs text-center truncate w-full" style={{ color: "hsl(var(--muted-foreground))" }} title={t.name}>
+                                  {t.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>

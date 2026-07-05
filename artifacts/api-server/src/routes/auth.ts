@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyMessage } from "ethers";
+import { getAddress, verifyMessage } from "ethers";
 import crypto from "crypto";
 
 const router: Router = Router();
@@ -39,20 +39,35 @@ function buildSiweMessage(params: {
 // GET /api/auth/nonce?address=0x...&chainId=1
 router.get("/auth/nonce", (req, res): void => {
   pruneExpiredNonces();
-  const address = (req.query.address as string)?.toLowerCase();
+  const rawAddress = req.query.address as string;
   const chainId = (req.query.chainId as string) || "1";
-  if (!address || !/^0x[0-9a-f]{40}$/.test(address)) {
+  if (!rawAddress || !/^0x[0-9a-fA-F]{40}$/.test(rawAddress)) {
     res.status(400).json({ error: "Invalid address" });
     return;
   }
+
+  let checksumAddress: string;
+  try {
+    checksumAddress = getAddress(rawAddress);
+  } catch {
+    res.status(400).json({ error: "Invalid address" });
+    return;
+  }
+  const addressKey = checksumAddress.toLowerCase();
 
   const nonce = crypto.randomBytes(16).toString("hex");
   const issuedAt = new Date().toISOString();
   const domain = req.hostname || "localhost";
 
-  nonces.set(address, { nonce, expires: Date.now() + 5 * 60 * 1000 });
+  nonces.set(addressKey, { nonce, expires: Date.now() + 5 * 60 * 1000 });
 
-  const message = buildSiweMessage({ domain, address, nonce, issuedAt, chainId });
+  const message = buildSiweMessage({
+    domain,
+    address: checksumAddress,
+    nonce,
+    issuedAt,
+    chainId,
+  });
   res.json({ nonce, message });
 });
 
@@ -77,7 +92,7 @@ router.post("/auth/verify", async (req, res): Promise<void> => {
   }
 
   // Nonces must appear in the signed message
-  if (!message.includes(stored.nonce) || !message.includes(address)) {
+  if (!message.includes(stored.nonce) || !message.toLowerCase().includes(address)) {
     res.status(401).json({ error: "Message does not match issued nonce" });
     return;
   }

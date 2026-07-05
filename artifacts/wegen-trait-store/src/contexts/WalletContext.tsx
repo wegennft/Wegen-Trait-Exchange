@@ -5,119 +5,25 @@ import {
   useState,
   ReactNode,
   useCallback,
+  useRef,
 } from "react";
-import { BrowserProvider, Eip1193Provider, hexlify, toUtf8Bytes } from "ethers";
+import type { Eip1193Provider } from "ethers";
+import { useAppKit, useAppKitProvider } from "@reown/appkit/react";
 import {
   detectSolanaWallets,
   connectSolanaWallet,
   restoreSolanaSession,
   type SolanaProvider,
 } from "@/wallet/solana-adapter";
+import { detectWallets, getInstalledWallet } from "@/wallet/evm-wallets";
+import { signInWithEvmProvider } from "@/wallet/siwe";
+import { isWalletConnectConfigured } from "@/wallet/appkit-config";
+import type { ConnectStep, WalletId } from "@/wallet/types";
 
-// ─── Wallet detection ───────────────────────────────────────────────────────
-
-export type WalletId =
-  | "metamask"
-  | "phantom"
-  | "backpack"
-  | "coinbase"
-  | "okx"
-  | "trust"
-  | "rabby"
-  | "rainbow"
-  | "brave"
-  | "injected";
-
-/** Which chain families this wallet's injected provider can sign for */
-export type WalletChain = "evm" | "evm+sol";
-
-export interface DetectedWallet {
-  id: WalletId;
-  name: string;
-  provider: Eip1193Provider;
-  chain: WalletChain;
-}
-
-type EvmProvider = Eip1193Provider & {
-  isMetaMask?: boolean;
-  isPhantom?: boolean;
-  isCoinbaseWallet?: boolean;
-  isRabby?: boolean;
-  isBraveWallet?: boolean;
-  isBackpack?: boolean;
-  isTrust?: boolean;
-  isRainbow?: boolean;
-};
-
-type AnyWindow = Window & {
-  ethereum?: EvmProvider;
-  phantom?: { ethereum?: Eip1193Provider; solana?: unknown };
-  backpack?: { ethereum?: Eip1193Provider; isBackpack?: boolean };
-  coinbaseWalletExtension?: Eip1193Provider;
-  okxwallet?: Eip1193Provider;
-  trustwallet?: { ethereum?: Eip1193Provider };
-};
-
-export function detectWallets(): DetectedWallet[] {
-  const w = window as AnyWindow;
-  const results: DetectedWallet[] = [];
-  const seen = new Set<unknown>();
-
-  const tryAdd = (
-    id: WalletId,
-    name: string,
-    provider: Eip1193Provider | undefined,
-    chain: WalletChain = "evm",
-  ) => {
-    if (!provider?.request || seen.has(provider)) return;
-    seen.add(provider);
-    results.push({ id, name, provider, chain });
-  };
-
-  // 1. Phantom – always exposes its own namespace
-  tryAdd("phantom", "Phantom", w.phantom?.ethereum, "evm+sol");
-
-  // 2. Backpack – dedicated namespace takes priority over window.ethereum flag
-  tryAdd("backpack", "Backpack", w.backpack?.ethereum, "evm+sol");
-
-  // 3. Coinbase Wallet – has its own extension object separate from window.ethereum
-  tryAdd("coinbase", "Coinbase Wallet", w.coinbaseWalletExtension, "evm");
-
-  // 4. OKX Wallet – dedicated window.okxwallet namespace
-  tryAdd("okx", "OKX Wallet", w.okxwallet, "evm+sol");
-
-  // 5. Trust Wallet – dedicated window.trustwallet namespace
-  tryAdd("trust", "Trust Wallet", w.trustwallet?.ethereum, "evm");
-
-  // 6. window.ethereum – check specific flags, deduplicate
-  const eth = w.ethereum;
-  if (eth?.request && !seen.has(eth)) {
-    if (eth.isBackpack) {
-      tryAdd("backpack", "Backpack", eth, "evm+sol");
-    } else if (eth.isCoinbaseWallet) {
-      tryAdd("coinbase", "Coinbase Wallet", eth, "evm");
-    } else if (eth.isRabby) {
-      tryAdd("rabby", "Rabby", eth, "evm");
-    } else if (eth.isRainbow) {
-      tryAdd("rainbow", "Rainbow", eth, "evm");
-    } else if (eth.isBraveWallet) {
-      tryAdd("brave", "Brave Wallet", eth, "evm");
-    } else if (eth.isMetaMask) {
-      tryAdd("metamask", "MetaMask", eth, "evm");
-    } else {
-      tryAdd("injected", "Browser Wallet", eth, "evm");
-    }
-  }
-
-  return results;
-}
-
-// ─── Context types ───────────────────────────────────────────────────────────
-
-export type ConnectStep = "requesting" | "signing" | null;
+export type { WalletId, WalletChain, DetectedWallet } from "@/wallet/types";
+export { detectWallets, getEvmWalletOptions, WALLET_COLORS, WALLET_ICONS } from "@/wallet/evm-wallets";
 
 interface WalletContextState {
-  // ── EVM (existing — unchanged) ──────────────────────────────────────
   walletAddress: string | null;
   isConnected: boolean;
   isVerified: boolean;
@@ -125,39 +31,35 @@ interface WalletContextState {
   connectStep: ConnectStep;
   chainId: string | null;
   connect: (provider?: Eip1193Provider) => Promise<void>;
+  connectWallet: (walletId: WalletId) => Promise<void>;
+  connectWalletConnect: () => Promise<void>;
+  isWalletConnectAvailable: boolean;
   disconnect: () => void;
 
-  // ── Solana (additive — Locker/purchase still use EVM) ───────────────
-  /** Base58 Solana public key, or null when no Solana wallet is connected. */
   solanaAddress: string | null;
   isSolanaConnected: boolean;
   isSolanaConnecting: boolean;
-  /**
-   * Connect a native Solana wallet. Resolves with the base58 public key.
-   * Does NOT affect the EVM session or server auth (server only supports EVM).
-   */
   connectSolana: (provider: SolanaProvider) => Promise<string>;
   disconnectSolana: () => void;
 }
 
 const WalletContext = createContext<WalletContextState | undefined>(undefined);
 
-// ─── Provider ────────────────────────────────────────────────────────────────
-
-export function WalletProvider({ children }: { children: ReactNode }) {
-  // ── EVM state (unchanged) ─────────────────────────────────────────────────
+function WalletProviderInner({ children }: { children: ReactNode }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [chainId, setChainId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectStep, setConnectStep] = useState<ConnectStep>(null);
 
-  // ── Solana state (new, additive) ──────────────────────────────────────────
   const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
   const [isSolanaConnecting, setIsSolanaConnecting] = useState(false);
   const [_activeSolanaProvider, setActiveSolanaProvider] = useState<SolanaProvider | null>(null);
 
-  // Restore an existing server session on mount
+  const activeProviderRef = useRef<Eip1193Provider | null>(null);
+  const { open: openAppKit } = useAppKit();
+  const { walletProvider: wcProvider } = useAppKitProvider("eip155");
+
   useEffect(() => {
     fetch("/api/auth/session")
       .then((r) => (r.ok ? (r.json() as Promise<{ walletAddress: string }>) : null))
@@ -170,7 +72,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
   }, []);
 
-  // Silently restore a trusted Solana session on mount (never prompts)
   useEffect(() => {
     const solWallets = detectSolanaWallets();
     if (!solWallets.length) return;
@@ -194,149 +95,109 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setChainId(chain);
   }, []);
 
-  // Listen on whatever wallet is currently active (best-effort)
   useEffect(() => {
-    const wallets = detectWallets();
-    if (!wallets.length) return;
-    const eth = wallets[0].provider;
-    type Listenable = { on?: (e: string, cb: (v: unknown) => void) => void; removeListener?: (e: string, cb: (v: unknown) => void) => void };
-    const l = eth as unknown as Listenable;
+    const provider = activeProviderRef.current;
+    if (!provider) return;
+    type Listenable = {
+      on?: (e: string, cb: (v: unknown) => void) => void;
+      removeListener?: (e: string, cb: (v: unknown) => void) => void;
+    };
+    const l = provider as unknown as Listenable;
     l.on?.("accountsChanged", handleAccountsChanged as (v: unknown) => void);
     l.on?.("chainChanged", handleChainChanged as (v: unknown) => void);
     return () => {
       l.removeListener?.("accountsChanged", handleAccountsChanged as (v: unknown) => void);
       l.removeListener?.("chainChanged", handleChainChanged as (v: unknown) => void);
     };
-  }, [handleAccountsChanged, handleChainChanged]);
+  }, [walletAddress, handleAccountsChanged, handleChainChanged]);
+
+  const completeSignIn = async (provider: Eip1193Provider) => {
+    const result = await signInWithEvmProvider(provider, setConnectStep);
+    activeProviderRef.current = provider;
+    setWalletAddress(result.address);
+    setChainId(result.chainId);
+    setIsVerified(true);
+  };
 
   const connect = async (eth?: Eip1193Provider) => {
-    const resolvedEth: Eip1193Provider | null = eth ?? (() => {
-      const wallets = detectWallets();
-      if (wallets.length === 0) return null;
-      return wallets.find(w => w.id === "metamask")?.provider
-          ?? wallets.find(w => w.id === "injected")?.provider
-          ?? wallets[0].provider;
-    })();
+    const resolvedEth: Eip1193Provider | null =
+      eth ??
+      (() => {
+        const wallets = detectWallets();
+        if (wallets.length === 0) return null;
+        return (
+          wallets.find((w) => w.id === "metamask")?.provider ??
+          wallets.find((w) => w.id === "backpack")?.provider ??
+          wallets.find((w) => w.id === "injected")?.provider ??
+          wallets[0].provider
+        );
+      })();
 
     if (!resolvedEth) {
       throw Object.assign(
         new Error(
-          "No Ethereum wallet detected. Install MetaMask, Backpack, Phantom, or another EVM wallet, then refresh.\n" +
-          "Note: wallet extensions don't work inside iframes — open the app in its own tab."
+          "No Ethereum wallet detected. Choose MetaMask, Backpack, or another wallet from the list, " +
+            "or use WalletConnect on mobile.",
         ),
-        { code: -32603 }
+        { code: -32603 },
       );
     }
 
     setIsConnecting(true);
     setConnectStep("requesting");
     try {
-      type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
-      const raw = resolvedEth as unknown as RawProvider;
+      await completeSignIn(resolvedEth);
+    } finally {
+      setIsConnecting(false);
+      setConnectStep(null);
+    }
+  };
 
-      // 1. Request account access
-      const accounts = await raw.request({ method: "eth_requestAccounts", params: [] }) as string[];
-      if (!accounts.length) throw new Error("No accounts returned from wallet");
+  const connectWallet = async (walletId: WalletId) => {
+    const installed = getInstalledWallet(walletId);
+    if (installed?.provider) {
+      await connect(installed.provider);
+      return;
+    }
+    if (isWalletConnectConfigured) {
+      await connectWalletConnect();
+      return;
+    }
+    throw Object.assign(
+      new Error(`${walletId} is not installed. Install the extension or use WalletConnect.`),
+      { code: -32603 },
+    );
+  };
 
-      // 2. Get chain ID
-      const chainHex = await raw.request({ method: "eth_chainId" }) as string;
-      const networkChainId = parseInt(chainHex, 16).toString();
-      setChainId(networkChainId);
+  const connectWalletConnect = async () => {
+    if (!isWalletConnectConfigured) {
+      throw new Error(
+        "WalletConnect is not configured. Add VITE_WALLETCONNECT_PROJECT_ID to enable mobile wallets.",
+      );
+    }
 
-      const isAddressMismatchError = (err: unknown): boolean => {
-        const code = (err as { code?: number }).code;
-        const msg = ((err as { message?: string }).message ?? "").toLowerCase();
-        return (code === -32000 || code === 32000 || code === 4200) &&
-          (msg.includes("does not match") || msg.includes("address"));
-      };
+    setIsConnecting(true);
+    setConnectStep("requesting");
+    try {
+      await openAppKit({ view: "Connect" });
 
-      // Some wallets (notably MetaMask) can report a stale `eth_requestAccounts`
-      // result if the active account was switched right around connect time,
-      // which then causes personal_sign to reject with an address-mismatch
-      // error. Re-derive the address fresh right before signing, and retry
-      // once end-to-end (new nonce + new signature) if it still mismatches.
-      let signature = "";
-      let address = "";
-      let message = "";
-      let lastError: unknown;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        // Re-fetch the currently active account rather than trusting the
-        // possibly-stale result from step 1.
-        const freshAccounts = await raw.request({ method: "eth_accounts" }) as string[];
-        const rawAddress = freshAccounts[0] ?? accounts[0];
-        address = rawAddress.toLowerCase(); // normalized lowercase for all server calls
+      const provider = await new Promise<Eip1193Provider>((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          clearInterval(interval);
+          reject(new Error("Wallet connection timed out. Please try again."));
+        }, 120_000);
 
-        // 3. Fetch one-time nonce challenge for the (freshly-resolved) address
-        const nonceRes = await fetch(
-          `/api/auth/nonce?address=${encodeURIComponent(address)}&chainId=${encodeURIComponent(networkChainId)}`,
-        );
-        if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
-        const nonceData = (await nonceRes.json()) as { nonce: string; message: string };
-        message = nonceData.message;
-
-        // 4. Sign — try ethers signMessage first (MetaMask), fall back to raw personal_sign
-        //    (needed for Phantom, Backpack, and other wallets that reject the ethers wrapper)
-        setConnectStep("signing");
-        try {
-          const browserProvider = new BrowserProvider(resolvedEth);
-          const signer = await browserProvider.getSigner();
-          signature = await signer.signMessage(message);
-          lastError = undefined;
-          break;
-        } catch (signErr) {
-          const code = (signErr as { code?: number }).code;
-          if (code === -32000 || code === 32000 || code === 4200) {
-            try {
-              const hexMsg = hexlify(toUtf8Bytes(message));
-              // Use rawAddress (original wallet casing) — Phantom validates this
-              // strictly and rejects lowercase addresses with code -32000.
-              signature = await raw.request({
-                method: "personal_sign",
-                params: [hexMsg, rawAddress],
-              }) as string;
-              lastError = undefined;
-              break;
-            } catch (fallbackErr) {
-              lastError = fallbackErr;
-              if (isAddressMismatchError(fallbackErr) && attempt === 0) {
-                continue; // retry once with a freshly-resolved account + new nonce
-              }
-              throw fallbackErr;
-            }
-          } else {
-            lastError = signErr;
-            if (isAddressMismatchError(signErr) && attempt === 0) {
-              continue; // retry once with a freshly-resolved account + new nonce
-            }
-            throw signErr;
+        const interval = window.setInterval(() => {
+          const p = wcProvider as Eip1193Provider | undefined;
+          if (p?.request) {
+            clearInterval(interval);
+            clearTimeout(timeout);
+            resolve(p);
           }
-        }
-      }
-      if (lastError) {
-        throw Object.assign(
-          new Error(
-            "Your wallet reported a different account than the one being verified. " +
-            "Please make sure the correct account is selected in your wallet, then try connecting again."
-          ),
-          { code: -32000 }
-        );
-      }
-
-      // 5. Server verifies signature and creates a session
-      const verifyRes = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, message, signature }),
+        }, 300);
       });
-      if (!verifyRes.ok) {
-        const err = await verifyRes.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Signature verification failed");
-      }
 
-      setWalletAddress(address);
-      setIsVerified(true);
-    } catch (error) {
-      throw error;
+      await completeSignIn(provider);
     } finally {
       setIsConnecting(false);
       setConnectStep(null);
@@ -347,10 +208,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setWalletAddress(null);
     setIsVerified(false);
     setChainId(null);
+    activeProviderRef.current = null;
     fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
   };
-
-  // ── Solana connect / disconnect ───────────────────────────────────────────
 
   const connectSolana = async (provider: SolanaProvider): Promise<string> => {
     setIsSolanaConnecting(true);
@@ -359,7 +219,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setSolanaAddress(address);
       setActiveSolanaProvider(provider);
 
-      // Listen for Solana account changes
       provider.on("accountChanged", (publicKey: unknown) => {
         if (!publicKey) {
           setSolanaAddress(null);
@@ -387,7 +246,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   return (
     <WalletContext.Provider
       value={{
-        // EVM (unchanged)
         walletAddress,
         isConnected: !!walletAddress && isVerified,
         isVerified,
@@ -395,8 +253,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         connectStep,
         chainId,
         connect,
+        connectWallet,
+        connectWalletConnect,
+        isWalletConnectAvailable: isWalletConnectConfigured,
         disconnect,
-        // Solana (additive)
         solanaAddress,
         isSolanaConnected: !!solanaAddress,
         isSolanaConnecting,
@@ -407,6 +267,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       {children}
     </WalletContext.Provider>
   );
+}
+
+export function WalletProvider({ children }: { children: ReactNode }) {
+  return <WalletProviderInner>{children}</WalletProviderInner>;
 }
 
 export function useWallet() {

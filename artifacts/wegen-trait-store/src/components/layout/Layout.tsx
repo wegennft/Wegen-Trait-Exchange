@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useWallet, detectWallets, type DetectedWallet, type WalletId } from "@/contexts/WalletContext";
+import { useWallet, getEvmWalletOptions, WALLET_COLORS, WALLET_ICONS, type WalletId } from "@/contexts/WalletContext";
+import { isMobileBrowser } from "@/wallet/evm-wallets";
 import { detectSolanaWallets, type DetectedSolanaWallet } from "@/wallet/solana-adapter";
 import { NetworkMismatchBanner } from "@/components/wallet/NetworkMismatchBanner";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
@@ -15,35 +16,10 @@ const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.
 const DISPLAY = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: '0.04em' };
 const MARKER  = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.03em' };
 
-// ─── Wallet metadata ──────────────────────────────────────────────────────────
-
-const WALLET_COLORS: Record<WalletId, string> = {
-  metamask: "#E2761B",
-  phantom:  "#AB9FF2",
-  backpack: "#E33E3F",
-  coinbase: "#0052FF",
-  okx:      "#000000",
-  trust:    "#3375BB",
-  rabby:    "#8697FF",
-  rainbow:  "#174299",
-  brave:    "#FF5500",
-  injected: "#6B7280",
-};
-
-const WALLET_ICONS: Partial<Record<WalletId, string>> = {
-  metamask: "https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg",
-  phantom:  "https://raw.githubusercontent.com/phantom-labs/phantom-brand-assets/main/phantom-icon-purple.svg",
-  backpack: "https://raw.githubusercontent.com/coral-xyz/backpack/master/assets/backpack.png",
-  coinbase: "https://raw.githubusercontent.com/coinbase/coinbase-wallet-sdk/master/packages/wallet-sdk/src/assets/coinbaseWalletLogo.svg",
-  okx:      "https://static.okx.com/cdn/assets/imgs/2211/6BB53EF6A4CF49718CC14EA04EB9E29F.png",
-  trust:    "https://trustwallet.com/assets/images/media/assets/TWT.png",
-  rabby:    "https://raw.githubusercontent.com/RabbyHub/Rabby/master/src/_raw/images/icon-128.png",
-  rainbow:  "https://avatars.githubusercontent.com/u/48327834",
-  brave:    "https://brave.com/static-assets/images/brave-logo-sans-text.svg",
-};
+// ─── Wallet metadata (icons imported from evm-wallets) ────────────────────────
 
 const WALLET_DESC: Partial<Record<WalletId, string>> = {
-  metamask: "MetaMask browser extension",
+  metamask: "MetaMask browser extension & mobile app",
   phantom:  "Phantom — Ethereum provider",
   backpack: "Backpack — EVM + Solana",
   coinbase: "Coinbase Wallet extension",
@@ -96,35 +72,69 @@ function WalletIcon({ id, name }: { id: WalletId; name: string }) {
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { walletAddress, isConnected, connect, disconnect, isConnecting, connectStep,
+  const { walletAddress, isConnected, connect, connectWallet, connectWalletConnect,
+          isWalletConnectAvailable, disconnect, isConnecting, connectStep,
           solanaAddress, isSolanaConnected, isSolanaConnecting, connectSolana, disconnectSolana } = useWallet();
   const { settings } = useSiteSettings();
   const { collection, collectionLabel, setCollection, theme } = useCollection();
   const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { toast } = useToast();
   const [walletPickerOpen, setWalletPickerOpen] = useState(false);
-  const [detectedWallets, setDetectedWallets] = useState<DetectedWallet[]>([]);
   const [solanaWallets, setSolanaWallets] = useState<DetectedSolanaWallet[]>([]);
+  const evmWalletOptions = getEvmWalletOptions();
 
-  const doConnect = async (wallet: DetectedWallet) => {
+  const doConnectWallet = async (walletId: WalletId, provider?: import("ethers").Eip1193Provider | null) => {
     setWalletPickerOpen(false);
     try {
-      await connect(wallet.provider);
+      if (provider) {
+        await connect(provider);
+        return;
+      }
+      if (isWalletConnectAvailable) {
+        await connectWalletConnect();
+        return;
+      }
+      const option = evmWalletOptions.find((w) => w.id === walletId);
+      if (option?.installUrl) {
+        window.open(option.installUrl, "_blank", "noopener,noreferrer");
+        toast({
+          title: `Install ${option.name}`,
+          description: "Install the wallet extension, refresh this page, then connect again.",
+        });
+        return;
+      }
+      await connectWallet(walletId);
     } catch (err) {
       const code = (err as { code?: number }).code;
-      if (code === 4001) return; // user cancelled — silent
+      if (code === 4001) return;
 
       let description = err instanceof Error ? err.message : "Could not connect wallet";
       if (code === -32000 || code === 32000) {
         const hints: Partial<Record<WalletId, string>> = {
           phantom: "Open Phantom → Settings → Developer Settings and enable Ethereum, then retry.",
           backpack: "Open Backpack → Settings and ensure the Ethereum network is enabled, then retry.",
+          metamask: "Make sure the correct account is selected in MetaMask, then retry.",
         };
         description =
-          `${wallet.name} returned an internal error. ` +
-          (hints[wallet.id] ?? "Try disconnecting this site from the wallet and reconnecting.");
+          `${description} ` +
+          (hints[walletId] ?? "Try disconnecting this site from the wallet and reconnecting.");
       }
       toast({ title: "Connection failed", description, variant: "destructive" });
+    }
+  };
+
+  const doConnectWalletConnect = async () => {
+    setWalletPickerOpen(false);
+    try {
+      await connectWalletConnect();
+    } catch (err) {
+      const code = (err as { code?: number }).code;
+      if (code === 4001) return;
+      toast({
+        title: "WalletConnect failed",
+        description: err instanceof Error ? err.message : "Could not connect",
+        variant: "destructive",
+      });
     }
   };
 
@@ -141,28 +151,7 @@ export function Layout({ children }: { children: ReactNode }) {
   };
 
   const handleConnect = () => {
-    const evmWallets = detectWallets();
-    const solWallets = detectSolanaWallets();
-    const totalWallets = evmWallets.length + solWallets.length;
-
-    if (totalWallets === 0) {
-      toast({
-        title: "No wallet found",
-        description:
-          "Install MetaMask, Backpack, Phantom, Coinbase Wallet, or another EVM wallet, then refresh. " +
-          "Note: wallet extensions don't work inside iframes — open the app in its own browser tab.",
-        variant: "destructive",
-      });
-      return;
-    }
-    // Single EVM wallet and no Solana — connect immediately
-    if (evmWallets.length === 1 && solWallets.length === 0) {
-      void doConnect(evmWallets[0]);
-      return;
-    }
-    // Show picker for multiple or mixed wallets
-    setDetectedWallets(evmWallets);
-    setSolanaWallets(solWallets);
+    setSolanaWallets(detectSolanaWallets());
     setWalletPickerOpen(true);
   };
 
@@ -716,41 +705,61 @@ export function Layout({ children }: { children: ReactNode }) {
             </p>
           </DialogHeader>
 
-          <div className="flex flex-col gap-2 mt-2">
-            {/* ── EVM wallets ── */}
-            {detectedWallets.length > 0 && (
-              <>
-                {(detectedWallets.length > 0 || solanaWallets.length > 0) && solanaWallets.length > 0 && (
-                  <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest px-1 pt-1">
-                    EVM Wallets
-                  </p>
-                )}
-                {detectedWallets.map((w) => (
-                  <button
-                    key={w.id}
-                    onClick={() => void doConnect(w)}
-                    className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
-                  >
-                    <WalletIcon id={w.id} name={w.name} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm leading-tight">{w.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {WALLET_DESC[w.id] ?? "Browser wallet"}
-                      </div>
-                    </div>
-                    <span
-                      className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
-                      style={
-                        w.chain === "evm+sol"
-                          ? { color: "#a78bfa", borderColor: "#a78bfa44", background: "#a78bfa11" }
-                          : { color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }
-                      }
-                    >
-                      {w.chain === "evm+sol" ? "EVM + SOL" : "EVM"}
-                    </span>
-                  </button>
-                ))}
-              </>
+          <div className="flex flex-col gap-2 mt-2 max-h-[60vh] overflow-y-auto">
+            <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest px-1 pt-1">
+              Ethereum Wallets
+            </p>
+
+            {evmWalletOptions.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => void doConnectWallet(w.id, w.provider)}
+                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
+              >
+                <WalletIcon id={w.id} name={w.name} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm leading-tight">{w.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {WALLET_DESC[w.id] ?? w.description}
+                  </div>
+                </div>
+                <span
+                  className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                  style={
+                    w.installed
+                      ? { color: "#4ade80", borderColor: "#4ade8044", background: "#4ade8011" }
+                      : { color: "#94a3b8", borderColor: "#94a3b844", background: "#94a3b811" }
+                  }
+                >
+                  {w.installed ? "Installed" : isMobileBrowser() ? "App" : "Install"}
+                </span>
+              </button>
+            ))}
+
+            {isWalletConnectAvailable && (
+              <button
+                onClick={() => void doConnectWalletConnect()}
+                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/15 active:scale-[0.98] transition-all text-left mt-1"
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white text-xs"
+                  style={{ background: "#3396ff", border: "1px solid #3396ff88" }}
+                >
+                  WC
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm leading-tight">WalletConnect</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    MetaMask, Backpack, Rainbow & 300+ wallets — best for mobile
+                  </div>
+                </div>
+                <span
+                  className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                  style={{ color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }}
+                >
+                  QR
+                </span>
+              </button>
             )}
 
             {/* ── Solana wallets ── */}
@@ -794,9 +803,10 @@ export function Layout({ children }: { children: ReactNode }) {
             )}
           </div>
 
-          {/* Mobile deep-link hint */}
           <p className="text-center text-[10px] text-muted-foreground/40 font-mono mt-3 px-2">
-            On mobile? Open this app inside your wallet's browser (MetaMask, Phantom, Trust, OKX) for the best experience.
+            {isMobileBrowser()
+              ? "Tap a wallet or WalletConnect to open your wallet app."
+              : "Installed wallets connect instantly. Others open WalletConnect or the install page."}
           </p>
         </DialogContent>
       </Dialog>

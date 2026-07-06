@@ -1,8 +1,37 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "7Xw9BZhNWtxX-yo5s1MvV"
 uri = "file://artifacts/wegen-trait-store/public/graffiti-bg.png"
 type = "image"
 title = "graffiti street art background"
+
+[[outputs]]
+id = "iutDMwvJcnANUI3b4T9M-"
+uri = "file://rebuild-blueprint.md"
+type = "text"
+title = "Wegen NFT Trait Store — Rebuild Blueprint"
+
+[[outputs]]
+id = "XmMmLS4-uriXCKW6bq9Mu"
+uri = "file://downloads/task-13-plan.pdf"
+type = "pdf"
+title = "Rebuild Blueprint Task Plan (PDF)"
+
+[[outputs]]
+id = "sd1bjt3pkgER2TuGpl4ox"
+uri = "file://downloads/task-13-plan.docx"
+type = "word_document"
+title = "Rebuild Blueprint Task Plan (Word)"
+
+[[outputs]]
+id = "Hei6duOQUp_h7E3sOAWBC"
+uri = "file://downloads/rebuild-blueprint.pdf"
+type = "pdf"
+title = "Wegen NFT Trait Store Rebuild Blueprint (PDF)"
+
+[[outputs]]
+id = "scO-fF9sBb8HPPkVXJHWN"
+uri = "file://downloads/rebuild-blueprint.docx"
+type = "word_document"
+title = "Wegen NFT Trait Store Rebuild Blueprint (Word)"

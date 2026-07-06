@@ -179,7 +179,7 @@ export function BundlesPoints() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pointPacks.map((pack) => (
-              <Card key={pack.id} className="border-border/60 hover:border-primary/50 transition-colors overflow-hidden">
+              <Card key={pack.id} className="item-glow-gold overflow-hidden">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-3">
                     {pack.imageUrl ? (
@@ -268,7 +268,7 @@ export function BundlesPoints() {
             {filteredBundles.map((bundle) => {
               const soldOut = bundle.totalSupply !== -1 && bundle.remainingSupply < 1;
               return (
-                <Card key={bundle.id} className="border-border/60 hover:border-primary/50 transition-colors overflow-hidden flex flex-col">
+                <Card key={bundle.id} className="item-glow-gold overflow-hidden flex flex-col">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xl flex items-center gap-2.5">
                       <Gem className="w-6 h-6" style={{ color: accent }} />

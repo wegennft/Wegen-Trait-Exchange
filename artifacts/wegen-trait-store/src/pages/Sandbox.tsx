@@ -739,7 +739,7 @@ export function Sandbox() {
                                 ? "daily-trait-selected border-green-500/80"
                                 : isSelected
                                 ? "border-primary/70 shadow-[0_0_14px_hsl(272_100%_62%_/_0.35)]"
-                                : "border-border/30 bg-secondary/20 hover:border-primary/40 hover:bg-secondary/50"
+                                : "item-glow-gold bg-secondary/20"
                             }`}
                             style={
                               isBountyMatch
@@ -833,7 +833,7 @@ export function Sandbox() {
                             ? "daily-trait-selected border-green-500/80"
                             : isSelected
                             ? "border-primary/70 shadow-[0_0_14px_hsl(272_100%_62%_/_0.35)]"
-                            : "border-border/30 bg-secondary/20 hover:border-primary/40 hover:bg-secondary/50"
+                            : "item-glow-gold bg-secondary/20"
                         }`}
                         style={
                           isBountyMatch

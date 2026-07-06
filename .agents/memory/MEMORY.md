@@ -2,3 +2,4 @@
 - [USD-primary pricing pattern](usd-primary-pricing.md) — priceUsd is source of truth; priceEth always re-derived server-side from live rate, 503 if rate unavailable, never trust client ETH amounts.
 - [Vault-linked bounty rewards](vault-linked-bounty-rewards.md) — bounty reward traits can optionally link to a real vault trait; redeem then delivers a real locker item instead of a cosmetic-only reward record.
 - [EVM-only wallet connect](evm-only-wallet-connect.md) — wallet connection is EVM-only end to end; do not reintroduce a separate Solana connect path, even display-only, since users find dual-chain wallet UI confusing.
+- [No shared trait card component](no-shared-trait-card.md) — Store/BundlesPoints/Bounties/Sandbox each hand-roll their own card markup; a shared visual treatment must be hand-applied per page/instance, not added to one component.

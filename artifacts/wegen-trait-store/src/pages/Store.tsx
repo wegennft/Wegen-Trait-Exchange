@@ -957,10 +957,9 @@ export function Store() {
                 return (
                   <Card
                     key={legend.id}
-                    className="bg-card/95 border-border/60 overflow-hidden group transition-all duration-200 flex flex-col"
+                    className="item-glow-gold bg-card/95 overflow-hidden group transition-all duration-200 flex flex-col"
                     style={{
                       animationDelay: `${index * 50}ms`,
-                      boxShadow: `0 0 0 1px rgba(255,255,255,0.04)`,
                     }}
                   >
                     <div className="relative aspect-square overflow-hidden bg-black flex items-center justify-center">
@@ -1139,10 +1138,8 @@ export function Store() {
           {activeTraits.map((trait, index) => (
             <Card
               key={trait.id}
-              className={`bg-card/92 border-border/60 overflow-hidden group transition-all duration-200 flex flex-col cursor-pointer ${
-                previewTrait?.id === trait.id
-                  ? "border-primary shadow-[0_0_22px_rgba(157,0,255,0.22)] scale-[1.015]"
-                  : "hover:border-primary/50 hover:shadow-[0_0_20px_rgba(157,0,255,0.15)]"
+              className={`item-glow-gold bg-card/92 overflow-hidden group transition-all duration-200 flex flex-col cursor-pointer ${
+                previewTrait?.id === trait.id ? "scale-[1.015]" : ""
               }`}
               style={{ animationDelay: `${index * 50}ms` }}
               onMouseEnter={() => setPreviewTrait(trait)}

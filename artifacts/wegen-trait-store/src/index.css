@@ -265,6 +265,26 @@
     0 0 60px hsl(43 100% 40% / 0.08);
 }
 
+/* Bold glowing gold edge for display items (store/points/bounties/sandbox cards) */
+.item-glow-gold {
+  border: 2px solid hsl(43 100% 58% / 0.85) !important;
+  box-shadow:
+    0 0 0 1px hsl(43 100% 65% / 0.35),
+    0 0 14px hsl(43 100% 55% / 0.55),
+    0 0 32px hsl(43 100% 50% / 0.35),
+    0 0 60px hsl(43 100% 45% / 0.18);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+.item-glow-gold:hover {
+  border-color: hsl(45 100% 65% / 1) !important;
+  box-shadow:
+    0 0 0 1px hsl(45 100% 70% / 0.5),
+    0 0 20px hsl(45 100% 60% / 0.75),
+    0 0 46px hsl(43 100% 52% / 0.5),
+    0 0 90px hsl(43 100% 45% / 0.25);
+  transform: translateY(-2px);
+}
+
 .stencil-box {
   border: 2px solid hsl(272 100% 65% / 0.5);
   box-shadow:

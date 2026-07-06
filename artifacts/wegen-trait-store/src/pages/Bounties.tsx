@@ -268,11 +268,9 @@ export function Bounties() {
               return (
                 <div
                   key={trait.id}
-                  className="flex-shrink-0 rounded-xl overflow-hidden w-48"
+                  className="item-glow-gold flex-shrink-0 rounded-xl overflow-hidden w-48"
                   style={{
                     background: "hsl(272 20% 6%)",
-                    border: `1px solid hsl(${accentHsl} / ${canAfford && !soldOut && !atLimit ? "0.35" : "0.12"})`,
-                    boxShadow: canAfford && !soldOut && !atLimit ? `0 0 12px ${glow}` : "none",
                     opacity: soldOut || atLimit ? 0.5 : 1,
                   }}
                 >
@@ -545,11 +543,8 @@ export function Bounties() {
                 return (
                   <div
                     key={trait.id}
-                    className="rounded-2xl overflow-hidden border"
-                    style={{
-                      background: "hsl(272 20% 6%)",
-                      border: `1px solid hsl(${accentHsl} / 0.2)`,
-                    }}
+                    className="item-glow-gold rounded-2xl overflow-hidden"
+                    style={{ background: "hsl(272 20% 6%)" }}
                   >
                     {/* Image */}
                     <div className="aspect-square bg-secondary/20 relative overflow-hidden">

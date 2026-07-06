@@ -1,0 +1,75 @@
+I want to migrate this entire Replit project into a new development environment, likely Cursor or Claude Code, and rebuild it cleanly while keeping the same functionality.
+
+Please audit the entire project and give me a complete handoff package.
+
+I need:
+
+1. A clear summary of what this app does
+   Explain the purpose of the app, who it is for, and the main user flow from start to finish.
+
+2. A full feature list
+   List every feature that currently exists, including buttons, pages, forms, dashboards, login/signup, admin tools, user actions, database actions, payment flows, uploads, notifications, automations, API calls, and anything hidden in the backend.
+
+3. A page-by-page breakdown
+   For each page or route, tell me:
+
+* The route URL
+* What the page does
+* What components are used
+* What buttons/actions exist
+* What data it reads
+* What data it writes
+* What needs to happen when the user clicks or submits something
+
+4. A file structure explanation
+   Explain what every important folder and file does. Include frontend files, backend files, config files, API routes, database files, utility files, and styling files.
+
+5. Tech stack details
+   Tell me exactly what this project uses:
+
+* Framework
+* Frontend libraries
+* Backend setup
+* Database
+* Authentication
+* Storage
+* APIs
+* Packages/dependencies
+* Build tools
+* Hosting assumptions
+
+6. Environment variables
+   List every required environment variable, what it is used for, and whether it is required for local development or production. Do not expose secret values. Use placeholder names only.
+
+7. Database/schema details
+   Give me the full database structure:
+
+* Tables/collections
+* Fields
+* Field types
+* Relationships
+* Indexes if any
+* Example records
+* What each table is used for
+* Any migrations or setup steps needed
+
+8. API and backend route documentation
+   List every API route or server function:
+
+* Route/function name
+* What it does
+* Input required
+* Output returned
+* Errors it can throw
+* Which frontend page or feature uses it
+
+9. Current malfunctions and bugs
+   Audit the project and list anything broken, messy, duplicated, unfinished, insecure, or likely to fail. Explain what the issue is, where it happens, and what the correct behavior should be.
+
+10. Rebuild instructions
+    Give me a step-by-step plan to rebuild this same app cleanly in Cursor or Claude Code. Include the best order to rebuild the app, what files to create first, and what features to test first.
+
+11. Copy-ready migration prompt
+    At the end, write a clean prompt I can paste into Cursor or Claude Code that explains the entire project and asks it to recreate the app with the same features, but cleaner, more stable, and better organized.
+
+Please be extremely detailed. Assume the new AI developer has never seen this Replit project before and needs enough context to rebuild it accurately.

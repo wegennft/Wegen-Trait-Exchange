@@ -1,18 +1,18 @@
 import { Router } from "express";
 import { verifyMessage } from "ethers";
 import crypto from "crypto";
+import { db, authNoncesTable } from "@workspace/db";
+import { eq, lt } from "drizzle-orm";
 
 const router: Router = Router();
 
-// In-memory nonce store: address → { nonce, expires }
-// TTL of 5 minutes per challenge
-const nonces = new Map<string, { nonce: string; expires: number }>();
+// Nonces are persisted in Postgres (auth_nonces table) so sign-in survives
+// server restarts and works across horizontally-scaled instances.
+// TTL of 5 minutes per challenge.
+const NONCE_TTL_MS = 5 * 60 * 1000;
 
-function pruneExpiredNonces() {
-  const now = Date.now();
-  for (const [addr, entry] of nonces.entries()) {
-    if (entry.expires < now) nonces.delete(addr);
-  }
+async function pruneExpiredNonces(): Promise<void> {
+  await db.delete(authNoncesTable).where(lt(authNoncesTable.expiresAt, new Date()));
 }
 
 function buildSiweMessage(params: {
@@ -37,8 +37,8 @@ function buildSiweMessage(params: {
 }
 
 // GET /api/auth/nonce?address=0x...&chainId=1
-router.get("/auth/nonce", (req, res): void => {
-  pruneExpiredNonces();
+router.get("/auth/nonce", async (req, res): Promise<void> => {
+  await pruneExpiredNonces();
   const address = (req.query.address as string)?.toLowerCase();
   const chainId = (req.query.chainId as string) || "1";
   if (!address || !/^0x[0-9a-f]{40}$/.test(address)) {
@@ -49,8 +49,15 @@ router.get("/auth/nonce", (req, res): void => {
   const nonce = crypto.randomBytes(16).toString("hex");
   const issuedAt = new Date().toISOString();
   const domain = req.hostname || "localhost";
+  const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
 
-  nonces.set(address, { nonce, expires: Date.now() + 5 * 60 * 1000 });
+  await db
+    .insert(authNoncesTable)
+    .values({ address, nonce, expiresAt })
+    .onConflictDoUpdate({
+      target: authNoncesTable.address,
+      set: { nonce, expiresAt },
+    });
 
   const message = buildSiweMessage({ domain, address, nonce, issuedAt, chainId });
   res.json({ nonce, message });
@@ -70,8 +77,11 @@ router.post("/auth/verify", async (req, res): Promise<void> => {
     return;
   }
 
-  const stored = nonces.get(address);
-  if (!stored || stored.expires < Date.now()) {
+  const [stored] = await db
+    .select()
+    .from(authNoncesTable)
+    .where(eq(authNoncesTable.address, address));
+  if (!stored || stored.expiresAt.getTime() < Date.now()) {
     res.status(401).json({ error: "Nonce expired or not found — please reconnect" });
     return;
   }
@@ -94,7 +104,7 @@ router.post("/auth/verify", async (req, res): Promise<void> => {
   }
 
   // Consume nonce (prevent replay attacks)
-  nonces.delete(address);
+  await db.delete(authNoncesTable).where(eq(authNoncesTable.address, address));
 
   req.session.walletAddress = address;
   req.session.save((err) => {

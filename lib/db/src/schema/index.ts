@@ -8,3 +8,4 @@ export * from "./legends";
 export * from "./bounties";
 export * from "./points";
 export * from "./bundles";
+export * from "./auth";

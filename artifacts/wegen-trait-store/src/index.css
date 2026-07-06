@@ -265,6 +265,32 @@
     0 0 60px hsl(43 100% 40% / 0.08);
 }
 
+/* Spinning cartoon hand-coin used for the "We Smackz" point currency */
+.smackz-coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: radial-gradient(circle at 32% 28%, hsl(46 100% 70%), hsl(38 92% 46%) 65%, hsl(28 80% 32%));
+  box-shadow:
+    0 0 10px hsl(43 100% 55% / 0.55),
+    inset 0 1px 2px rgba(255, 255, 255, 0.55),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+  perspective: 300px;
+}
+.smackz-coin-face {
+  display: inline-block;
+  line-height: 1;
+  transform-style: preserve-3d;
+  animation: smackz-coin-spin 2.4s linear infinite;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+}
+@keyframes smackz-coin-spin {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+
 /* Bold glowing gold edge for display items (store/points/bounties/sandbox cards) */
 .item-glow-gold {
   border: 2px solid hsl(43 100% 58% / 0.85) !important;

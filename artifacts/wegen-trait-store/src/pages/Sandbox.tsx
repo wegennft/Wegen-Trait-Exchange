@@ -119,15 +119,6 @@ export function Sandbox() {
   const winTriggered = useRef(false);
 
   const { data: traitsData, isLoading } = useListTraits({ includeAll: true, limit: 9999, nftCollection: collection });
-  const { data: bountyTraitsData } = useQuery({
-    queryKey: ["sandbox-bounty-traits"],
-    queryFn: async () => {
-      const res = await fetch("/api/bounties/traits");
-      if (!res.ok) return { traits: [] };
-      return res.json() as Promise<{ traits: { id: number; name: string; imageUrl: string | null; isActive: number }[] }>;
-    },
-    staleTime: 1000 * 60 * 5,
-  });
   const { data: layerData } = useQuery({
     queryKey: ["sandbox-layer-order", collection],
     queryFn: async () => {
@@ -151,21 +142,6 @@ export function Sandbox() {
   const layerOrder: string[] = layerData?.layerOrder ?? DEFAULT_LAYER_ORDER;
   const traits = (traitsData?.traits ?? []) as TraitItem[];
 
-  // Map bounty traits into TraitItems with a "Rewards" category (id offset to avoid collisions)
-  const bountyAsTraits = useMemo<TraitItem[]>(() => {
-    return (bountyTraitsData?.traits ?? [])
-      .filter((t) => t.isActive)
-      .map((t) => ({
-        id: 1_000_000 + t.id,
-        name: t.name,
-        category: "Rewards",
-        imageUrl: t.imageUrl ?? null,
-        mediaType: "image",
-        priceEth: "0",
-        isActive: true,
-      }));
-  }, [bountyTraitsData]);
-
   const byCategory = useMemo(() => {
     const map: Record<string, TraitItem[]> = {};
     for (const t of traits) {
@@ -173,12 +149,8 @@ export function Sandbox() {
       if (!map[cat]) map[cat] = [];
       map[cat].push(t);
     }
-    // Add reward traits as a "Rewards" category
-    if (bountyAsTraits.length > 0) {
-      map["Rewards"] = bountyAsTraits;
-    }
     return map;
-  }, [traits, bountyAsTraits]);
+  }, [traits]);
 
   /* ── Dynamic category list: layerOrder first, then any extras ─────────── */
   const displayCategories = useMemo(() => {

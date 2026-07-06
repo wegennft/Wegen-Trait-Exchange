@@ -22,6 +22,7 @@ import { TraitImageZoom } from "@/components/TraitImageZoom";
 import { TxConfirmModal, type TxDetail } from "@/components/wallet/TxConfirmModal";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package, Sparkles, Wallet, Zap, Gem, Search, X } from "lucide-react";
+import { SmackzCoin } from "@/components/SmackzCoin";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
 
@@ -91,7 +92,7 @@ export function BundlesPoints() {
         },
       });
       queryClient.invalidateQueries({ queryKey: getGetStorePointsQueryKey(walletAddress) });
-      toast({ title: "Points purchased!", description: `+${pendingPack.pointsGranted} points added to your balance.` });
+      toast({ title: "We Smackz purchased!", description: `+${pendingPack.pointsGranted} We Smackz added to your balance.` });
     } catch (err) {
       toast({ title: "Purchase failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
@@ -118,7 +119,7 @@ export function BundlesPoints() {
   const packDetails: TxDetail[] = pendingPack && ethUsd !== null
     ? [
         { label: "Pack", value: pendingPack.name },
-        { label: "Points", value: `${pendingPack.pointsGranted}`, accent: true },
+        { label: "We Smackz", value: `${pendingPack.pointsGranted}`, accent: true },
         { label: "USD Value", value: `$${pendingPack.usdValue}` },
         { label: "ETH Amount", value: `${(parseFloat(pendingPack.usdValue) / ethUsd).toFixed(6)} ETH` },
       ]
@@ -139,10 +140,10 @@ export function BundlesPoints() {
         <div>
           <h1 className="text-3xl sm:text-4xl flex items-center gap-3" style={{ ...BANGERS, color: accent }}>
             <Sparkles className="w-8 h-8" style={{ color: accent }} />
-            Packs &amp; Points
+            Packs &amp; We Smackz
           </h1>
           <p className="text-base mt-2" style={{ color: "hsl(var(--muted-foreground))" }}>
-            Buy store points with a fixed USD value, or grab a bundle of traits straight into your Trait Locker.
+            Buy We Smackz with a fixed USD value, or grab a bundle of traits straight into your Trait Locker.
           </p>
         </div>
 
@@ -150,11 +151,11 @@ export function BundlesPoints() {
           className="flex items-center gap-3 px-5 py-3 rounded-xl flex-shrink-0"
           style={{ background: gradient, border: `1px solid ${accent}55`, boxShadow: `0 0 14px ${glow}` }}
         >
-          <Coins className="w-7 h-7" style={{ color: accent }} />
+          <SmackzCoin size={28} />
           <div>
             <div className="text-xs uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>Your Balance</div>
             <div className="text-2xl font-bold" style={{ ...BANGERS, color: accent }}>
-              {isConnected ? totalPoints.toLocaleString() : "—"} pts
+              {isConnected ? totalPoints.toLocaleString() : "—"} Smackz
             </div>
           </div>
           {!isConnected && (
@@ -168,14 +169,14 @@ export function BundlesPoints() {
       {/* ── Point Packs ── */}
       <section className="space-y-4">
         <h2 className="text-2xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
-          <Coins className="w-6 h-6" /> Store Points
+          <SmackzCoin size={24} /> We Smackz Packs
         </h2>
         {loadingPacks ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
           </div>
         ) : pointPacks.length === 0 ? (
-          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No point packs available right now.</p>
+          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No We Smackz packs available right now.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pointPacks.map((pack) => (
@@ -203,7 +204,7 @@ export function BundlesPoints() {
                       <div className="text-4xl leading-none" style={{ ...BANGERS, color: accent }}>
                         {pack.pointsGranted.toLocaleString()}
                       </div>
-                      <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>points</div>
+                      <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Smackz</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Price</div>
@@ -220,7 +221,7 @@ export function BundlesPoints() {
                       setPendingPack(pack);
                     }}
                   >
-                    <Zap className="w-4 h-4" /> Buy Points
+                    <Zap className="w-4 h-4" /> Buy Smackz
                   </Button>
                 </CardContent>
               </Card>
@@ -358,12 +359,12 @@ export function BundlesPoints() {
       <TxConfirmModal
         open={!!pendingPack}
         onOpenChange={(open) => !open && setPendingPack(null)}
-        title="Buy Store Points"
-        description="Points are credited to your wallet immediately after purchase."
+        title="Buy We Smackz"
+        description="We Smackz are credited to your wallet immediately after purchase."
         details={packDetails}
         onConfirm={handlePackConfirm}
         isPending={purchasePointPack.isPending}
-        confirmLabel="Buy Points"
+        confirmLabel="Buy Smackz"
       />
 
       <TxConfirmModal

@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SmackzCoin } from "@/components/SmackzCoin";
 import {
   Trophy, Star, Zap, Flame, ShieldCheck, Lock, CheckCircle2, Gift,
   TrendingUp, Award, Crown, Sparkles, Clock,
@@ -122,7 +123,7 @@ export function Bounties() {
       return r.json();
     },
     onSuccess: (d) => {
-      toast({ title: `+${d.pointsAwarded} point earned!`, description: `${d.dailyCompletions}/${d.dailyLimit} daily bounties complete.` });
+      toast({ title: `+${d.pointsAwarded} We Smack earned!`, description: `${d.dailyCompletions}/${d.dailyLimit} daily bounties complete.` });
       qc.invalidateQueries({ queryKey: ["bounties-me"] });
       qc.invalidateQueries({ queryKey: ["bounties-leaderboard"] });
     },
@@ -142,7 +143,7 @@ export function Bounties() {
       return r.json() as Promise<{ pointsClaimed: number }>;
     },
     onSuccess: (d) => {
-      toast({ title: `🎉 ${d.pointsClaimed} points claimed!`, description: "Points have been added to your balance." });
+      toast({ title: `🎉 ${d.pointsClaimed} We Smackz claimed!`, description: "We Smackz have been added to your balance." });
       qc.invalidateQueries({ queryKey: ["bounties-me"] });
       qc.invalidateQueries({ queryKey: ["bounties-leaderboard"] });
     },
@@ -162,7 +163,7 @@ export function Bounties() {
       return r.json();
     },
     onSuccess: (d) => {
-      toast({ title: `${d.traitName} redeemed!`, description: `Spent ${d.pointsSpent} points. ${d.remainingPoints} remaining.` });
+      toast({ title: `${d.traitName} redeemed!`, description: `Spent ${d.pointsSpent} We Smackz. ${d.remainingPoints} remaining.` });
       qc.invalidateQueries({ queryKey: ["bounties-me"] });
       qc.invalidateQueries({ queryKey: ["bounty-traits"] });
     },
@@ -202,16 +203,19 @@ export function Bounties() {
               Bounties & Rewards
             </h1>
             <p className="text-muted-foreground text-sm mt-1 max-w-xl">
-              Earn points by purchasing traits and saving on-chain. Complete daily sandbox bounties.
-              Spend points on exclusive rewards only available here.
+              Earn We Smackz by purchasing traits and saving on-chain. Complete daily sandbox bounties.
+              Spend We Smackz on exclusive rewards only available here.
             </p>
           </div>
           {isConnected && meData && (
             <div className="text-right flex-shrink-0">
-              <div className="text-3xl font-bold" style={{ ...BANGERS, color: accent }}>
-                {myPoints.toLocaleString()}
+              <div className="flex items-center justify-end gap-2">
+                <SmackzCoin size={26} />
+                <div className="text-3xl font-bold" style={{ ...BANGERS, color: accent }}>
+                  {myPoints.toLocaleString()}
+                </div>
               </div>
-              <div className="text-[11px] text-muted-foreground">pts</div>
+              <div className="text-[11px] text-muted-foreground">Smackz</div>
               {myRank && (
                 <div className="text-xs mt-1" style={{ color: `${accent}80` }}>
                   Rank #{myRank}
@@ -224,9 +228,9 @@ export function Bounties() {
         {/* Point rules strip */}
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { icon: Zap, label: "Trait Purchase", value: "+25 pts", desc: "per unit bought" },
-            { icon: ShieldCheck, label: "Save On Chain", value: "+25 pts", desc: "per confirmation" },
-            { icon: Flame, label: "Sandbox Bounty", value: "+1 pt", desc: "up to 5/day" },
+            { icon: Zap, label: "Trait Purchase", value: "+25 Smackz", desc: "per unit bought" },
+            { icon: ShieldCheck, label: "Save On Chain", value: "+25 Smackz", desc: "per confirmation" },
+            { icon: Flame, label: "Sandbox Bounty", value: "+1 Smack", desc: "up to 5/day" },
           ].map(({ icon: Icon, label, value, desc }) => (
             <div
               key={label}
@@ -258,7 +262,7 @@ export function Bounties() {
             <h2 className="text-base font-bold uppercase tracking-widest" style={{ ...BANGERS, color: `hsl(${accentHsl} / 0.85)`, letterSpacing: "0.12em" }}>
               Exclusive Rewards
             </h2>
-            <span className="text-sm font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>Redeem with points in the Rewards Store</span>
+            <span className="text-sm font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>Redeem with We Smackz in the Rewards Store</span>
           </div>
           <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
             {traits.map((trait) => {
@@ -299,8 +303,8 @@ export function Bounties() {
                       className="text-sm font-bold flex items-center gap-1"
                       style={{ color: canAfford && !soldOut && !atLimit ? accent : "hsl(var(--muted-foreground))" }}
                     >
-                      <Star className="w-3.5 h-3.5 flex-shrink-0" />
-                      {trait.pointCost.toLocaleString()} pts
+                      <SmackzCoin size={16} />
+                      {trait.pointCost.toLocaleString()} Smackz
                     </div>
                     {trait.totalSupply !== -1 && (
                       <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{trait.remainingSupply}/{trait.totalSupply} left</div>
@@ -323,14 +327,14 @@ export function Bounties() {
             <Gift className="w-4 h-4" /> Rewards Store
           </TabsTrigger>
           <TabsTrigger value="my-points" className="flex-1 flex items-center gap-2">
-            <Star className="w-4 h-4" /> My Points
+            <SmackzCoin size={16} /> My We Smackz
           </TabsTrigger>
         </TabsList>
 
         {/* ── Leaderboard ── */}
         <TabsContent value="leaderboard" className="mt-6">
           {leaderboard.length === 0 ? (
-            <EmptyState icon={Trophy} label="No points earned yet — be the first!" accent={accent} glow={glow} />
+            <EmptyState icon={Trophy} label="No We Smackz earned yet — be the first!" accent={accent} glow={glow} />
           ) : (
             <div className="space-y-6">
 
@@ -359,7 +363,7 @@ export function Bounties() {
                           <div className="text-4xl font-black" style={{ ...BANGERS, color: "#cbd5e1" }}>
                             {entry.totalPoints.toLocaleString()}
                           </div>
-                          <div className="text-xs text-slate-400 mt-0.5 font-bold">pts</div>
+                          <div className="text-xs text-slate-400 mt-0.5 font-bold">Smackz</div>
                           <div className="font-mono text-xs mt-2 truncate font-bold" style={{ color: isMe ? accent : "#cbd5e1" }}>
                             {truncate(entry.walletAddress)}
                             {isMe && <span className="ml-1 font-bold">(you)</span>}
@@ -401,7 +405,7 @@ export function Bounties() {
                           <div className="text-5xl font-black" style={{ ...BANGERS, color: isMe ? accent : "#f59e0b", textShadow: `0 0 24px ${isMe ? glow : "#f59e0b80"}` }}>
                             {entry.totalPoints.toLocaleString()}
                           </div>
-                          <div className="text-sm mt-0.5 font-bold" style={{ color: isMe ? accent : "#d97706" }}>pts</div>
+                          <div className="text-sm mt-0.5 font-bold" style={{ color: isMe ? accent : "#d97706" }}>Smackz</div>
                           <div className="font-mono text-sm mt-2 truncate font-bold" style={{ color: isMe ? accent : "#fbbf24" }}>
                             {truncate(entry.walletAddress)}
                             {isMe && <span className="ml-1">(you)</span>}
@@ -438,7 +442,7 @@ export function Bounties() {
                           <div className="text-4xl font-black" style={{ ...BANGERS, color: "#cd7f32" }}>
                             {entry.totalPoints.toLocaleString()}
                           </div>
-                          <div className="text-xs text-orange-800 mt-0.5 font-bold">pts</div>
+                          <div className="text-xs text-orange-800 mt-0.5 font-bold">Smackz</div>
                           <div className="font-mono text-xs mt-2 truncate font-bold" style={{ color: isMe ? accent : "#cd7f32" }}>
                             {truncate(entry.walletAddress)}
                             {isMe && <span className="ml-1 font-bold">(you)</span>}
@@ -467,7 +471,7 @@ export function Bounties() {
                   >
                     <span>Rank</span>
                     <span>Wallet</span>
-                    <span>Points</span>
+                    <span>We Smackz</span>
                   </div>
                   {leaderboard.slice(3).map((entry, idx) => {
                     const i = idx + 3;
@@ -500,7 +504,7 @@ export function Bounties() {
                         </span>
                         <span className="font-bold text-xl tabular-nums" style={{ ...BANGERS, color: isMe ? accent : "hsl(var(--foreground))", textShadow: isMe ? `0 0 12px ${glow}` : "none" }}>
                           {entry.totalPoints.toLocaleString()}
-                          <span className="text-xs font-normal text-muted-foreground ml-1">pts</span>
+                          <span className="text-xs font-normal text-muted-foreground ml-1">Smackz</span>
                         </span>
                       </div>
                     );
@@ -521,7 +525,7 @@ export function Bounties() {
                   <div className="font-mono text-sm text-muted-foreground font-bold">Your rank</div>
                   <div className="font-black text-4xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>#{myRank}</div>
                   <div className="flex-1" />
-                  <div className="font-bold text-2xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>{myPoints.toLocaleString()} pts</div>
+                  <div className="font-bold text-2xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>{myPoints.toLocaleString()} Smackz</div>
                 </div>
               )}
             </div>
@@ -586,8 +590,8 @@ export function Bounties() {
                           className="text-xs font-semibold"
                           style={{ color: accent, borderColor: `${accent}40` }}
                         >
-                          <Star className="w-3 h-3 mr-1" />
-                          {trait.pointCost.toLocaleString()} pts
+                          <SmackzCoin size={14} />
+                          {trait.pointCost.toLocaleString()} Smackz
                         </Badge>
                         {trait.totalSupply !== -1 && (
                           <Badge variant="outline" className="text-xs border-border/40" style={{ color: "hsl(var(--muted-foreground))" }}>
@@ -613,8 +617,8 @@ export function Bounties() {
                         {!isConnected ? "Connect Wallet" :
                           atLimit ? "Limit Reached" :
                           soldOut ? "Sold Out" :
-                          !canAfford ? `Need ${trait.pointCost - myPoints} more pts` :
-                          `Redeem for ${trait.pointCost} pts`}
+                          !canAfford ? `Need ${trait.pointCost - myPoints} more Smackz` :
+                          `Redeem for ${trait.pointCost} Smackz`}
                       </Button>
                     </div>
                   </div>
@@ -624,16 +628,16 @@ export function Bounties() {
           )}
         </TabsContent>
 
-        {/* ── My Points ── */}
+        {/* ── My We Smackz ── */}
         <TabsContent value="my-points" className="mt-6 space-y-5">
           {!isConnected ? (
-            <EmptyState icon={Award} label="Connect your wallet to view your points & history." accent={accent} glow={glow} />
+            <EmptyState icon={Award} label="Connect your wallet to view your We Smackz & history." accent={accent} glow={glow} />
           ) : (
             <>
               {/* Stats row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                  { icon: Star, label: "Total Points", value: myPoints.toLocaleString() },
+                  { icon: Star, label: "Total We Smackz", value: myPoints.toLocaleString() },
                   { icon: Crown, label: "Rank", value: myRank ? `#${myRank}` : "—" },
                   { icon: Clock, label: "Daily Bounties Left", value: `${dailyLeft}/5` },
                 ].map(({ icon: Icon, label, value }) => (
@@ -666,9 +670,9 @@ export function Bounties() {
                     <Gift className="w-6 h-6 text-black" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-bold text-sm text-amber-300">Points Ready to Claim!</div>
+                    <div className="font-bold text-sm text-amber-300">We Smackz Ready to Claim!</div>
                     <div className="text-xs text-amber-200/70 mt-0.5">
-                      An admin airdropped points to your wallet. Claim them to add to your balance.
+                      An admin airdropped We Smackz to your wallet. Claim them to add to your balance.
                     </div>
                   </div>
                   <Button
@@ -677,7 +681,7 @@ export function Bounties() {
                     onClick={() => claimMutation.mutate()}
                     style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "black", boxShadow: "0 0 16px #f59e0b80", fontWeight: 700 }}
                   >
-                    {claimMutation.isPending ? "Claiming…" : `Claim ${pendingPoints.toLocaleString()} pts`}
+                    {claimMutation.isPending ? "Claiming…" : `Claim ${pendingPoints.toLocaleString()} Smackz`}
                   </Button>
                 </div>
               )}
@@ -696,7 +700,7 @@ export function Bounties() {
                 <div className="flex-1">
                   <div className="font-bold text-sm">Sandbox Bounty</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Complete a sandbox session to earn 1 point. Max 5/day.
+                    Complete a sandbox session to earn 1 Smack. Max 5/day.
                   </div>
                   <div className="text-xs mt-1" style={{ color: accent }}>
                     {meData?.dailyCompletions ?? 0}/{meData?.dailyLimit ?? 5} completed today
@@ -745,7 +749,7 @@ export function Bounties() {
                             className="font-bold text-sm flex-shrink-0"
                             style={{ color: isPositive ? accent : "#ef4444" }}
                           >
-                            {isPositive ? "+" : ""}{h.points} pts
+                            {isPositive ? "+" : ""}{h.points} Smackz
                           </div>
                           <div className="text-[10px] text-muted-foreground flex-shrink-0">
                             {new Date(h.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}

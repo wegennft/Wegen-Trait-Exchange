@@ -4,3 +4,4 @@
 - [EVM-only wallet connect](evm-only-wallet-connect.md) — wallet connection is EVM-only end to end; do not reintroduce a separate Solana connect path, even display-only, since users find dual-chain wallet UI confusing.
 - [No shared trait card component](no-shared-trait-card.md) — Store/BundlesPoints/Bounties/Sandbox each hand-roll their own card markup; a shared visual treatment must be hand-applied per page/instance, not added to one component.
 - [SIWE nonce storage](siwe-nonce-storage.md) — sign-in nonces live in Postgres (`auth_nonces`), not an in-memory Map, so restarts/scaling don't break in-flight wallet sign-ins.
+- [Points currency renamed to We Smackz](we-smackz-currency-rename.md) — in-app points currency is user-facing "We Smackz" (short "Smackz"); admin panel intentionally left unrenamed.

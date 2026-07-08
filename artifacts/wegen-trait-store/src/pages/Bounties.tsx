@@ -408,7 +408,7 @@ export function Bounties() {
             </h2>
             <span className="text-sm font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>Redeem with We Smackz in the Rewards Store</span>
           </div>
-          <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {traits.map((trait) => {
               const canAfford = myPoints >= trait.pointCost;
               const soldOut = trait.remainingSupply !== -1 && trait.remainingSupply <= 0;
@@ -416,7 +416,7 @@ export function Bounties() {
               return (
                 <div
                   key={trait.id}
-                  className="item-glow-gold flex-shrink-0 rounded-xl overflow-hidden w-48"
+                  className="item-glow-gold rounded-xl overflow-hidden"
                   style={{
                     background: "hsl(272 20% 6%)",
                     opacity: soldOut || atLimit ? 0.5 : 1,

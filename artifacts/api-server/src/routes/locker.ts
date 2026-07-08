@@ -164,8 +164,8 @@ router.post(
       nftCollection: trait.nftCollection,
     });
 
-    // Award 25 points per unit purchased
-    await awardPoints(walletAddress, 25 * qty, "purchase", `Purchased: ${trait.name} ×${qty}`).catch(() => {});
+    // Award 150 points per unit purchased
+    await awardPoints(walletAddress, 150 * qty, "purchase", `Purchased: ${trait.name} ×${qty}`).catch(() => {});
 
     const itemWithTrait = {
       ...lockerItem,

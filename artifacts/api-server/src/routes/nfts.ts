@@ -310,8 +310,8 @@ router.post("/nfts/:tokenId/confirm-traits", requireWalletOwnership(), async (re
     })
     .where(eq(wegenNftsTable.tokenId, tokenId));
 
-  // Award 25 points for saving traits on-chain
-  await awardPoints(walletAddress, 25, "confirm_traits", `SOC: token #${tokenId}`).catch(() => {});
+  // Award 250 points for saving traits on-chain
+  await awardPoints(walletAddress, 250, "confirm_traits", `SOC: token #${tokenId}`).catch(() => {});
 
   res.json(
     ConfirmTraitsResponse.parse({

@@ -215,32 +215,32 @@ export function Bounties() {
               Bounties & Smackz Rewards
             </h1>
             <div className="mt-3 max-w-2xl space-y-3">
-              <p className="text-[2.25rem] font-bold leading-tight" style={{ color: accent2 || "#e8d8ff", textShadow: `0 0 12px ${glow}` }}>
+              <p className="text-lg font-bold" style={{ color: accent2 || "#e8d8ff", textShadow: `0 0 12px ${glow}` }}>
                 We Smackz is the Wegen reward currency — earn it by being an active holder and spend it on exclusive traits you can't buy anywhere else.
               </p>
-              <ul className="text-[2rem] leading-snug space-y-4" style={{ color: "#f0e8ff" }}>
+              <ul className="text-base space-y-2" style={{ color: "#f0e8ff" }}>
                 <li className="flex items-center gap-3">
-                  <Zap className="w-8 h-8 flex-shrink-0" style={{ color: accent }} />
-                  <span><span className="font-extrabold" style={{ color: accent }}>+25 Smackz</span> every time you buy a trait from the Store</span>
+                  <Zap className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
+                  <span><span className="font-extrabold" style={{ color: accent }}>+150 Smackz</span> every time you buy a trait from the Store</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <ShieldCheck className="w-8 h-8 flex-shrink-0" style={{ color: accent }} />
-                  <span><span className="font-extrabold" style={{ color: accent }}>+25 Smackz</span> each time you Save On Chain (commit your NFT's look to the blockchain)</span>
+                  <ShieldCheck className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
+                  <span><span className="font-extrabold" style={{ color: accent }}>+250 Smackz</span> each time you Save On Chain (commit your NFT's look to the blockchain)</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Flame className="w-8 h-8 flex-shrink-0" style={{ color: accent }} />
+                  <Flame className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
                   <span><span className="font-extrabold" style={{ color: accent }}>+5 Smackz</span> per daily Sandbox Bounty completed — up to 5/day per collection (Wegens &amp; Wegenettes tracked separately)</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Coins className="w-8 h-8 flex-shrink-0" style={{ color: accent }} />
+                  <Coins className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
                   <span><span className="font-extrabold" style={{ color: accent }}>Purchase Smackz</span> directly in We Smackz Packs on the <a href="/bundles-points" className="underline underline-offset-2" style={{ color: accent }}>Packs &amp; Smackz</a> page</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Star className="w-8 h-8 flex-shrink-0" style={{ color: accent }} />
+                  <Star className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
                   <span><span className="font-extrabold" style={{ color: accent }}>Bonus Smackz</span> via team airdrops — keep an eye on announcements</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Gift className="w-8 h-8 flex-shrink-0" style={{ color: accent }} />
+                  <Gift className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
                   <span><span className="font-extrabold" style={{ color: accent }}>Spend Smackz</span> on exclusive reward traits in the Rewards Store tab below — limited supply, holders only</span>
                 </li>
               </ul>
@@ -267,8 +267,8 @@ export function Bounties() {
         {/* Point rules strip */}
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { icon: Zap, label: "Trait Purchase", value: "+25 Smackz", desc: "per unit bought" },
-            { icon: ShieldCheck, label: "Save On Chain", value: "+25 Smackz", desc: "per confirmation" },
+            { icon: Zap, label: "Trait Purchase", value: "+150 Smackz", desc: "per unit bought" },
+            { icon: ShieldCheck, label: "Save On Chain", value: "+250 Smackz", desc: "per confirmation" },
             { icon: Flame, label: "Sandbox Bounty", value: "+5 Smackz", desc: "5/day per collection" },
           ].map(({ icon: Icon, label, value, desc }) => (
             <div

@@ -15,8 +15,8 @@ import { requireWalletOwnership } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
-const DAILY_BOUNTY_LIMIT = 5;
-const BOUNTY_POINTS_PER_COMPLETION = 1;
+const DAILY_BOUNTY_LIMIT_PER_COLLECTION = 5;
+const BOUNTY_POINTS_PER_COMPLETION = 5;
 const MAX_BOUNTY_TRAIT_PER_WALLET = 2;
 
 // ── Shared helper: upsert points ──────────────────────────────────────────────
@@ -88,9 +88,9 @@ router.get(
     );
     const rank = rankRow?.rank ?? 1;
 
-    // Daily sandbox completions today
+    // Daily sandbox completions today — per collection
     const today = new Date().toISOString().slice(0, 10);
-    const [dayRow] = await db
+    const dayRows = await db
       .select()
       .from(dailyBountyCompletionsTable)
       .where(
@@ -99,7 +99,11 @@ router.get(
           eq(dailyBountyCompletionsTable.completedDate, today),
         ),
       );
-    const dailyCompletions = dayRow?.count ?? 0;
+    const wegensRow = dayRows.find((r) => r.nftCollection === "wegens");
+    const wegenettesRow = dayRows.find((r) => r.nftCollection === "wegenettes");
+    const wegensCompletions = wegensRow?.count ?? 0;
+    const wegenettesCompletions = wegenettesRow?.count ?? 0;
+    const dailyCompletions = wegensCompletions + wegenettesCompletions;
 
     // Pending (unclaimed) points from admin airdrops
     const [pendingRow] = await db
@@ -121,7 +125,17 @@ router.get(
       .orderBy(desc(pointTransactionsTable.createdAt))
       .limit(20);
 
-    res.json({ totalPoints, rank, dailyCompletions, dailyLimit: DAILY_BOUNTY_LIMIT, pendingPoints, history });
+    res.json({
+      totalPoints,
+      rank,
+      dailyCompletions,
+      dailyLimit: DAILY_BOUNTY_LIMIT_PER_COLLECTION * 2,
+      dailyLimitPerCollection: DAILY_BOUNTY_LIMIT_PER_COLLECTION,
+      wegensCompletions,
+      wegenettesCompletions,
+      pendingPoints,
+      history,
+    });
   },
 );
 
@@ -134,6 +148,11 @@ router.post(
     const walletAddress = req.session.walletAddress!;
     const today = new Date().toISOString().slice(0, 10);
 
+    // Accept nftCollection from body; default to "wegens"
+    const rawCollection = req.body?.nftCollection;
+    const nftCollection =
+      rawCollection === "wegenettes" ? "wegenettes" : "wegens";
+
     const [dayRow] = await db
       .select()
       .from(dailyBountyCompletionsTable)
@@ -141,16 +160,18 @@ router.post(
         and(
           eq(dailyBountyCompletionsTable.walletAddress, walletAddress),
           eq(dailyBountyCompletionsTable.completedDate, today),
+          eq(dailyBountyCompletionsTable.nftCollection, nftCollection),
         ),
       );
 
     const currentCount = dayRow?.count ?? 0;
 
-    if (currentCount >= DAILY_BOUNTY_LIMIT) {
+    if (currentCount >= DAILY_BOUNTY_LIMIT_PER_COLLECTION) {
       res.status(429).json({
-        error: `Daily bounty limit reached (${DAILY_BOUNTY_LIMIT}/day)`,
+        error: `Daily bounty limit reached for ${nftCollection} (${DAILY_BOUNTY_LIMIT_PER_COLLECTION}/day per collection)`,
+        nftCollection,
         dailyCompletions: currentCount,
-        dailyLimit: DAILY_BOUNTY_LIMIT,
+        dailyLimit: DAILY_BOUNTY_LIMIT_PER_COLLECTION,
       });
       return;
     }
@@ -163,16 +184,18 @@ router.post(
     } else {
       await db
         .insert(dailyBountyCompletionsTable)
-        .values({ walletAddress, completedDate: today, count: 1 });
+        .values({ walletAddress, completedDate: today, nftCollection, count: 1 });
     }
 
-    await awardPoints(walletAddress, BOUNTY_POINTS_PER_COMPLETION, "sandbox_bounty", "Sandbox bounty completed");
+    const collectionLabel = nftCollection === "wegenettes" ? "Wegenette" : "Wegen";
+    await awardPoints(walletAddress, BOUNTY_POINTS_PER_COMPLETION, "sandbox_bounty", `${collectionLabel} sandbox bounty completed`);
 
     res.json({
       success: true,
       pointsAwarded: BOUNTY_POINTS_PER_COMPLETION,
+      nftCollection,
       dailyCompletions: currentCount + 1,
-      dailyLimit: DAILY_BOUNTY_LIMIT,
+      dailyLimit: DAILY_BOUNTY_LIMIT_PER_COLLECTION,
     });
   },
 );

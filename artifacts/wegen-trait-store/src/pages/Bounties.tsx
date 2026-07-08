@@ -36,6 +36,9 @@ interface MyStats {
   rank: number;
   dailyCompletions: number;
   dailyLimit: number;
+  dailyLimitPerCollection: number;
+  wegensCompletions: number;
+  wegenettesCompletions: number;
   pendingPoints: number;
   history: PointHistory[];
 }
@@ -76,7 +79,7 @@ function truncate(addr: string) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function Bounties() {
-  const { theme } = useCollection();
+  const { theme, collection } = useCollection();
   const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { walletAddress, isConnected } = useWallet();
   const { toast } = useToast();
@@ -115,7 +118,11 @@ export function Bounties() {
   // Sandbox complete mutation
   const sandboxMutation = useMutation({
     mutationFn: async () => {
-      const r = await fetch("/api/bounties/sandbox-complete", { method: "POST" });
+      const r = await fetch("/api/bounties/sandbox-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nftCollection: collection }),
+      });
       if (!r.ok) {
         const d = await r.json();
         throw new Error(d.error ?? "Failed");
@@ -123,7 +130,8 @@ export function Bounties() {
       return r.json();
     },
     onSuccess: (d) => {
-      toast({ title: `+${d.pointsAwarded} We Smack earned!`, description: `${d.dailyCompletions}/${d.dailyLimit} daily bounties complete.` });
+      const colLabel = d.nftCollection === "wegenettes" ? "Wegenettes" : "Wegens";
+      toast({ title: `+${d.pointsAwarded} We Smackz earned!`, description: `${colLabel}: ${d.dailyCompletions}/${d.dailyLimit} bounties today.` });
       qc.invalidateQueries({ queryKey: ["bounties-me"] });
       qc.invalidateQueries({ queryKey: ["bounties-leaderboard"] });
     },
@@ -177,7 +185,11 @@ export function Bounties() {
   const myRank = meData?.rank;
   const myPoints = meData?.totalPoints ?? 0;
   const pendingPoints = meData?.pendingPoints ?? 0;
-  const dailyLeft = meData ? meData.dailyLimit - meData.dailyCompletions : 5;
+  const limit = meData?.dailyLimitPerCollection ?? 5;
+  const wegensLeft = meData ? limit - (meData.wegensCompletions ?? 0) : limit;
+  const wegenettesLeft = meData ? limit - (meData.wegenettesCompletions ?? 0) : limit;
+  const currentColLeft = collection === "wegenettes" ? wegenettesLeft : wegensLeft;
+  const dailyLeft = currentColLeft;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -217,7 +229,7 @@ export function Bounties() {
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Flame className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
-                  <span><span className="font-extrabold" style={{ color: accent }}>+1 Smack</span> per daily Sandbox Bounty completed — up to 5 per day</span>
+                  <span><span className="font-extrabold" style={{ color: accent }}>+5 Smackz</span> per daily Sandbox Bounty completed — up to 5/day per collection (Wegens &amp; Wegenettes tracked separately)</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Coins className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
@@ -257,7 +269,7 @@ export function Bounties() {
           {[
             { icon: Zap, label: "Trait Purchase", value: "+25 Smackz", desc: "per unit bought" },
             { icon: ShieldCheck, label: "Save On Chain", value: "+25 Smackz", desc: "per confirmation" },
-            { icon: Flame, label: "Sandbox Bounty", value: "+1 Smack", desc: "up to 5/day" },
+            { icon: Flame, label: "Sandbox Bounty", value: "+5 Smackz", desc: "5/day per collection" },
           ].map(({ icon: Icon, label, value, desc }) => (
             <div
               key={label}
@@ -666,7 +678,7 @@ export function Bounties() {
                 {[
                   { icon: Star, label: "Total We Smackz", value: myPoints.toLocaleString() },
                   { icon: Crown, label: "Rank", value: myRank ? `#${myRank}` : "—" },
-                  { icon: Clock, label: "Daily Bounties Left", value: `${dailyLeft}/5` },
+                  { icon: Clock, label: `Daily Left (${collection === "wegenettes" ? "Wegenettes" : "Wegens"})`, value: `${dailyLeft}/5` },
                 ].map(({ icon: Icon, label, value }) => (
                   <div
                     key={label}
@@ -725,12 +737,13 @@ export function Bounties() {
                   <Flame className="w-6 h-6 text-black" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-bold text-sm">Sandbox Bounty</div>
+                  <div className="font-bold text-sm">Sandbox Bounty — {collection === "wegenettes" ? "Wegenettes" : "Wegens"}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Complete a sandbox session to earn 1 Smack. Max 5/day.
+                    Complete a sandbox session to earn 5 Smackz. Max 5/day per collection.
                   </div>
-                  <div className="text-xs mt-1" style={{ color: accent }}>
-                    {meData?.dailyCompletions ?? 0}/{meData?.dailyLimit ?? 5} completed today
+                  <div className="text-xs mt-1 flex gap-3" style={{ color: accent }}>
+                    <span>Wegens: {meData?.wegensCompletions ?? 0}/5</span>
+                    <span>Wegenettes: {meData?.wegenettesCompletions ?? 0}/5</span>
                   </div>
                 </div>
                 <Button

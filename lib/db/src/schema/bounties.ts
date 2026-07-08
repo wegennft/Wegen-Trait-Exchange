@@ -77,9 +77,10 @@ export const dailyBountyCompletionsTable = pgTable(
     id: serial("id").primaryKey(),
     walletAddress: text("wallet_address").notNull(),
     completedDate: date("completed_date").notNull(),
+    nftCollection: text("nft_collection").notNull().default("wegens"),
     count: integer("count").notNull().default(0),
   },
-  (t) => [index("dbc_wallet_date_idx").on(t.walletAddress, t.completedDate)],
+  (t) => [index("dbc_wallet_date_col_idx").on(t.walletAddress, t.completedDate, t.nftCollection)],
 );
 
 export type WalletPoints = typeof walletPointsTable.$inferSelect;

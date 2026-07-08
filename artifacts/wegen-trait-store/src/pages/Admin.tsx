@@ -8186,6 +8186,25 @@ function BundlesPointsAdminTab() {
                   <p className="col-span-full text-center text-xs text-muted-foreground py-3">No traits match "{bundleTraitSearch}"</p>
                 )}
               </div>
+              {bundleForm.traitIds.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {bundleForm.traitIds.map((id) => {
+                    const t = allTraits.find((x) => x.id === id);
+                    if (!t) return null;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleTraitId(id, bundleForm.traitIds, (ids) => setBundleForm((f) => ({ ...f, traitIds: ids })))}
+                        className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-primary/50 bg-primary/10 text-primary hover:bg-destructive/15 hover:border-destructive/50 hover:text-destructive transition-colors"
+                        title="Click to remove"
+                      >
+                        {t.name} ✕
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <Button size="sm" onClick={handleCreateBundle} disabled={createBundle.isPending} className="gap-1.5">
               {createBundle.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create Pack
@@ -8313,6 +8332,21 @@ function BundlesPointsAdminTab() {
                     <p className="col-span-full text-center text-xs text-muted-foreground py-3">No traits match "{editBundleTraitSearch}"</p>
                   )}
                 </div>
+                {editingBundle.traits.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {editingBundle.traits.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setEditingBundle({ ...editingBundle, traits: editingBundle.traits.filter((x) => x.id !== t.id) })}
+                        className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-primary/50 bg-primary/10 text-primary hover:bg-destructive/15 hover:border-destructive/50 hover:text-destructive transition-colors"
+                        title="Click to remove"
+                      >
+                        {t.name} ✕
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2"><Switch checked={editingBundle.isActive} onCheckedChange={(v) => setEditingBundle({ ...editingBundle, isActive: v })} /><Label className="text-xs">Active</Label></div>
               <Button onClick={handleUpdateBundle} disabled={updateBundle.isPending} className="w-full gap-1.5">

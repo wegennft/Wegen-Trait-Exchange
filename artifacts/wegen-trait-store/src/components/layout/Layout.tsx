@@ -160,7 +160,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/locker", label: "Trait Locker", icon: Package },
     { href: "/nfts", label: `My ${collectionLabel}`, icon: Gem },
     { href: "/my-legends", label: "Legends & 1/1's", icon: Crown },
-    { href: "/bounties", label: "Bounties", icon: Trophy },
+    { href: "/bounties", label: "Bounties & Smackz Rewards", icon: Trophy },
     { href: "/swap", label: "Trait Swap", icon: Repeat2 },
     { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
   ];

@@ -200,12 +200,35 @@ export function Bounties() {
           </div>
           <div className="flex-1">
             <h1 className="text-4xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 20px ${glow}` }}>
-              Bounties & Rewards
+              Bounties & Smackz Rewards
             </h1>
-            <p className="text-muted-foreground text-sm mt-1 max-w-xl">
-              Earn We Smackz by purchasing traits and saving on-chain. Complete daily sandbox bounties.
-              Spend We Smackz on exclusive rewards only available here.
-            </p>
+            <div className="mt-2 max-w-2xl space-y-2">
+              <p className="text-base font-semibold" style={{ color: accent2 || "#e0d0ff" }}>
+                We Smackz is the Wegen reward currency — earn it by being an active holder and spend it on exclusive traits you can't buy anywhere else.
+              </p>
+              <ul className="text-sm space-y-1" style={{ color: "hsl(var(--foreground) / 0.85)" }}>
+                <li className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 flex-shrink-0" style={{ color: accent }} />
+                  <span><span className="font-bold" style={{ color: accent }}>+25 Smackz</span> every time you buy a trait from the Store</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" style={{ color: accent }} />
+                  <span><span className="font-bold" style={{ color: accent }}>+25 Smackz</span> each time you Save On Chain (commit your NFT's look to the blockchain)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Flame className="w-3.5 h-3.5 flex-shrink-0" style={{ color: accent }} />
+                  <span><span className="font-bold" style={{ color: accent }}>+1 Smack</span> per daily Sandbox Bounty completed — up to 5 per day</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Star className="w-3.5 h-3.5 flex-shrink-0" style={{ color: accent }} />
+                  <span><span className="font-bold" style={{ color: accent }}>Bonus Smackz</span> via team airdrops — keep an eye on announcements</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Gift className="w-3.5 h-3.5 flex-shrink-0" style={{ color: accent }} />
+                  <span><span className="font-bold" style={{ color: accent }}>Spend Smackz</span> on exclusive reward traits in the Rewards Store tab below — limited supply, holders only</span>
+                </li>
+              </ul>
+            </div>
           </div>
           {isConnected && meData && (
             <div className="text-right flex-shrink-0">

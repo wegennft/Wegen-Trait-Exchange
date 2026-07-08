@@ -160,7 +160,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/locker", label: "Trait Locker", icon: Package },
     { href: "/nfts", label: `My ${collectionLabel}`, icon: Gem },
     { href: "/my-legends", label: "Legends & 1/1's", icon: Crown },
-    { href: "/bounties", label: "Bounties & Smackz Rewards", icon: Trophy },
+    { href: "/bounties", label: "Bounties & Smackz", icon: Trophy },
     { href: "/swap", label: "Trait Swap", icon: Repeat2 },
     { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
   ];
@@ -452,7 +452,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* ── Nav (flexible middle) ── */}
           {!isAdminPage && (
-            <nav className="hidden md:flex items-center flex-1 min-w-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <nav className="hidden md:flex items-center justify-evenly flex-1 min-w-0">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location === item.href;
@@ -460,14 +460,14 @@ export function Layout({ children }: { children: ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`relative flex flex-col items-center gap-0.5 px-3 py-2 transition-all group whitespace-nowrap flex-shrink-0 ${
+                    className={`relative flex flex-col items-center gap-0.5 px-2 py-2 transition-all group flex-1 min-w-0 ${
                       isActive
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
-                    <span style={{ ...BANGERS, fontSize: 'clamp(0.72rem, 0.9vw, 0.9rem)', letterSpacing: '0.1em' }}>
+                    <span className="text-center leading-tight line-clamp-2 w-full" style={{ ...BANGERS, fontSize: 'clamp(0.6rem, 0.75vw, 0.75rem)', letterSpacing: '0.06em' }}>
                       {item.label}
                     </span>
 

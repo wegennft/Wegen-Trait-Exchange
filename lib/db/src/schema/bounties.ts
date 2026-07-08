@@ -83,6 +83,31 @@ export const dailyBountyCompletionsTable = pgTable(
   (t) => [index("dbc_wallet_date_col_idx").on(t.walletAddress, t.completedDate, t.nftCollection)],
 );
 
+export const bountyBundlesTable = pgTable("bounty_bundles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  pointCost: integer("point_cost").notNull().default(100),
+  totalSupply: integer("total_supply").notNull().default(-1),
+  remainingSupply: integer("remaining_supply").notNull().default(-1),
+  isActive: integer("is_active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const bountyBundleItemsTable = pgTable("bounty_bundle_items", {
+  id: serial("id").primaryKey(),
+  bundleId: integer("bundle_id")
+    .notNull()
+    .references(() => bountyBundlesTable.id, { onDelete: "cascade" }),
+  bountyTraitId: integer("bounty_trait_id")
+    .notNull()
+    .references(() => bountyTraitsTable.id, { onDelete: "cascade" }),
+  quantity: integer("quantity").notNull().default(1),
+});
+
 export type WalletPoints = typeof walletPointsTable.$inferSelect;
 export type BountyTrait = typeof bountyTraitsTable.$inferSelect;
 export type BountyPurchase = typeof bountyPurchasesTable.$inferSelect;
+export type BountyBundle = typeof bountyBundlesTable.$inferSelect;
+export type BountyBundleItem = typeof bountyBundleItemsTable.$inferSelect;

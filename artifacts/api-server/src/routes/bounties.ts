@@ -6,6 +6,8 @@ import {
   pointTransactionsTable,
   bountyTraitsTable,
   bountyPurchasesTable,
+  bountyBundlesTable,
+  bountyBundleItemsTable,
   dailyBountyCompletionsTable,
   lockerItemsTable,
   wegenNftsTable,
@@ -560,6 +562,261 @@ router.delete("/admin/bounties/traits/:id", async (req, res): Promise<void> => {
   await db.delete(bountyPurchasesTable).where(eq(bountyPurchasesTable.bountyTraitId, traitId));
   await db.delete(bountyTraitsTable).where(eq(bountyTraitsTable.id, traitId));
 
+  res.json({ success: true });
+});
+
+// ── GET /bounties/bundles ─────────────────────────────────────────────────────
+
+router.get("/bounties/bundles", async (_req, res): Promise<void> => {
+  const bundles = await db
+    .select()
+    .from(bountyBundlesTable)
+    .where(eq(bountyBundlesTable.isActive, 1))
+    .orderBy(bountyBundlesTable.pointCost);
+
+  const items = await db
+    .select({
+      bundleId: bountyBundleItemsTable.bundleId,
+      quantity: bountyBundleItemsTable.quantity,
+      trait: bountyTraitsTable,
+    })
+    .from(bountyBundleItemsTable)
+    .innerJoin(bountyTraitsTable, eq(bountyBundleItemsTable.bountyTraitId, bountyTraitsTable.id));
+
+  const itemsByBundle: Record<number, typeof items> = {};
+  for (const item of items) {
+    if (!itemsByBundle[item.bundleId]) itemsByBundle[item.bundleId] = [];
+    itemsByBundle[item.bundleId].push(item);
+  }
+
+  res.json({
+    bundles: bundles.map((b) => ({
+      ...b,
+      items: itemsByBundle[b.id] ?? [],
+    })),
+  });
+});
+
+// ── POST /bounties/bundles/:id/redeem ─────────────────────────────────────────
+
+router.post(
+  "/bounties/bundles/:id/redeem",
+  requireWalletOwnership(),
+  async (req, res): Promise<void> => {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const bundleId = parseInt(rawId, 10);
+    if (isNaN(bundleId)) { res.status(400).json({ error: "Invalid bundle ID" }); return; }
+
+    const walletAddress = req.session.walletAddress!;
+
+    const [bundle] = await db
+      .select()
+      .from(bountyBundlesTable)
+      .where(eq(bountyBundlesTable.id, bundleId));
+
+    if (!bundle || !bundle.isActive) {
+      res.status(404).json({ error: "Bundle not found or inactive" }); return;
+    }
+    if (bundle.remainingSupply !== -1 && bundle.remainingSupply <= 0) {
+      res.status(400).json({ error: "Bundle is sold out" }); return;
+    }
+
+    const [pointRow] = await db
+      .select()
+      .from(walletPointsTable)
+      .where(eq(walletPointsTable.walletAddress, walletAddress));
+    const currentPoints = pointRow?.totalPoints ?? 0;
+
+    if (currentPoints < bundle.pointCost) {
+      res.status(400).json({ error: `Not enough Smackz (need ${bundle.pointCost}, have ${currentPoints})` }); return;
+    }
+
+    // Fetch bundle items
+    const bundleItems = await db
+      .select({
+        bountyTraitId: bountyBundleItemsTable.bountyTraitId,
+        quantity: bountyBundleItemsTable.quantity,
+        trait: bountyTraitsTable,
+      })
+      .from(bountyBundleItemsTable)
+      .innerJoin(bountyTraitsTable, eq(bountyBundleItemsTable.bountyTraitId, bountyTraitsTable.id))
+      .where(eq(bountyBundleItemsTable.bundleId, bundleId));
+
+    // Deduct points
+    await awardPoints(walletAddress, -bundle.pointCost, "redeem", `Redeemed bundle: ${bundle.name}`);
+
+    // Decrement bundle supply if finite
+    if (bundle.remainingSupply !== -1) {
+      await db
+        .update(bountyBundlesTable)
+        .set({ remainingSupply: bundle.remainingSupply - 1 })
+        .where(eq(bountyBundlesTable.id, bundleId));
+    }
+
+    // Deliver each item in the bundle
+    const deliveredTraits: string[] = [];
+    for (const item of bundleItems) {
+      const { trait, quantity } = item;
+      // Record bounty purchase for each unit
+      for (let i = 0; i < quantity; i++) {
+        await db.insert(bountyPurchasesTable).values({ walletAddress, bountyTraitId: trait.id });
+      }
+      // Decrement individual trait supply if finite
+      if (trait.remainingSupply !== -1) {
+        await db
+          .update(bountyTraitsTable)
+          .set({ remainingSupply: Math.max(0, trait.remainingSupply - quantity) })
+          .where(eq(bountyTraitsTable.id, trait.id));
+      }
+      // Deliver to locker if linked to a vault trait
+      if (trait.sourceTraitId) {
+        const [sourceTrait] = await db
+          .select()
+          .from(traitsTable)
+          .where(eq(traitsTable.id, trait.sourceTraitId));
+        if (sourceTrait) {
+          for (let i = 0; i < quantity; i++) {
+            await db.insert(lockerItemsTable).values({ traitId: sourceTrait.id, walletAddress, quantity: 1 });
+          }
+        }
+      }
+      deliveredTraits.push(trait.name);
+    }
+
+    res.json({
+      success: true,
+      bundleName: bundle.name,
+      pointsSpent: bundle.pointCost,
+      remainingPoints: currentPoints - bundle.pointCost,
+      deliveredTraits,
+    });
+  },
+);
+
+// ── Admin: GET /admin/bounties/bundles ────────────────────────────────────────
+
+router.get("/admin/bounties/bundles", async (_req, res): Promise<void> => {
+  const bundles = await db
+    .select()
+    .from(bountyBundlesTable)
+    .orderBy(bountyBundlesTable.createdAt);
+
+  const items = await db
+    .select({
+      bundleId: bountyBundleItemsTable.bundleId,
+      quantity: bountyBundleItemsTable.quantity,
+      trait: bountyTraitsTable,
+    })
+    .from(bountyBundleItemsTable)
+    .innerJoin(bountyTraitsTable, eq(bountyBundleItemsTable.bountyTraitId, bountyTraitsTable.id));
+
+  const itemsByBundle: Record<number, typeof items> = {};
+  for (const item of items) {
+    if (!itemsByBundle[item.bundleId]) itemsByBundle[item.bundleId] = [];
+    itemsByBundle[item.bundleId].push(item);
+  }
+
+  res.json({
+    bundles: bundles.map((b) => ({
+      ...b,
+      items: itemsByBundle[b.id] ?? [],
+    })),
+  });
+});
+
+// ── Admin: POST /admin/bounties/bundles ───────────────────────────────────────
+
+router.post("/admin/bounties/bundles", async (req, res): Promise<void> => {
+  const { name, description, imageUrl, pointCost, totalSupply, items } = req.body as {
+    name?: string; description?: string; imageUrl?: string;
+    pointCost?: number; totalSupply?: number;
+    items?: { bountyTraitId: number; quantity: number }[];
+  };
+
+  if (!name || typeof name !== "string") {
+    res.status(400).json({ error: "name is required" }); return;
+  }
+  const supply = typeof totalSupply === "number" ? totalSupply : -1;
+
+  const [bundle] = await db
+    .insert(bountyBundlesTable)
+    .values({
+      name,
+      description: description ?? null,
+      imageUrl: imageUrl ?? null,
+      pointCost: typeof pointCost === "number" ? pointCost : 100,
+      totalSupply: supply,
+      remainingSupply: supply,
+      isActive: 1,
+    })
+    .returning();
+
+  if (Array.isArray(items) && items.length > 0) {
+    await db.insert(bountyBundleItemsTable).values(
+      items.map((item) => ({
+        bundleId: bundle.id,
+        bountyTraitId: item.bountyTraitId,
+        quantity: item.quantity ?? 1,
+      })),
+    );
+  }
+
+  res.status(201).json({ bundle });
+});
+
+// ── Admin: PATCH /admin/bounties/bundles/:id ──────────────────────────────────
+
+router.patch("/admin/bounties/bundles/:id", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const bundleId = parseInt(rawId, 10);
+  if (isNaN(bundleId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const { name, description, imageUrl, pointCost, totalSupply, remainingSupply, isActive, items } =
+    req.body as Record<string, unknown>;
+
+  const update: Partial<typeof bountyBundlesTable.$inferInsert> = {};
+  if (typeof name === "string") update.name = name;
+  if (typeof description === "string" || description === null) update.description = description as string | null;
+  if (typeof imageUrl === "string" || imageUrl === null) update.imageUrl = imageUrl as string | null;
+  if (typeof pointCost === "number") update.pointCost = pointCost;
+  if (typeof totalSupply === "number") update.totalSupply = totalSupply;
+  if (typeof remainingSupply === "number") update.remainingSupply = remainingSupply;
+  if (typeof isActive === "number") update.isActive = isActive;
+
+  const [updated] = await db
+    .update(bountyBundlesTable)
+    .set(update)
+    .where(eq(bountyBundlesTable.id, bundleId))
+    .returning();
+
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Optionally replace items
+  if (Array.isArray(items)) {
+    await db.delete(bountyBundleItemsTable).where(eq(bountyBundleItemsTable.bundleId, bundleId));
+    if (items.length > 0) {
+      await db.insert(bountyBundleItemsTable).values(
+        (items as { bountyTraitId: number; quantity: number }[]).map((item) => ({
+          bundleId,
+          bountyTraitId: item.bountyTraitId,
+          quantity: item.quantity ?? 1,
+        })),
+      );
+    }
+  }
+
+  res.json({ bundle: updated });
+});
+
+// ── Admin: DELETE /admin/bounties/bundles/:id ─────────────────────────────────
+
+router.delete("/admin/bounties/bundles/:id", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const bundleId = parseInt(rawId, 10);
+  if (isNaN(bundleId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  // Items cascade-delete via FK; just delete the bundle
+  await db.delete(bountyBundlesTable).where(eq(bountyBundlesTable.id, bundleId));
   res.json({ success: true });
 });
 

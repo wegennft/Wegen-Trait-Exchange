@@ -6893,6 +6893,13 @@ function BountiesAdminTab() {
   const [rewardCollection, setRewardCollection] = useState<"wegens" | "wegenettes">("wegens");
   const [vaultOnly, setVaultOnly] = useState(true);
 
+  // Bundle state
+  const [bundleForm, setBundleForm] = useState<{
+    name: string; description: string; imageUrl: string; pointCost: number; totalSupply: number;
+    items: { traitId: number; quantity: number; traitName: string; traitImage: string | null }[];
+  }>({ name: "", description: "", imageUrl: "", pointCost: 200, totalSupply: -1, items: [] });
+  const [bundleFormUploading, setBundleFormUploading] = useState(false);
+
   const { data } = useQuery({
     queryKey: ["admin-bounty-traits"],
     queryFn: async () => {
@@ -7011,7 +7018,69 @@ function BountiesAdminTab() {
     },
   });
 
+  type AdminBundle = {
+    id: number; name: string; description: string | null; imageUrl: string | null;
+    pointCost: number; totalSupply: number; remainingSupply: number; isActive: number;
+    items: { quantity: number; trait: BountyTrait }[];
+  };
+
+  const { data: bundlesData } = useQuery({
+    queryKey: ["admin-bounty-bundles"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/bounties/bundles");
+      return r.json() as Promise<{ bundles: AdminBundle[] }>;
+    },
+  });
+
+  const createBundleMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/admin/bounties/bundles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: bundleForm.name,
+          description: bundleForm.description || undefined,
+          imageUrl: bundleForm.imageUrl || undefined,
+          pointCost: bundleForm.pointCost,
+          totalSupply: bundleForm.totalSupply,
+          items: bundleForm.items.map((i) => ({ bountyTraitId: i.traitId, quantity: i.quantity })),
+        }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Reward bundle created!" });
+      setBundleForm({ name: "", description: "", imageUrl: "", pointCost: 200, totalSupply: -1, items: [] });
+      qc.invalidateQueries({ queryKey: ["admin-bounty-bundles"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const toggleBundleMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: number }) => {
+      await fetch(`/api/admin/bounties/bundles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-bounty-bundles"] }),
+  });
+
+  const deleteBundleMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`/api/admin/bounties/bundles/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("Failed");
+    },
+    onSuccess: () => {
+      toast({ title: "Bundle deleted" });
+      qc.invalidateQueries({ queryKey: ["admin-bounty-bundles"] });
+    },
+  });
+
   const traits = data?.traits ?? [];
+  const bundles = bundlesData?.bundles ?? [];
   const leaderboard = lbData?.leaderboard ?? [];
 
   return (
@@ -7361,6 +7430,229 @@ function BountiesAdminTab() {
                     </div>
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Reward Bundles ── */}
+      <div className="rounded-xl border border-purple-500/30 p-5 space-y-5" style={{ background: "hsl(270 20% 5%)" }}>
+        <div>
+          <h3 className="text-sm font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2">
+            <Package className="w-4 h-4" /> Reward Bundles
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Create bundles of multiple reward traits. Users redeem a bundle for a single Smackz price and receive all included traits at once.
+          </p>
+        </div>
+
+        {/* ── Bundle Create Form ── */}
+        <div className="rounded-lg border border-border/40 p-4 space-y-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">New Bundle</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Bundle Name *</Label>
+              <Input
+                value={bundleForm.name}
+                onChange={(e) => setBundleForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Starter Pack"
+                className="h-8 text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Image</Label>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setBundleFormUploading(true);
+                      try {
+                        const url = await upload(file);
+                        setBundleForm((f) => ({ ...f, imageUrl: url }));
+                      } catch {
+                        toast({ title: "Upload failed", variant: "destructive" });
+                      } finally {
+                        setBundleFormUploading(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  <div className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent transition-colors h-8">
+                    {bundleFormUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {bundleFormUploading ? "Uploading…" : "Upload"}
+                  </div>
+                </label>
+                {bundleForm.imageUrl && (
+                  <img src={bundleForm.imageUrl} alt="" className="w-8 h-8 rounded object-cover border border-border/40 flex-shrink-0" />
+                )}
+                {bundleForm.imageUrl && (
+                  <button onClick={() => setBundleForm((f) => ({ ...f, imageUrl: "" }))} className="text-muted-foreground hover:text-destructive">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Smackz Cost</Label>
+              <Input
+                type="number"
+                value={bundleForm.pointCost}
+                onChange={(e) => setBundleForm((f) => ({ ...f, pointCost: parseInt(e.target.value) || 0 }))}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Total Supply (-1 = unlimited)</Label>
+              <Input
+                type="number"
+                value={bundleForm.totalSupply}
+                onChange={(e) => setBundleForm((f) => ({ ...f, totalSupply: parseInt(e.target.value) || -1 }))}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Description</Label>
+              <Input
+                value={bundleForm.description}
+                onChange={(e) => setBundleForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Optional description"
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Trait picker */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Included Reward Traits</Label>
+            {traits.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No reward traits yet — create some above first.</p>
+            ) : (
+              <div className="max-h-44 overflow-y-auto space-y-1 rounded-md border border-border/40 p-2">
+                {traits.map((t) => {
+                  const inBundle = bundleForm.items.find((i) => i.traitId === t.id);
+                  return (
+                    <div key={t.id} className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (inBundle) {
+                            setBundleForm((f) => ({ ...f, items: f.items.filter((i) => i.traitId !== t.id) }));
+                          } else {
+                            setBundleForm((f) => ({
+                              ...f,
+                              items: [...f.items, { traitId: t.id, quantity: 1, traitName: t.name, traitImage: t.imageUrl }],
+                            }));
+                          }
+                        }}
+                        className={`flex items-center gap-2 flex-1 text-left text-xs px-2 py-1.5 rounded border transition-colors ${
+                          inBundle ? "border-purple-500/60 bg-purple-500/15 text-purple-300" : "border-border/40 text-muted-foreground"
+                        }`}
+                      >
+                        {t.imageUrl && <img src={t.imageUrl} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />}
+                        <span className="flex-1 truncate">{t.name}</span>
+                        <span className="text-yellow-400 font-bold flex-shrink-0">{t.pointCost} pts</span>
+                      </button>
+                      {inBundle && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground">qty</span>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={inBundle.quantity}
+                            onChange={(e) => {
+                              const q = Math.max(1, parseInt(e.target.value) || 1);
+                              setBundleForm((f) => ({
+                                ...f,
+                                items: f.items.map((i) => i.traitId === t.id ? { ...i, quantity: q } : i),
+                              }));
+                            }}
+                            className="h-7 w-14 text-xs text-center px-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {bundleForm.items.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {bundleForm.items.map((i) => (
+                  <Badge key={i.traitId} variant="outline" className="text-[10px] border-purple-500/40 text-purple-300">
+                    {i.traitName} ×{i.quantity}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Button
+            size="sm"
+            disabled={!bundleForm.name || bundleForm.items.length === 0 || createBundleMutation.isPending || bundleFormUploading}
+            onClick={() => createBundleMutation.mutate()}
+            className="border border-purple-500/40"
+            style={{ background: "linear-gradient(135deg, #9333ea, #7c3aed)", color: "white", fontWeight: 700 }}
+          >
+            {createBundleMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Package className="w-3 h-3 mr-1" />}
+            Create Bundle
+          </Button>
+        </div>
+
+        {/* ── Bundle List ── */}
+        {bundles.length === 0 ? (
+          <div className="text-center py-6 text-sm text-muted-foreground">No bundles yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {bundles.map((b) => (
+              <div key={b.id} className="rounded-xl border border-border/30 p-4 space-y-2">
+                <div className="flex items-start gap-4">
+                  {b.imageUrl && <img src={b.imageUrl} alt={b.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm">{b.name}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
+                      <span className="text-purple-400 font-bold">{b.pointCost} pts</span>
+                      <span>{b.totalSupply === -1 ? "∞" : `${b.remainingSupply}/${b.totalSupply}`} supply</span>
+                      <span>{b.items.length} trait{b.items.length !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {b.items.map((item) => (
+                        <Badge key={item.trait.id} variant="outline" className="text-[9px] border-border/40 text-muted-foreground">
+                          {item.trait.name}{item.quantity > 1 ? ` ×${item.quantity}` : ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant={b.isActive ? "default" : "secondary"} className="text-[10px]">
+                      {b.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => toggleBundleMutation.mutate({ id: b.id, isActive: b.isActive ? 0 : 1 })}
+                    >
+                      {b.isActive ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-7 text-xs"
+                      onClick={() => deleteBundleMutation.mutate(b.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

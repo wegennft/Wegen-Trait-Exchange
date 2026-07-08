@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SmackzCoin } from "@/components/SmackzCoin";
 import {
   Trophy, Star, Zap, Flame, ShieldCheck, Lock, CheckCircle2, Gift,
-  TrendingUp, Award, Crown, Sparkles, Clock, Coins,
+  TrendingUp, Award, Crown, Sparkles, Clock, Coins, Package,
 } from "lucide-react";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
@@ -41,6 +41,23 @@ interface MyStats {
   wegenettesCompletions: number;
   pendingPoints: number;
   history: PointHistory[];
+}
+
+interface BountyBundleItem {
+  quantity: number;
+  trait: BountyTrait;
+}
+
+interface BountyBundle {
+  id: number;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  pointCost: number;
+  totalSupply: number;
+  remainingSupply: number;
+  isActive: number;
+  items: BountyBundleItem[];
 }
 
 interface BountyTrait {
@@ -157,6 +174,40 @@ export function Bounties() {
     },
     onError: (e: Error) => {
       toast({ title: "Claim failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  // Bundles query
+  const { data: bundlesData } = useQuery({
+    queryKey: ["bounty-bundles"],
+    queryFn: async () => {
+      const r = await fetch("/api/bounties/bundles");
+      return r.json() as Promise<{ bundles: BountyBundle[] }>;
+    },
+  });
+  const bundles = bundlesData?.bundles ?? [];
+
+  // Redeem bundle mutation
+  const redeemBundleMutation = useMutation({
+    mutationFn: async (bundleId: number) => {
+      const r = await fetch(`/api/bounties/bundles/${bundleId}/redeem`, { method: "POST" });
+      if (!r.ok) {
+        const d = await r.json();
+        throw new Error(d.error ?? "Failed");
+      }
+      return r.json() as Promise<{ bundleName: string; pointsSpent: number; remainingPoints: number; deliveredTraits: string[] }>;
+    },
+    onSuccess: (d) => {
+      toast({
+        title: `${d.bundleName} redeemed!`,
+        description: `Received: ${d.deliveredTraits.join(", ")}. ${d.remainingPoints} Smackz remaining.`,
+      });
+      qc.invalidateQueries({ queryKey: ["bounties-me"] });
+      qc.invalidateQueries({ queryKey: ["bounty-traits"] });
+      qc.invalidateQueries({ queryKey: ["bounty-bundles"] });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Redeem failed", description: e.message, variant: "destructive" });
     },
   });
 
@@ -573,11 +624,149 @@ export function Bounties() {
 
         {/* ── Rewards Store ── */}
         <TabsContent value="rewards" className="mt-6">
-          {traits.length === 0 ? (
+          {traits.length === 0 && bundles.length === 0 ? (
             <EmptyState icon={Sparkles} label="No rewards available yet — check back soon!" accent={accent} glow={glow} />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {traits.map((trait) => {
+            <div className="space-y-8">
+
+              {/* ── Bundles ── */}
+              {bundles.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5" style={{ color: "#a855f7" }} />
+                    <h2 className="text-lg font-bold" style={{ color: "#a855f7" }}>Reward Bundles</h2>
+                    <Badge variant="outline" className="text-[10px] border-purple-500/40 text-purple-400">Bundle Deal</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {bundles.map((bundle) => {
+                      const canAfford = myPoints >= bundle.pointCost;
+                      const soldOut = bundle.remainingSupply !== -1 && bundle.remainingSupply <= 0;
+                      const locked = !isConnected || !canAfford || soldOut;
+
+                      return (
+                        <div
+                          key={bundle.id}
+                          className="rounded-2xl overflow-hidden"
+                          style={{ background: "hsl(270 25% 6%)", border: "1px solid #a855f740" }}
+                        >
+                          {/* Bundle image */}
+                          <div className="aspect-video bg-secondary/20 relative overflow-hidden">
+                            {bundle.imageUrl ? (
+                              <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="w-16 h-16 opacity-20" style={{ color: "#a855f7" }} />
+                              </div>
+                            )}
+                            {soldOut && (
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                <Badge variant="destructive">Sold Out</Badge>
+                              </div>
+                            )}
+                            {/* Included traits preview */}
+                            {bundle.items.length > 0 && (
+                              <div className="absolute bottom-2 right-2 flex -space-x-2">
+                                {bundle.items.slice(0, 4).map((item) =>
+                                  item.trait.imageUrl ? (
+                                    <img
+                                      key={item.trait.id}
+                                      src={item.trait.imageUrl}
+                                      alt={item.trait.name}
+                                      className="w-8 h-8 rounded-full object-cover border-2 border-background"
+                                    />
+                                  ) : null,
+                                )}
+                                {bundle.items.length > 4 && (
+                                  <div className="w-8 h-8 rounded-full bg-background/80 border-2 border-background flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                                    +{bundle.items.length - 4}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Bundle info */}
+                          <div className="p-4 space-y-3">
+                            <div>
+                              <h3 className="font-bold text-base text-foreground">{bundle.name}</h3>
+                              {bundle.description && (
+                                <p className="text-sm mt-1 line-clamp-2" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                  {bundle.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Included traits list */}
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Includes</p>
+                              <div className="flex flex-wrap gap-1">
+                                {bundle.items.map((item) => (
+                                  <Badge
+                                    key={item.trait.id}
+                                    variant="outline"
+                                    className="text-[10px]"
+                                    style={{ borderColor: "#a855f740", color: "#c084fc" }}
+                                  >
+                                    {item.trait.name}{item.quantity > 1 ? ` ×${item.quantity}` : ""}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Price + supply */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge
+                                variant="outline"
+                                className="text-xs font-semibold"
+                                style={{ color: "#a855f7", borderColor: "#a855f740" }}
+                              >
+                                <SmackzCoin size={14} />
+                                {bundle.pointCost.toLocaleString()} Smackz
+                              </Badge>
+                              {bundle.totalSupply !== -1 && (
+                                <Badge variant="outline" className="text-xs border-border/40" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                  {bundle.remainingSupply}/{bundle.totalSupply} left
+                                </Badge>
+                              )}
+                            </div>
+
+                            <Button
+                              className="w-full text-sm font-bold"
+                              disabled={locked || redeemBundleMutation.isPending}
+                              onClick={() => redeemBundleMutation.mutate(bundle.id)}
+                              style={
+                                !locked
+                                  ? { background: "linear-gradient(135deg, #9333ea, #7c3aed)", color: "white", boxShadow: "0 0 14px #9333ea60" }
+                                  : {}
+                              }
+                            >
+                              {!isConnected
+                                ? "Connect Wallet"
+                                : soldOut
+                                ? "Sold Out"
+                                : !canAfford
+                                ? `Need ${bundle.pointCost - myPoints} more Smackz`
+                                : `Redeem Bundle for ${bundle.pointCost} Smackz`}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Individual Traits ── */}
+              {traits.length > 0 && (
+                <div className="space-y-4">
+                  {bundles.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Gift className="w-5 h-5" style={{ color: accent }} />
+                      <h2 className="text-lg font-bold" style={{ color: accent }}>Individual Rewards</h2>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {traits.map((trait) => {
                 const canAfford = myPoints >= trait.pointCost;
                 const atLimit = trait.walletPurchaseCount >= 2;
                 const soldOut = trait.remainingSupply !== -1 && trait.remainingSupply <= 0;
@@ -663,6 +852,10 @@ export function Bounties() {
                   </div>
                 );
               })}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
         </TabsContent>

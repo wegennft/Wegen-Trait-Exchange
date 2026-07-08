@@ -6871,6 +6871,7 @@ interface BountyTrait {
   remainingSupply: number;
   isActive: number;
   sourceTraitId: number | null;
+  sourceTraitIds: string | null;
   totalRedeemed: number;
 }
 
@@ -6880,8 +6881,8 @@ function BountiesAdminTab() {
   const upload = useUpload();
 
   const [form, setForm] = useState<{
-    name: string; description: string; imageUrl: string; pointCost: number; totalSupply: number; sourceTraitId: number | null;
-  }>({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1, sourceTraitId: null });
+    name: string; description: string; imageUrl: string; pointCost: number; totalSupply: number; sourceTraitIds: number[];
+  }>({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1, sourceTraitIds: [] });
   const [formUploading, setFormUploading] = useState(false);
   const [editImageUploading, setEditImageUploading] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -6966,7 +6967,7 @@ function BountiesAdminTab() {
           imageUrl: form.imageUrl || undefined,
           pointCost: form.pointCost,
           totalSupply: form.totalSupply,
-          sourceTraitId: form.sourceTraitId ?? undefined,
+          sourceTraitIds: form.sourceTraitIds.length > 0 ? form.sourceTraitIds : undefined,
         }),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
@@ -6974,7 +6975,7 @@ function BountiesAdminTab() {
     },
     onSuccess: () => {
       toast({ title: "Bounty trait created!" });
-      setForm({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1, sourceTraitId: null });
+      setForm({ name: "", description: "", imageUrl: "", pointCost: 100, totalSupply: -1, sourceTraitIds: [] });
       qc.invalidateQueries({ queryKey: ["admin-bounty-traits"] });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -7197,7 +7198,14 @@ function BountiesAdminTab() {
         {/* ── Pick from Vault ── */}
         <div className="space-y-2 rounded-lg border border-border/40 p-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <Label className="text-xs font-semibold">Pick a Trait from the Vault (optional)</Label>
+            <Label className="text-xs font-semibold">
+              Pick Traits from the Vault
+              {form.sourceTraitIds.length > 0 && (
+                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">
+                  {form.sourceTraitIds.length} selected
+                </span>
+              )}
+            </Label>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -7225,7 +7233,7 @@ function BountiesAdminTab() {
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Selecting a trait links this reward to it — redeeming will deliver the real trait straight into the wallet's Trait Locker.
+            Select one or more traits — redeeming this reward will deliver <strong>all selected traits</strong> straight into the wallet's Trait Locker.
           </p>
           <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 p-2 rounded-md border border-border/50">
             {rewardTraitPool.length === 0 && (
@@ -7234,38 +7242,47 @@ function BountiesAdminTab() {
               </div>
             )}
             {rewardTraitPool.map((trait) => {
-              const isSelected = form.sourceTraitId === trait.id;
+              const isSelected = form.sourceTraitIds.includes(trait.id);
               return (
                 <button
                   key={trait.id}
                   type="button"
                   onClick={() =>
-                    setForm((f) => ({
-                      ...f,
-                      sourceTraitId: isSelected ? null : trait.id,
-                      name: isSelected ? f.name : (f.name || trait.name),
-                      imageUrl: isSelected ? f.imageUrl : (f.imageUrl || trait.imageUrl || ""),
-                    }))
+                    setForm((f) => {
+                      const already = f.sourceTraitIds.includes(trait.id);
+                      const newIds = already
+                        ? f.sourceTraitIds.filter((id) => id !== trait.id)
+                        : [...f.sourceTraitIds, trait.id];
+                      return {
+                        ...f,
+                        sourceTraitIds: newIds,
+                        name: f.name || (!already && newIds.length === 1 ? trait.name : f.name),
+                        imageUrl: f.imageUrl || (!already && newIds.length === 1 ? (trait.imageUrl || "") : f.imageUrl),
+                      };
+                    })
                   }
-                  className={`flex items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded border truncate ${
-                    isSelected ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                  className={`flex items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded border truncate transition-colors ${
+                    isSelected ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground hover:border-border"
                   }`}
                 >
+                  {isSelected && <span className="shrink-0 text-[10px] font-black">✓</span>}
                   {trait.imageUrl && <img src={trait.imageUrl} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />}
                   <span className="truncate">{trait.name}</span>
                 </button>
               );
             })}
           </div>
-          {form.sourceTraitId !== null && (
-            <div className="flex items-center gap-2 text-[11px] text-primary">
-              <span>✓ Linked to trait #{form.sourceTraitId}</span>
+          {form.sourceTraitIds.length > 0 && (
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="text-primary font-semibold">
+                ✓ {form.sourceTraitIds.length} trait{form.sourceTraitIds.length !== 1 ? "s" : ""} linked — all will be delivered on redemption
+              </span>
               <button
                 type="button"
                 className="text-muted-foreground hover:text-destructive underline"
-                onClick={() => setForm((f) => ({ ...f, sourceTraitId: null }))}
+                onClick={() => setForm((f) => ({ ...f, sourceTraitIds: [] }))}
               >
-                Unlink
+                Clear all
               </button>
             </div>
           )}
@@ -7406,9 +7423,11 @@ function BountiesAdminTab() {
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm truncate flex items-center gap-2">
                         {t.name}
-                        {t.sourceTraitId !== null && (
+                        {(t.sourceTraitIds ? (JSON.parse(t.sourceTraitIds) as number[]).length : t.sourceTraitId !== null ? 1 : 0) > 0 && (
                           <Badge variant="outline" className="text-[9px] font-normal border-primary/40 text-primary">
-                            Vault-linked #{t.sourceTraitId}
+                            {t.sourceTraitIds
+                              ? `${(JSON.parse(t.sourceTraitIds) as number[]).length} trait${(JSON.parse(t.sourceTraitIds) as number[]).length !== 1 ? "s" : ""} linked`
+                              : `Vault-linked #${t.sourceTraitId}`}
                           </Badge>
                         )}
                       </div>

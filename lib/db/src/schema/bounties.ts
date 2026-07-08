@@ -51,6 +51,7 @@ export const bountyTraitsTable = pgTable("bounty_traits", {
   remainingSupply: integer("remaining_supply").notNull().default(-1),
   isActive: integer("is_active").notNull().default(1),
   sourceTraitId: integer("source_trait_id"),
+  sourceTraitIds: text("source_trait_ids"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

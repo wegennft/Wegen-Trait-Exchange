@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql, desc, isNull, sum, gt } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, sum, gt, inArray } from "drizzle-orm";
 import {
   db,
   walletPointsTable,
@@ -376,21 +376,21 @@ router.post(
         .where(eq(bountyTraitsTable.id, traitId));
     }
 
-    // If this reward is linked to a real vault trait, deliver it into the wallet's Trait Locker
-    let deliveredTraitId: number | null = null;
-    if (trait.sourceTraitId) {
-      const [sourceTrait] = await db
-        .select()
-        .from(traitsTable)
-        .where(eq(traitsTable.id, trait.sourceTraitId));
-
+    // Deliver all linked store traits into the wallet's Trait Locker
+    const deliveredTraitIds: number[] = [];
+    const sourceIds: number[] = [];
+    if (trait.sourceTraitId) sourceIds.push(trait.sourceTraitId);
+    if (trait.sourceTraitIds) {
+      try {
+        const extra = JSON.parse(trait.sourceTraitIds) as number[];
+        for (const id of extra) if (!sourceIds.includes(id)) sourceIds.push(id);
+      } catch { /* ignore */ }
+    }
+    for (const sid of sourceIds) {
+      const [sourceTrait] = await db.select().from(traitsTable).where(eq(traitsTable.id, sid));
       if (sourceTrait) {
-        await db.insert(lockerItemsTable).values({
-          traitId: sourceTrait.id,
-          walletAddress,
-          quantity: 1,
-        });
-        deliveredTraitId = sourceTrait.id;
+        await db.insert(lockerItemsTable).values({ traitId: sourceTrait.id, walletAddress, quantity: 1 });
+        deliveredTraitIds.push(sourceTrait.id);
       }
     }
 
@@ -399,7 +399,8 @@ router.post(
       traitName: trait.name,
       pointsSpent: trait.pointCost,
       remainingPoints: currentPoints - trait.pointCost,
-      deliveredTraitId,
+      deliveredTraitId: deliveredTraitIds[0] ?? null,
+      deliveredTraitIds,
     });
   },
 );
@@ -484,29 +485,35 @@ router.get("/admin/bounties/traits", async (_req, res): Promise<void> => {
 // ── Admin: POST /admin/bounties/traits ────────────────────────────────────────
 
 router.post("/admin/bounties/traits", async (req, res): Promise<void> => {
-  const { name, description, imageUrl, pointCost, totalSupply, sourceTraitId } = req.body as {
+  const { name, description, imageUrl, pointCost, totalSupply, sourceTraitId, sourceTraitIds } = req.body as {
     name?: string; description?: string; imageUrl?: string;
     pointCost?: number; totalSupply?: number; sourceTraitId?: number;
+    sourceTraitIds?: number[];
   };
 
   let resolvedName = name;
   let resolvedDescription = description ?? null;
   let resolvedImageUrl = imageUrl ?? null;
 
-  if (typeof sourceTraitId === "number") {
-    const [sourceTrait] = await db
-      .select()
-      .from(traitsTable)
-      .where(eq(traitsTable.id, sourceTraitId));
+  // Merge single + array into one de-duped list
+  const allSourceIds: number[] = [];
+  if (Array.isArray(sourceTraitIds)) {
+    for (const id of sourceTraitIds) if (typeof id === "number" && !allSourceIds.includes(id)) allSourceIds.push(id);
+  } else if (typeof sourceTraitId === "number") {
+    allSourceIds.push(sourceTraitId);
+  }
 
-    if (!sourceTrait) {
-      res.status(400).json({ error: "sourceTraitId does not reference an existing trait" });
+  if (allSourceIds.length > 0) {
+    const sourceTraits = await db.select().from(traitsTable).where(inArray(traitsTable.id, allSourceIds));
+    if (sourceTraits.length !== allSourceIds.length) {
+      res.status(400).json({ error: "One or more sourceTraitIds do not reference existing traits" });
       return;
     }
-
-    resolvedName = resolvedName || sourceTrait.name;
-    resolvedDescription = resolvedDescription ?? sourceTrait.description ?? null;
-    resolvedImageUrl = resolvedImageUrl ?? sourceTrait.imageUrl ?? null;
+    // Auto-fill name/image from first selected trait
+    const first = sourceTraits[0];
+    resolvedName = resolvedName || first.name;
+    resolvedDescription = resolvedDescription ?? first.description ?? null;
+    resolvedImageUrl = resolvedImageUrl ?? first.imageUrl ?? null;
   }
 
   if (!resolvedName || typeof resolvedName !== "string") {
@@ -526,7 +533,8 @@ router.post("/admin/bounties/traits", async (req, res): Promise<void> => {
       totalSupply: supply,
       remainingSupply: supply,
       isActive: 1,
-      sourceTraitId: typeof sourceTraitId === "number" ? sourceTraitId : null,
+      sourceTraitId: allSourceIds[0] ?? null,
+      sourceTraitIds: allSourceIds.length > 0 ? JSON.stringify(allSourceIds) : null,
     })
     .returning();
 
@@ -540,7 +548,7 @@ router.patch("/admin/bounties/traits/:id", async (req, res): Promise<void> => {
   const traitId = parseInt(rawId, 10);
   if (isNaN(traitId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { name, description, imageUrl, pointCost, totalSupply, remainingSupply, isActive, sourceTraitId } = req.body as Record<string, unknown>;
+  const { name, description, imageUrl, pointCost, totalSupply, remainingSupply, isActive, sourceTraitId, sourceTraitIds } = req.body as Record<string, unknown>;
 
   const update: Partial<typeof bountyTraitsTable.$inferInsert> = {};
   if (typeof name === "string") update.name = name;
@@ -550,7 +558,11 @@ router.patch("/admin/bounties/traits/:id", async (req, res): Promise<void> => {
   if (typeof totalSupply === "number") update.totalSupply = totalSupply;
   if (typeof remainingSupply === "number") update.remainingSupply = remainingSupply;
   if (typeof isActive === "number") update.isActive = isActive;
-  if (typeof sourceTraitId === "number" || sourceTraitId === null) {
+  if (Array.isArray(sourceTraitIds)) {
+    const ids = (sourceTraitIds as unknown[]).filter((x): x is number => typeof x === "number");
+    update.sourceTraitId = ids[0] ?? null;
+    update.sourceTraitIds = ids.length > 0 ? JSON.stringify(ids) : null;
+  } else if (typeof sourceTraitId === "number" || sourceTraitId === null) {
     update.sourceTraitId = sourceTraitId as number | null;
   }
 
@@ -681,12 +693,17 @@ router.post(
           .set({ remainingSupply: Math.max(0, trait.remainingSupply - quantity) })
           .where(eq(bountyTraitsTable.id, trait.id));
       }
-      // Deliver to locker if linked to a vault trait
-      if (trait.sourceTraitId) {
-        const [sourceTrait] = await db
-          .select()
-          .from(traitsTable)
-          .where(eq(traitsTable.id, trait.sourceTraitId));
+      // Deliver all linked source traits to locker
+      const bundleSourceIds: number[] = [];
+      if (trait.sourceTraitId) bundleSourceIds.push(trait.sourceTraitId);
+      if (trait.sourceTraitIds) {
+        try {
+          const extra = JSON.parse(trait.sourceTraitIds) as number[];
+          for (const id of extra) if (!bundleSourceIds.includes(id)) bundleSourceIds.push(id);
+        } catch { /* ignore */ }
+      }
+      for (const sid of bundleSourceIds) {
+        const [sourceTrait] = await db.select().from(traitsTable).where(eq(traitsTable.id, sid));
         if (sourceTrait) {
           for (let i = 0; i < quantity; i++) {
             await db.insert(lockerItemsTable).values({ traitId: sourceTrait.id, walletAddress, quantity: 1 });

@@ -36,6 +36,7 @@ import {
   Zap,
   Shield,
   ChevronRight,
+  Crown,
 } from "lucide-react";
 
 export function Nfts() {

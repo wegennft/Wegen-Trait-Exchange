@@ -1,10 +1,11 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { WalletProvider } from "@/contexts/WalletContext";
+import { WalletProvider, useWallet } from "@/contexts/WalletContext";
 import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
-import { CollectionProvider } from "@/contexts/CollectionContext";
+import { CollectionProvider, useCollection, type NftCollection } from "@/contexts/CollectionContext";
 import { Layout } from "@/components/layout/Layout";
 import NotFound from "@/pages/not-found";
 import { Store } from "@/pages/Store";
@@ -19,9 +20,27 @@ import { BundlesPoints } from "@/pages/BundlesPoints";
 
 const queryClient = new QueryClient();
 
+function AutoDetectCollection() {
+  const { walletAddress, isVerified } = useWallet();
+  const { setCollection } = useCollection();
+
+  useEffect(() => {
+    if (!walletAddress || !isVerified) return;
+    fetch(`/api/nfts/${encodeURIComponent(walletAddress)}/detect-collection`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ collection: NftCollection | null }>) : null))
+      .then((data) => {
+        if (data?.collection) setCollection(data.collection);
+      })
+      .catch(() => {});
+  }, [walletAddress, isVerified, setCollection]);
+
+  return null;
+}
+
 function Router() {
   return (
     <Layout>
+      <AutoDetectCollection />
       <Switch>
         <Route path="/" component={Store} />
         <Route path="/locker" component={Locker} />

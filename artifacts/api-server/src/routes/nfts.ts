@@ -55,6 +55,38 @@ async function getNftWithTraits(tokenId: number) {
   return { ...nft, equippedTraits: equipped };
 }
 
+router.get("/nfts/:walletAddress/detect-collection", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.walletAddress)
+    ? req.params.walletAddress[0]
+    : req.params.walletAddress;
+  const walletAddress = raw?.toLowerCase().trim();
+  if (!walletAddress) {
+    res.status(400).json({ error: "walletAddress is required" });
+    return;
+  }
+
+  const nfts = await db
+    .select({ name: wegenNftsTable.name })
+    .from(wegenNftsTable)
+    .where(eq(wegenNftsTable.walletAddress, walletAddress));
+
+  const hasWegenettes = nfts.some((n) =>
+    n.name.toLowerCase().includes("wegenette"),
+  );
+  const hasWegens = nfts.some(
+    (n) => !n.name.toLowerCase().includes("wegenette"),
+  );
+
+  let collection: "wegens" | "wegenettes" | null = null;
+  if (hasWegenettes && !hasWegens) {
+    collection = "wegenettes";
+  } else if (hasWegens || nfts.length === 0) {
+    collection = "wegens";
+  }
+
+  res.json({ collection, hasWegens, hasWegenettes });
+});
+
 router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.walletAddress)
     ? req.params.walletAddress[0]

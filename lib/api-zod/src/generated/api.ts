@@ -400,6 +400,12 @@ export const GetUserNftsResponse = zod.object({
       metadataTxHash: zod.string().nullish(),
       metadataUpdatedAt: zod.string().nullish(),
       variantPack: zod.string().nullish(),
+      isLegend: zod
+        .boolean()
+        .optional()
+        .describe(
+          "True if this NFT is registered as a Legend or 1\/1 — trait equipping is disabled for these.",
+        ),
       equippedTraits: zod.array(
         zod.object({
           category: zod.string(),
@@ -490,6 +496,12 @@ export const ApplyTraitResponse = zod.object({
     metadataTxHash: zod.string().nullish(),
     metadataUpdatedAt: zod.string().nullish(),
     variantPack: zod.string().nullish(),
+    isLegend: zod
+      .boolean()
+      .optional()
+      .describe(
+        "True if this NFT is registered as a Legend or 1\/1 — trait equipping is disabled for these.",
+      ),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),
@@ -638,6 +650,12 @@ export const RemoveTraitResponse = zod.object({
     metadataTxHash: zod.string().nullish(),
     metadataUpdatedAt: zod.string().nullish(),
     variantPack: zod.string().nullish(),
+    isLegend: zod
+      .boolean()
+      .optional()
+      .describe(
+        "True if this NFT is registered as a Legend or 1\/1 — trait equipping is disabled for these.",
+      ),
     equippedTraits: zod.array(
       zod.object({
         category: zod.string(),

@@ -310,19 +310,34 @@ function NftsContent() {
             };
             const hasEquipped = nft.equippedTraits.length > 0;
             const isOnChain = !!nftExt.metadataTxHash;
+            const isLegend = !!nft.isLegend;
 
             return (
               <Card
                 key={nft.tokenId}
                 className="bg-card/90 border-border/60 overflow-hidden flex flex-col group relative"
               >
-                <div className="absolute top-4 left-4 z-10 flex gap-2">
+                <div className="absolute top-4 left-4 z-10 flex gap-2 flex-wrap">
                   <Badge
                     variant="secondary"
                     className="bg-black/60 backdrop-blur-md font-mono"
                   >
                     <Fingerprint className="w-3 h-3 mr-1" />#{nft.tokenId}
                   </Badge>
+                  {isLegend && (
+                    <Badge
+                      className="backdrop-blur-md text-[10px] border font-bold tracking-wider"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(234,179,8,0.9), rgba(245,158,11,0.8))',
+                        borderColor: 'rgba(234,179,8,0.7)',
+                        color: '#000',
+                        boxShadow: '0 0 12px rgba(234,179,8,0.5)',
+                      }}
+                    >
+                      <Crown className="w-3 h-3 mr-1 fill-current" />
+                      Legend
+                    </Badge>
+                  )}
                   {isOnChain && (
                     <Badge
                       className="backdrop-blur-md text-[10px] border font-bold tracking-wider"
@@ -378,17 +393,19 @@ function NftsContent() {
                             {et.category}
                           </div>
                         </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                          onClick={(e) =>
-                            handleRemoveTrait(nft, et.category, e)
-                          }
-                          disabled={removeTrait.isPending}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
+                        {!isLegend && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={(e) =>
+                              handleRemoveTrait(nft, et.category, e)
+                            }
+                            disabled={removeTrait.isPending}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -414,39 +431,65 @@ function NftsContent() {
                   )}
 
                   <div className={`mt-auto space-y-2 ${!isOnChain ? "mt-6" : ""}`}>
-                    <Button
-                      onClick={() => setSelectedNft(nft)}
-                      className="w-full bg-secondary text-foreground hover:bg-primary hover:text-white transition-colors"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Equip Traits
-                    </Button>
+                    {isLegend ? (
+                      <div
+                        className="w-full flex items-center justify-center gap-2 rounded-md px-4 py-2 text-xs text-amber-300/70 border"
+                        style={{
+                          borderColor: 'rgba(234,179,8,0.25)',
+                          background: 'linear-gradient(135deg, rgba(234,179,8,0.06), rgba(245,158,11,0.03))',
+                          fontFamily: "'Bungee', Impact, sans-serif",
+                          letterSpacing: '0.06em',
+                        }}
+                      >
+                        <Crown className="w-3.5 h-3.5 text-amber-400/60 fill-amber-400/30" />
+                        Legend — Variant Only
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => setSelectedNft(nft)}
+                        className="w-full bg-secondary text-foreground hover:bg-primary hover:text-white transition-colors"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Equip Traits
+                      </Button>
+                    )}
 
                     {/* SOC — Save On Chain button, always visible */}
-                    <button
-                      onClick={() => hasEquipped && openSaveDialog(nftExt)}
-                      disabled={!hasEquipped}
-                      title={hasEquipped ? (isOnChain ? "Update your on-chain SOC" : "Save this loadout on-chain") : "Equip traits first to SOC"}
-                      className={`w-full flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-black uppercase tracking-widest transition-all duration-200 border-2 ${
-                        !hasEquipped
-                          ? "opacity-40 cursor-not-allowed border-border/40 bg-secondary/20 text-muted-foreground"
-                          : isOnChain
-                          ? "border-amber-400/60 text-amber-300 hover:border-amber-400 hover:shadow-[0_0_18px_rgba(234,179,8,0.35)] active:scale-95"
-                          : "border-amber-500/80 text-amber-400 hover:border-amber-400 hover:shadow-[0_0_24px_rgba(234,179,8,0.5)] active:scale-95 animate-pulse"
-                      }`}
-                      style={hasEquipped ? {
-                        background: isOnChain
-                          ? 'linear-gradient(135deg, rgba(234,179,8,0.08), rgba(245,158,11,0.05))'
-                          : 'linear-gradient(135deg, rgba(234,179,8,0.12), rgba(245,158,11,0.08))',
-                        fontFamily: "'Bungee', Impact, sans-serif",
-                        letterSpacing: '0.12em',
-                      } : { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.12em' }}
-                    >
-                      <Zap className={`w-4 h-4 ${hasEquipped ? 'fill-amber-400 text-amber-400' : ''}`} />
-                      <span>{isOnChain ? "Re-SOC" : "SOC"}</span>
-                      <span className="text-[9px] font-normal normal-case tracking-normal opacity-70 -ml-1">{isOnChain ? "" : "Save On Chain"}</span>
-                      {hasEquipped && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
-                    </button>
+                    {(() => {
+                      const canSoc = isLegend || hasEquipped;
+                      return (
+                        <button
+                          onClick={() => canSoc && openSaveDialog(nftExt)}
+                          disabled={!canSoc}
+                          title={
+                            isLegend
+                              ? (isOnChain ? "Update your Legend variant on-chain" : "Save your Legend variant on-chain")
+                              : canSoc
+                              ? (isOnChain ? "Update your on-chain SOC" : "Save this loadout on-chain")
+                              : "Equip traits first to SOC"
+                          }
+                          className={`w-full flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-black uppercase tracking-widest transition-all duration-200 border-2 ${
+                            !canSoc
+                              ? "opacity-40 cursor-not-allowed border-border/40 bg-secondary/20 text-muted-foreground"
+                              : isOnChain
+                              ? "border-amber-400/60 text-amber-300 hover:border-amber-400 hover:shadow-[0_0_18px_rgba(234,179,8,0.35)] active:scale-95"
+                              : "border-amber-500/80 text-amber-400 hover:border-amber-400 hover:shadow-[0_0_24px_rgba(234,179,8,0.5)] active:scale-95 animate-pulse"
+                          }`}
+                          style={canSoc ? {
+                            background: isOnChain
+                              ? 'linear-gradient(135deg, rgba(234,179,8,0.08), rgba(245,158,11,0.05))'
+                              : 'linear-gradient(135deg, rgba(234,179,8,0.12), rgba(245,158,11,0.08))',
+                            fontFamily: "'Bungee', Impact, sans-serif",
+                            letterSpacing: '0.12em',
+                          } : { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.12em' }}
+                        >
+                          <Zap className={`w-4 h-4 ${canSoc ? 'fill-amber-400 text-amber-400' : ''}`} />
+                          <span>{isOnChain ? "Re-SOC" : "SOC"}</span>
+                          <span className="text-[9px] font-normal normal-case tracking-normal opacity-70 -ml-1">{isOnChain ? "" : "Save On Chain"}</span>
+                          {canSoc && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -707,28 +750,48 @@ function NftsContent() {
                     </div>
                   )}
 
-                  {/* Equipped traits summary */}
+                  {/* Equipped traits summary / Legend notice */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
-                      Traits Being SOC'd ({saveDialogNft?.equippedTraits.length})
-                    </div>
-                    <div className="space-y-1.5 max-h-28 overflow-y-auto hide-scrollbar">
-                      {saveDialogNft?.equippedTraits.map((et) => (
-                        <div key={et.category} className="flex items-center gap-2 rounded-lg bg-secondary/30 p-2">
-                          {et.trait.imageUrl ? (
-                            <img src={et.trait.imageUrl} alt={et.trait.name} className="w-6 h-6 object-contain rounded" />
-                          ) : (
-                            <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-[10px] font-bold uppercase">
-                              {et.category[0]}
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className={`text-xs font-bold truncate ${getRarityColor(et.trait.rarity)}`}>{et.trait.name}</div>
-                            <div className="text-[10px] text-muted-foreground uppercase">{et.category}</div>
+                    {saveDialogNft?.isLegend ? (
+                      <div
+                        className="flex items-center gap-2 rounded-lg p-3 border"
+                        style={{
+                          borderColor: 'rgba(234,179,8,0.3)',
+                          background: 'linear-gradient(135deg, rgba(234,179,8,0.08), rgba(245,158,11,0.04))',
+                        }}
+                      >
+                        <Crown className="w-4 h-4 shrink-0 text-amber-400" />
+                        <div>
+                          <div className="text-xs font-bold text-amber-300">Legend / 1-of-1</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            Traits are locked. Choose a variant below to SOC.
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
+                          Traits Being SOC'd ({saveDialogNft?.equippedTraits.length})
+                        </div>
+                        <div className="space-y-1.5 max-h-28 overflow-y-auto hide-scrollbar">
+                          {saveDialogNft?.equippedTraits.map((et) => (
+                            <div key={et.category} className="flex items-center gap-2 rounded-lg bg-secondary/30 p-2">
+                              {et.trait.imageUrl ? (
+                                <img src={et.trait.imageUrl} alt={et.trait.name} className="w-6 h-6 object-contain rounded" />
+                              ) : (
+                                <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-[10px] font-bold uppercase">
+                                  {et.category[0]}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-xs font-bold truncate ${getRarityColor(et.trait.rarity)}`}>{et.trait.name}</div>
+                                <div className="text-[10px] text-muted-foreground uppercase">{et.category}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -797,7 +860,7 @@ function NftsContent() {
                 {/* SOC button */}
                 <button
                   onClick={handleSaveToChain}
-                  disabled={isSaving || !saveDialogNft?.equippedTraits.length}
+                  disabled={isSaving || (!saveDialogNft?.isLegend && !saveDialogNft?.equippedTraits.length)}
                   className="w-full flex items-center justify-center gap-3 rounded-xl py-3.5 text-base font-black uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                   style={{
                     background: isSaving

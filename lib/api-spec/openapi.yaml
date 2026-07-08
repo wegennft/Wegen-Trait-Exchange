@@ -1328,6 +1328,9 @@ components:
         variantPack:
           type: string
           nullable: true
+        isLegend:
+          type: boolean
+          description: "True if this NFT is registered as a Legend or 1/1 — trait equipping is disabled for these."
         equippedTraits:
           type: array
           items:

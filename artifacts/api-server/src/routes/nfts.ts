@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { awardPoints } from "./bounties";
-import { eq, and } from "drizzle-orm";
-import { db, wegenNftsTable, lockerItemsTable, traitsTable, transactionsTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
+import { db, wegenNftsTable, lockerItemsTable, traitsTable, transactionsTable, legendsTable } from "@workspace/db";
 import {
   GetUserNftsParams,
   GetUserNftsResponse,
@@ -78,7 +78,29 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
     Awaited<ReturnType<typeof getNftWithTraits>>
   >[];
 
-  res.json(GetUserNftsResponse.parse({ nfts: filtered, total: filtered.length }));
+  const tokenIds = filtered.map((n) => n.tokenId);
+  const legendRows =
+    tokenIds.length > 0
+      ? await db
+          .select({ tokenId: legendsTable.tokenId })
+          .from(legendsTable)
+          .where(
+            and(
+              eq(legendsTable.isActive, true),
+              inArray(legendsTable.tokenId, tokenIds),
+            ),
+          )
+      : [];
+  const legendTokenIds = new Set(
+    legendRows.map((r) => r.tokenId).filter((id): id is number => id !== null),
+  );
+
+  const nftsWithLegendFlag = filtered.map((nft) => ({
+    ...nft,
+    isLegend: legendTokenIds.has(nft.tokenId),
+  }));
+
+  res.json(GetUserNftsResponse.parse({ nfts: nftsWithLegendFlag, total: nftsWithLegendFlag.length }));
 });
 
 router.post("/nfts/:tokenId/apply-trait", requireWalletOwnership(), async (req, res): Promise<void> => {
@@ -99,6 +121,16 @@ router.post("/nfts/:tokenId/apply-trait", requireWalletOwnership(), async (req, 
 
   const { lockerItemId, walletAddress } = body.data;
   const tokenId = pathParams.data.tokenId;
+
+  const [legendCheck] = await db
+    .select({ id: legendsTable.id })
+    .from(legendsTable)
+    .where(and(eq(legendsTable.tokenId, tokenId), eq(legendsTable.isActive, true)))
+    .limit(1);
+  if (legendCheck) {
+    res.status(403).json({ error: "Legends and 1/1s cannot have traits equipped" });
+    return;
+  }
 
   const [lockerItem] = await db
     .select()
@@ -200,6 +232,16 @@ router.post("/nfts/:tokenId/remove-trait", requireWalletOwnership(), async (req,
   const { category, walletAddress } = body.data;
   const tokenId = pathParams.data.tokenId;
 
+  const [legendRemoveCheck] = await db
+    .select({ id: legendsTable.id })
+    .from(legendsTable)
+    .where(and(eq(legendsTable.tokenId, tokenId), eq(legendsTable.isActive, true)))
+    .limit(1);
+  if (legendRemoveCheck) {
+    res.status(403).json({ error: "Legends and 1/1s cannot have traits removed" });
+    return;
+  }
+
   const equippedRows = await db
     .select({
       lockerItem: lockerItemsTable,
@@ -273,6 +315,13 @@ router.post("/nfts/:tokenId/confirm-traits", requireWalletOwnership(), async (re
     return;
   }
 
+  const [confirmLegendCheck] = await db
+    .select({ id: legendsTable.id })
+    .from(legendsTable)
+    .where(and(eq(legendsTable.tokenId, tokenId), eq(legendsTable.isActive, true)))
+    .limit(1);
+  const nftIsLegend = !!confirmLegendCheck;
+
   const equippedRows = await db
     .select({
       category: traitsTable.category,
@@ -282,7 +331,7 @@ router.post("/nfts/:tokenId/confirm-traits", requireWalletOwnership(), async (re
     .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
     .where(eq(lockerItemsTable.equippedToTokenId, tokenId));
 
-  if (equippedRows.length === 0) {
+  if (equippedRows.length === 0 && !nftIsLegend) {
     res.status(400).json({ error: "No traits equipped to this NFT" });
     return;
   }

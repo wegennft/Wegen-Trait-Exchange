@@ -15,5 +15,7 @@ export interface WegenNft {
   metadataTxHash?: string | null;
   metadataUpdatedAt?: string | null;
   variantPack?: string | null;
+  /** True if this NFT is registered as a Legend or 1/1 — trait equipping is disabled for these. */
+  isLegend?: boolean;
   equippedTraits: NftTrait[];
 }

@@ -65,6 +65,13 @@ interface BountyBundle {
   items: BountyBundleItem[];
 }
 
+interface IncludedTrait {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+  category: string;
+}
+
 interface BountyTrait {
   id: number;
   name: string;
@@ -75,6 +82,7 @@ interface BountyTrait {
   remainingSupply: number;
   isActive: number;
   walletPurchaseCount: number;
+  includedTraits: IncludedTrait[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -904,6 +912,32 @@ export function Bounties() {
                           <p className="text-sm mt-1 line-clamp-2" style={{ color: "hsl(var(--muted-foreground))" }}>{trait.description}</p>
                         )}
                       </div>
+
+                      {/* Included store traits */}
+                      {trait.includedTraits && trait.includedTraits.length > 0 && (
+                        <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(157,0,255,0.08)", border: "1px solid rgba(157,0,255,0.18)" }}>
+                          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>
+                            Includes {trait.includedTraits.length} trait{trait.includedTraits.length !== 1 ? "s" : ""}
+                          </p>
+                          <div className="space-y-1.5">
+                            {trait.includedTraits.map((st) => (
+                              <div key={st.id} className="flex items-center gap-2">
+                                {st.imageUrl ? (
+                                  <img src={st.imageUrl} alt={st.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(157,0,255,0.15)" }}>
+                                    <Gift className="w-4 h-4 opacity-40" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold truncate text-foreground">{st.name}</p>
+                                  <p className="text-[10px] truncate" style={{ color: "hsl(var(--muted-foreground))" }}>{st.category}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Supply + wallet limit */}
                       <div className="flex items-center gap-2 flex-wrap">

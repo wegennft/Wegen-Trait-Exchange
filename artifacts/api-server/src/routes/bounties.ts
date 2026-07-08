@@ -280,8 +280,40 @@ router.get("/bounties/traits", async (req, res): Promise<void> => {
     .where(eq(bountyTraitsTable.isActive, 1))
     .orderBy(bountyTraitsTable.pointCost);
 
+  // Collect all source trait IDs so we can resolve their details in one query
+  const allSourceIds: number[] = [];
+  for (const t of traits) {
+    if (t.sourceTraitId) allSourceIds.push(t.sourceTraitId);
+    if (t.sourceTraitIds) {
+      try {
+        const extra = JSON.parse(t.sourceTraitIds) as number[];
+        for (const id of extra) if (!allSourceIds.includes(id)) allSourceIds.push(id);
+      } catch { /* ignore */ }
+    }
+  }
+
+  // Batch-fetch store trait details for all source IDs
+  const sourceTraitDetails: Record<number, { id: number; name: string; imageUrl: string | null; category: string }> = {};
+  if (allSourceIds.length > 0) {
+    const rows = await db
+      .select({ id: traitsTable.id, name: traitsTable.name, imageUrl: traitsTable.imageUrl, category: traitsTable.category })
+      .from(traitsTable)
+      .where(inArray(traitsTable.id, allSourceIds));
+    for (const r of rows) sourceTraitDetails[r.id] = r;
+  }
+
+  // Build includedTraits for each bounty trait
+  function resolveIncluded(t: typeof traits[number]) {
+    const ids: number[] = [];
+    if (t.sourceTraitIds) {
+      try { (JSON.parse(t.sourceTraitIds) as number[]).forEach((id) => { if (!ids.includes(id)) ids.push(id); }); } catch { /* ignore */ }
+    }
+    if (t.sourceTraitId && !ids.includes(t.sourceTraitId)) ids.push(t.sourceTraitId);
+    return ids.map((id) => sourceTraitDetails[id]).filter(Boolean);
+  }
+
   if (!walletAddress) {
-    res.json({ traits: traits.map((t) => ({ ...t, walletPurchaseCount: 0 })) });
+    res.json({ traits: traits.map((t) => ({ ...t, walletPurchaseCount: 0, includedTraits: resolveIncluded(t) })) });
     return;
   }
 
@@ -302,6 +334,7 @@ router.get("/bounties/traits", async (req, res): Promise<void> => {
     traits: traits.map((t) => ({
       ...t,
       walletPurchaseCount: purchaseMap[t.id] ?? 0,
+      includedTraits: resolveIncluded(t),
     })),
   });
 });

@@ -22,6 +22,11 @@ interface LeaderboardEntry {
   updatedAt: string;
 }
 
+interface EarnedEntry {
+  walletAddress: string;
+  totalEarned: number;
+}
+
 interface PointHistory {
   id: number;
   type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem" | "admin_airdrop";
@@ -102,12 +107,14 @@ export function Bounties() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  const [lbView, setLbView] = useState<"current" | "earned">("current");
+
   // Leaderboard
   const { data: lbData } = useQuery({
     queryKey: ["bounties-leaderboard"],
     queryFn: async () => {
       const r = await fetch("/api/bounties/leaderboard");
-      return r.json() as Promise<{ leaderboard: LeaderboardEntry[] }>;
+      return r.json() as Promise<{ leaderboard: LeaderboardEntry[]; earnedLeaderboard: EarnedEntry[] }>;
     },
     refetchInterval: 30_000,
   });
@@ -232,6 +239,21 @@ export function Bounties() {
   });
 
   const leaderboard = lbData?.leaderboard ?? [];
+  const earnedLeaderboard = lbData?.earnedLeaderboard ?? [];
+
+  // Normalised data for whichever view is active
+  const activeLb: { walletAddress: string; score: number }[] =
+    lbView === "current"
+      ? leaderboard.map((e) => ({ walletAddress: e.walletAddress, score: e.totalPoints }))
+      : earnedLeaderboard.map((e) => ({ walletAddress: e.walletAddress, score: e.totalEarned }));
+
+  const myEarnedRank =
+    walletAddress
+      ? (earnedLeaderboard.findIndex(
+          (e) => e.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
+        ) + 1) || null
+      : null;
+
   const traits = traitsData?.traits ?? [];
   const myRank = meData?.rank;
   const myPoints = meData?.totalPoints ?? 0;
@@ -423,18 +445,55 @@ export function Bounties() {
 
         {/* ── Leaderboard ── */}
         <TabsContent value="leaderboard" className="mt-6">
-          {leaderboard.length === 0 ? (
+
+          {/* ── View toggle ── */}
+          <div
+            className="flex items-center gap-1 p-1 rounded-xl mb-6"
+            style={{ background: "hsl(272 20% 5%)", border: `1px solid hsl(${accentHsl} / 0.12)` }}
+          >
+            {(["current", "earned"] as const).map((v) => {
+              const active = lbView === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setLbView(v)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all"
+                  style={
+                    active
+                      ? { background: gradient, color: "black", boxShadow: `0 0 14px ${glow}` }
+                      : { color: "hsl(var(--muted-foreground))" }
+                  }
+                >
+                  {v === "current" ? (
+                    <><SmackzCoin size={16} /> Current Balance</>
+                  ) : (
+                    <><TrendingUp className="w-4 h-4" /> Total Earned</>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Description ── */}
+          <p className="text-xs text-center mb-5" style={{ color: "hsl(var(--muted-foreground))" }}>
+            {lbView === "current"
+              ? "Current spendable We Smackz balance — decreases when rewards are redeemed."
+              : "Lifetime We Smackz earned from trait purchases, saving on-chain, sandbox bounties, and airdrops — never decremented."}
+          </p>
+
+          {activeLb.length === 0 ? (
             <EmptyState icon={Trophy} label="No We Smackz earned yet — be the first!" accent={accent} glow={glow} />
           ) : (
             <div className="space-y-6">
 
               {/* ── Podium: Top 3 ── */}
-              {leaderboard.length >= 1 && (
+              {activeLb.length >= 1 && (
                 <div className="marquee-lights-gold marquee-lights rounded-2xl" style={{ background: `radial-gradient(ellipse 80% 100% at 50% 0%, hsl(${accentHsl} / 0.08), transparent 70%)` }}>
                 <div className="flex items-end justify-center gap-3 pt-4 pb-2">
                   {/* 2nd place */}
-                  {leaderboard[1] && (() => {
-                    const entry = leaderboard[1];
+                  {activeLb[1] && (() => {
+                    const entry = activeLb[1];
                     const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
                     return (
                       <div className="flex flex-col items-center gap-2 flex-1 max-w-[170px]">
@@ -451,7 +510,7 @@ export function Bounties() {
                           }}
                         >
                           <div className="text-4xl font-black" style={{ ...BANGERS, color: "#cbd5e1" }}>
-                            {entry.totalPoints.toLocaleString()}
+                            {entry.score.toLocaleString()}
                           </div>
                           <div className="text-xs text-slate-400 mt-0.5 font-bold">Smackz</div>
                           <div className="font-mono text-xs mt-2 truncate font-bold" style={{ color: isMe ? accent : "#cbd5e1" }}>
@@ -471,7 +530,7 @@ export function Bounties() {
 
                   {/* 1st place */}
                   {(() => {
-                    const entry = leaderboard[0];
+                    const entry = activeLb[0];
                     const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
                     return (
                       <div className="flex flex-col items-center gap-2 flex-1 max-w-[210px]">
@@ -488,12 +547,11 @@ export function Bounties() {
                             height: 160,
                           }}
                         >
-                          {/* shimmer */}
                           <div className="absolute inset-0 pointer-events-none" style={{
                             background: "linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%)",
                           }} />
                           <div className="text-5xl font-black" style={{ ...BANGERS, color: isMe ? accent : "#f59e0b", textShadow: `0 0 24px ${isMe ? glow : "#f59e0b80"}` }}>
-                            {entry.totalPoints.toLocaleString()}
+                            {entry.score.toLocaleString()}
                           </div>
                           <div className="text-sm mt-0.5 font-bold" style={{ color: isMe ? accent : "#d97706" }}>Smackz</div>
                           <div className="font-mono text-sm mt-2 truncate font-bold" style={{ color: isMe ? accent : "#fbbf24" }}>
@@ -512,8 +570,8 @@ export function Bounties() {
                   })()}
 
                   {/* 3rd place */}
-                  {leaderboard[2] && (() => {
-                    const entry = leaderboard[2];
+                  {activeLb[2] && (() => {
+                    const entry = activeLb[2];
                     const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
                     return (
                       <div className="flex flex-col items-center gap-2 flex-1 max-w-[170px]">
@@ -530,7 +588,7 @@ export function Bounties() {
                           }}
                         >
                           <div className="text-4xl font-black" style={{ ...BANGERS, color: "#cd7f32" }}>
-                            {entry.totalPoints.toLocaleString()}
+                            {entry.score.toLocaleString()}
                           </div>
                           <div className="text-xs text-orange-800 mt-0.5 font-bold">Smackz</div>
                           <div className="font-mono text-xs mt-2 truncate font-bold" style={{ color: isMe ? accent : "#cd7f32" }}>
@@ -552,18 +610,17 @@ export function Bounties() {
               )}
 
               {/* ── Rest of leaderboard ── */}
-              {leaderboard.length > 3 && (
+              {activeLb.length > 3 && (
                 <div className="marquee-lights rounded-2xl overflow-hidden" style={{ border: `1px solid hsl(${accentHsl} / 0.12)` }}>
-                  {/* Header */}
                   <div
                     className="grid grid-cols-[60px_1fr_auto] px-4 py-3 text-xs font-bold uppercase tracking-widest"
                     style={{ background: "hsl(272 20% 6%)", color: "hsl(var(--muted-foreground))" }}
                   >
                     <span>Rank</span>
                     <span>Wallet</span>
-                    <span>We Smackz</span>
+                    <span>{lbView === "current" ? "We Smackz" : "Earned"}</span>
                   </div>
-                  {leaderboard.slice(3).map((entry, idx) => {
+                  {activeLb.slice(3).map((entry, idx) => {
                     const i = idx + 3;
                     const isMe = walletAddress?.toLowerCase() === entry.walletAddress.toLowerCase();
                     return (
@@ -593,7 +650,7 @@ export function Bounties() {
                           )}
                         </span>
                         <span className="font-bold text-xl tabular-nums" style={{ ...BANGERS, color: isMe ? accent : "hsl(var(--foreground))", textShadow: isMe ? `0 0 12px ${glow}` : "none" }}>
-                          {entry.totalPoints.toLocaleString()}
+                          {entry.score.toLocaleString()}
                           <span className="text-xs font-normal text-muted-foreground ml-1">Smackz</span>
                         </span>
                       </div>
@@ -603,7 +660,7 @@ export function Bounties() {
               )}
 
               {/* ── My rank callout (if not in top 50) ── */}
-              {isConnected && myRank && myRank > leaderboard.length && (
+              {lbView === "current" && isConnected && myRank && myRank > leaderboard.length && (
                 <div
                   className="marquee-lights rounded-xl px-4 py-4 flex items-center gap-4"
                   style={{
@@ -616,6 +673,19 @@ export function Bounties() {
                   <div className="font-black text-4xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>#{myRank}</div>
                   <div className="flex-1" />
                   <div className="font-bold text-2xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>{myPoints.toLocaleString()} Smackz</div>
+                </div>
+              )}
+              {lbView === "earned" && isConnected && myEarnedRank && myEarnedRank > earnedLeaderboard.length && (
+                <div
+                  className="marquee-lights rounded-xl px-4 py-4 flex items-center gap-4"
+                  style={{
+                    background: `linear-gradient(135deg, hsl(${accentHsl} / 0.12), hsl(${accentHsl} / 0.04))`,
+                    border: `1px solid hsl(${accentHsl} / 0.3)`,
+                    boxShadow: `0 0 24px ${glow}`,
+                  }}
+                >
+                  <div className="font-mono text-sm text-muted-foreground font-bold">Your earned rank</div>
+                  <div className="font-black text-4xl" style={{ ...BANGERS, color: accent, textShadow: `0 0 16px ${glow}` }}>#{myEarnedRank}</div>
                 </div>
               )}
             </div>

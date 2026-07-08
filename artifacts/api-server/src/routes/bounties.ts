@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql, desc, isNull, sum } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, sum, gt } from "drizzle-orm";
 import {
   db,
   walletPointsTable,
@@ -56,6 +56,7 @@ export async function awardPoints(
 // ── GET /bounties/leaderboard ─────────────────────────────────────────────────
 
 router.get("/bounties/leaderboard", async (_req, res): Promise<void> => {
+  // Current balance leaderboard
   const rows = await db
     .select({
       walletAddress: walletPointsTable.walletAddress,
@@ -66,7 +67,19 @@ router.get("/bounties/leaderboard", async (_req, res): Promise<void> => {
     .orderBy(desc(walletPointsTable.totalPoints))
     .limit(50);
 
-  res.json({ leaderboard: rows });
+  // Lifetime earned leaderboard (sum of all positive point transactions)
+  const earned = await db
+    .select({
+      walletAddress: pointTransactionsTable.walletAddress,
+      totalEarned: sql<number>`SUM(${pointTransactionsTable.points})::int`,
+    })
+    .from(pointTransactionsTable)
+    .where(gt(pointTransactionsTable.points, 0))
+    .groupBy(pointTransactionsTable.walletAddress)
+    .orderBy(desc(sql<number>`SUM(${pointTransactionsTable.points})`))
+    .limit(50);
+
+  res.json({ leaderboard: rows, earnedLeaderboard: earned });
 });
 
 // ── GET /bounties/me ──────────────────────────────────────────────────────────
@@ -829,7 +842,18 @@ router.get("/admin/bounties/leaderboard", async (_req, res): Promise<void> => {
     .orderBy(desc(walletPointsTable.totalPoints))
     .limit(100);
 
-  res.json({ leaderboard: rows });
+  const earned = await db
+    .select({
+      walletAddress: pointTransactionsTable.walletAddress,
+      totalEarned: sql<number>`SUM(${pointTransactionsTable.points})::int`,
+    })
+    .from(pointTransactionsTable)
+    .where(gt(pointTransactionsTable.points, 0))
+    .groupBy(pointTransactionsTable.walletAddress)
+    .orderBy(desc(sql<number>`SUM(${pointTransactionsTable.points})`))
+    .limit(100);
+
+  res.json({ leaderboard: rows, earnedLeaderboard: earned });
 });
 
 // ── Admin: GET /admin/bounties/point-log ──────────────────────────────────────

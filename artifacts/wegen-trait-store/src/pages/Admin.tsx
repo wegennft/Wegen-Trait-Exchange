@@ -7698,7 +7698,7 @@ function BundlesPointsAdminTab() {
       },
       {
         onSuccess: () => {
-          toast({ title: "Bundle created" });
+          toast({ title: "Pack created" });
           resetBundleForm();
           qc.invalidateQueries({ queryKey: getListAdminBundlesQueryKey() });
         },
@@ -7724,7 +7724,7 @@ function BundlesPointsAdminTab() {
       },
       {
         onSuccess: () => {
-          toast({ title: "Bundle updated" });
+          toast({ title: "Pack updated" });
           setEditingBundle(null);
           qc.invalidateQueries({ queryKey: getListAdminBundlesQueryKey() });
         },
@@ -7734,12 +7734,12 @@ function BundlesPointsAdminTab() {
   };
 
   const handleDeleteBundle = (id: number) => {
-    if (!confirm("Delete this bundle?")) return;
+    if (!confirm("Delete this pack?")) return;
     deleteBundle.mutate(
       { bundleId: id },
       {
         onSuccess: () => {
-          toast({ title: "Bundle deleted" });
+          toast({ title: "Pack deleted" });
           qc.invalidateQueries({ queryKey: getListAdminBundlesQueryKey() });
         },
       },
@@ -7812,14 +7812,14 @@ function BundlesPointsAdminTab() {
       {/* ── Bundles ── */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <Package className="w-5 h-5 text-purple-400" /> Trait Bundles
+          <Package className="w-5 h-5 text-purple-400" /> Trait Packs
         </h2>
         <p className="text-sm text-muted-foreground">
-          ETH-priced bundles of multiple traits, purchased directly into the buyer's Trait Locker.
+          ETH-priced packs of multiple traits, purchased directly into the buyer's Trait Locker.
         </p>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Create Bundle</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Create Pack</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={bundleForm.name} onChange={(e) => setBundleForm((f) => ({ ...f, name: e.target.value }))} /></div>
@@ -7877,7 +7877,7 @@ function BundlesPointsAdminTab() {
               </div>
             </div>
             <Button size="sm" onClick={handleCreateBundle} disabled={createBundle.isPending} className="gap-1.5">
-              {createBundle.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create Bundle
+              {createBundle.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create Pack
             </Button>
           </CardContent>
         </Card>
@@ -7934,10 +7934,10 @@ function BundlesPointsAdminTab() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Edit Bundle Dialog ── */}
+      {/* ── Edit Pack Dialog ── */}
       <Dialog open={!!editingBundle} onOpenChange={(open) => { if (!open) { setEditingBundle(null); setEditBundleTraitSearch(""); } }}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Edit Bundle</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Edit Pack</DialogTitle></DialogHeader>
           {editingBundle && (
             <div className="space-y-3">
               <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={editingBundle.name} onChange={(e) => setEditingBundle({ ...editingBundle, name: e.target.value })} /></div>

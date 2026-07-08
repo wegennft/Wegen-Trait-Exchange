@@ -108,7 +108,7 @@ export function BundlesPoints() {
         data: { walletAddress, txHash: `0xsimulated${Date.now()}` },
       });
       queryClient.invalidateQueries({ queryKey: getListBundlesQueryKey() });
-      toast({ title: "Bundle purchased!", description: "Traits have been added to your Locker." });
+      toast({ title: "Pack purchased!", description: "Traits have been added to your Locker." });
     } catch (err) {
       toast({ title: "Purchase failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
@@ -127,7 +127,7 @@ export function BundlesPoints() {
 
   const bundleDetails: TxDetail[] = pendingBundle
     ? [
-        { label: "Bundle", value: pendingBundle.name },
+        { label: "Pack", value: pendingBundle.name },
         { label: "Price", value: `$${pendingBundle.priceUsd}`, accent: true },
         ...(formatEth(pendingBundle.priceUsd, ethUsd) ? [{ label: "ETH Amount", value: formatEth(pendingBundle.priceUsd, ethUsd)! }] : []),
       ]
@@ -143,7 +143,7 @@ export function BundlesPoints() {
             Packs &amp; We Smackz
           </h1>
           <p className="text-base mt-2" style={{ color: "hsl(var(--muted-foreground))" }}>
-            Buy We Smackz with a fixed USD value, or grab a bundle of traits straight into your Trait Locker.
+            Buy We Smackz with a fixed USD value, or grab a pack of traits straight into your Trait Locker.
           </p>
         </div>
 
@@ -234,14 +234,14 @@ export function BundlesPoints() {
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-2xl flex items-center gap-2" style={{ ...BANGERS, color: accent }}>
-            <Package className="w-6 h-6" /> Trait Bundles
+            <Package className="w-6 h-6" /> Trait Packs
           </h2>
           <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={traitSearch}
               onChange={(e) => setTraitSearch(e.target.value)}
-              placeholder="Search traits or bundles..."
+              placeholder="Search traits or packs..."
               className="pl-9 pr-9"
             />
             {traitSearch && (
@@ -261,9 +261,9 @@ export function BundlesPoints() {
             {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}
           </div>
         ) : bundles.length === 0 ? (
-          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No bundles available right now.</p>
+          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No packs available right now.</p>
         ) : filteredBundles.length === 0 ? (
-          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No bundles match "{traitSearch}".</p>
+          <p className="text-base" style={{ color: "hsl(var(--muted-foreground))" }}>No packs match "{traitSearch}".</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {filteredBundles.map((bundle) => {
@@ -346,7 +346,7 @@ export function BundlesPoints() {
                         setPendingBundle(bundle);
                       }}
                     >
-                      <Zap className="w-4 h-4" /> {soldOut ? "Sold Out" : "Buy Bundle"}
+                      <Zap className="w-4 h-4" /> {soldOut ? "Sold Out" : "Buy Pack"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -370,12 +370,12 @@ export function BundlesPoints() {
       <TxConfirmModal
         open={!!pendingBundle}
         onOpenChange={(open) => !open && setPendingBundle(null)}
-        title="Buy Trait Bundle"
-        description="All traits in this bundle will be added directly to your Trait Locker."
+        title="Buy Trait Pack"
+        description="All traits in this pack will be added directly to your Trait Locker."
         details={bundleDetails}
         onConfirm={handleBundleConfirm}
         isPending={purchaseBundle.isPending}
-        confirmLabel="Buy Bundle"
+        confirmLabel="Buy Pack"
       />
     </div>
   );

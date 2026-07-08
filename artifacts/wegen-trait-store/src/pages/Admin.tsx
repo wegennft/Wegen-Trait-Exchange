@@ -1134,7 +1134,7 @@ export function Admin() {
             <Gem className="w-4 h-4" /> NFT Registry
           </TabsTrigger>
           <TabsTrigger value="bundles-points" className="flex items-center gap-2 rounded-sm px-4 py-2">
-            <Coins className="w-4 h-4" /> Packs & Points
+            <Coins className="w-4 h-4" /> Packs & We Smackz
           </TabsTrigger>
         </TabsList>
 
@@ -6944,8 +6944,8 @@ function BountiesAdminTab() {
       const ok = d.results.filter((r) => r.ok).length;
       const fail = d.results.filter((r) => !r.ok).length;
       toast({
-        title: `Points sent to ${ok} wallet${ok !== 1 ? "s" : ""}${fail ? ` (${fail} failed)` : ""}`,
-        description: "Users will see a Claim Points button on their Bounties page.",
+        title: `We Smackz sent to ${ok} wallet${ok !== 1 ? "s" : ""}${fail ? ` (${fail} failed)` : ""}`,
+        description: "Users will see a Claim We Smackz button on their Bounties page.",
       });
       setSendResults(d.results);
       setSendTotal(d.totalWallets);
@@ -7090,7 +7090,7 @@ function BountiesAdminTab() {
           <Trophy className="w-5 h-5 text-yellow-400" /> Bounties & Rewards
         </h2>
         <p className="text-sm text-muted-foreground">
-          Manage exclusive reward traits purchasable with points. Users earn 25 pts per purchase/SOC, 1 pt per sandbox bounty (max 5/day).
+          Manage exclusive reward traits purchasable with We Smackz. Users earn 150 We Smackz per purchase, 250 per SOC, 5 per sandbox bounty (max 5/day).
         </p>
       </div>
 
@@ -7099,10 +7099,10 @@ function BountiesAdminTab() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
-              <Gift className="w-4 h-4" /> Send Points to Wallets
+              <Gift className="w-4 h-4" /> Send We Smackz to Wallets
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Points are sent as pending — users must click "Claim Points" on their Bounties page to add them to their balance.
+              We Smackz are sent as pending — users must click "Claim We Smackz" on their Bounties page to add them to their balance.
             </p>
           </div>
           {/* Send to All toggle */}
@@ -7141,12 +7141,12 @@ function BountiesAdminTab() {
             >
               <span style={{ color: "#f59e0b", fontSize: 16 }}>⚡</span>
               <span className="text-amber-200/80">
-                Points will be sent to <strong className="text-amber-300">every wallet</strong> that has ever interacted with the store — locker, NFTs, or points history.
+                We Smackz will be sent to <strong className="text-amber-300">every wallet</strong> that has ever interacted with the store — locker, NFTs, or We Smackz history.
               </span>
             </div>
           )}
           <div className="space-y-1">
-            <Label className="text-xs">Points to Send</Label>
+            <Label className="text-xs">We Smackz to Send</Label>
             <Input
               type="number"
               min={1}
@@ -7173,7 +7173,7 @@ function BountiesAdminTab() {
           style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "black", fontWeight: 700 }}
         >
           {sendPointsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Gift className="w-3 h-3 mr-1" />}
-          {sendToAll ? `Broadcast ${sendForm.points} pts to All Wallets` : "Send Points"}
+          {sendToAll ? `Broadcast ${sendForm.points} We Smackz to All Wallets` : "Send We Smackz"}
         </Button>
 
         {sendResults && sendResults.length > 0 && (
@@ -7661,9 +7661,9 @@ function BountiesAdminTab() {
 
       {/* ── Leaderboard Preview ── */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Top Wallets by Points</h3>
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Top Wallets by We Smackz</h3>
         {leaderboard.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground text-sm">No points earned yet.</div>
+          <div className="text-center py-6 text-muted-foreground text-sm">No We Smackz earned yet.</div>
         ) : (
           <div className="rounded-xl border border-border/30 overflow-hidden">
             <table className="w-full text-sm">
@@ -7671,7 +7671,7 @@ function BountiesAdminTab() {
                 <tr className="border-b border-border/30 bg-secondary/20">
                   <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Rank</th>
                   <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Wallet</th>
-                  <th className="text-right px-4 py-2 text-xs text-muted-foreground font-medium">Points</th>
+                  <th className="text-right px-4 py-2 text-xs text-muted-foreground font-medium">We Smackz</th>
                 </tr>
               </thead>
               <tbody>
@@ -7921,7 +7921,7 @@ function BundlesPointsAdminTab() {
 
   const handleCreatePack = () => {
     if (!packForm.name || !packForm.usdValue || !packForm.pointsGranted) {
-      toast({ title: "Missing fields", description: "Name, USD value, and points are required.", variant: "destructive" });
+      toast({ title: "Missing fields", description: "Name, USD value, and We Smackz amount are required.", variant: "destructive" });
       return;
     }
     createPointPack.mutate(
@@ -8047,18 +8047,18 @@ function BundlesPointsAdminTab() {
       {/* ── Point Packs ── */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <Coins className="w-5 h-5 text-amber-400" /> Store Point Packs
+          <Coins className="w-5 h-5 text-amber-400" /> Store We Smackz Packs
         </h2>
         <p className="text-sm text-muted-foreground">
-          Users buy fixed USD-value packs, converted to ETH at the live price. Points are balance-only for now.
+          Users buy fixed USD-value packs, converted to ETH at the live price. We Smackz are balance-only for now.
         </p>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Create Point Pack</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Create We Smackz Pack</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={packForm.name} onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1"><Label className="text-xs">USD Value</Label><Input type="number" step="0.01" value={packForm.usdValue} onChange={(e) => setPackForm((f) => ({ ...f, usdValue: e.target.value }))} /></div>
-            <div className="space-y-1"><Label className="text-xs">Points Granted</Label><Input type="number" value={packForm.pointsGranted} onChange={(e) => setPackForm((f) => ({ ...f, pointsGranted: Number(e.target.value) }))} /></div>
+            <div className="space-y-1"><Label className="text-xs">We Smackz Granted</Label><Input type="number" value={packForm.pointsGranted} onChange={(e) => setPackForm((f) => ({ ...f, pointsGranted: Number(e.target.value) }))} /></div>
             <div className="space-y-1 lg:col-span-2"><Label className="text-xs">Image URL (optional)</Label><Input value={packForm.imageUrl} onChange={(e) => setPackForm((f) => ({ ...f, imageUrl: e.target.value }))} /></div>
             <div className="sm:col-span-2 lg:col-span-5 space-y-1"><Label className="text-xs">Description (optional)</Label><Textarea value={packForm.description} onChange={(e) => setPackForm((f) => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="lg:col-span-5">
@@ -8074,7 +8074,7 @@ function BundlesPointsAdminTab() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>USD Value</TableHead>
-              <TableHead>Points</TableHead>
+              <TableHead>We Smackz</TableHead>
               <TableHead>Active</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -8206,15 +8206,15 @@ function BundlesPointsAdminTab() {
         </Table>
       </div>
 
-      {/* ── Edit Point Pack Dialog ── */}
+      {/* ── Edit We Smackz Pack Dialog ── */}
       <Dialog open={!!editingPack} onOpenChange={(open) => !open && setEditingPack(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit Point Pack</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Edit We Smackz Pack</DialogTitle></DialogHeader>
           {editingPack && (
             <div className="space-y-3">
               <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={editingPack.name} onChange={(e) => setEditingPack({ ...editingPack, name: e.target.value })} /></div>
               <div className="space-y-1"><Label className="text-xs">USD Value</Label><Input type="number" step="0.01" value={editingPack.usdValue} onChange={(e) => setEditingPack({ ...editingPack, usdValue: e.target.value })} /></div>
-              <div className="space-y-1"><Label className="text-xs">Points Granted</Label><Input type="number" value={editingPack.pointsGranted} onChange={(e) => setEditingPack({ ...editingPack, pointsGranted: Number(e.target.value) })} /></div>
+              <div className="space-y-1"><Label className="text-xs">We Smackz Granted</Label><Input type="number" value={editingPack.pointsGranted} onChange={(e) => setEditingPack({ ...editingPack, pointsGranted: Number(e.target.value) })} /></div>
               <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={editingPack.imageUrl ?? ""} onChange={(e) => setEditingPack({ ...editingPack, imageUrl: e.target.value })} /></div>
               <div className="space-y-1"><Label className="text-xs">Description</Label><Textarea value={editingPack.description ?? ""} onChange={(e) => setEditingPack({ ...editingPack, description: e.target.value })} rows={2} /></div>
               <div className="flex items-center gap-2"><Switch checked={editingPack.isActive} onCheckedChange={(v) => setEditingPack({ ...editingPack, isActive: v })} /><Label className="text-xs">Active</Label></div>

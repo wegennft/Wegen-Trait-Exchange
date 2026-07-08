@@ -235,7 +235,7 @@ router.post(
       );
 
     if (pending.length === 0) {
-      res.status(400).json({ error: "No pending points to claim" });
+      res.status(400).json({ error: "No pending We Smackz to claim" });
       return;
     }
 
@@ -357,7 +357,7 @@ router.post(
 
     if (currentPoints < trait.pointCost) {
       res.status(400).json({
-        error: `Not enough points (need ${trait.pointCost}, have ${currentPoints})`,
+        error: `Not enough We Smackz (need ${trait.pointCost}, have ${currentPoints})`,
       });
       return;
     }

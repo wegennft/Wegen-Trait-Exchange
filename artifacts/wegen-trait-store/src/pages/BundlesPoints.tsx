@@ -155,7 +155,7 @@ export function BundlesPoints() {
           <div>
             <div className="text-xs uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>Your Balance</div>
             <div className="text-2xl font-bold" style={{ ...BANGERS, color: accent }}>
-              {isConnected ? totalPoints.toLocaleString() : "—"} Smackz
+              {isConnected ? totalPoints.toLocaleString() : "—"} We Smackz
             </div>
           </div>
           {!isConnected && (
@@ -204,7 +204,7 @@ export function BundlesPoints() {
                       <div className="text-4xl leading-none" style={{ ...BANGERS, color: accent }}>
                         {pack.pointsGranted.toLocaleString()}
                       </div>
-                      <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Smackz</div>
+                      <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>We Smackz</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Price</div>
@@ -221,7 +221,7 @@ export function BundlesPoints() {
                       setPendingPack(pack);
                     }}
                   >
-                    <Zap className="w-4 h-4" /> Buy Smackz
+                    <Zap className="w-4 h-4" /> Buy We Smackz
                   </Button>
                 </CardContent>
               </Card>
@@ -364,7 +364,7 @@ export function BundlesPoints() {
         details={packDetails}
         onConfirm={handlePackConfirm}
         isPending={purchasePointPack.isPending}
-        confirmLabel="Buy Smackz"
+        confirmLabel="Buy We Smackz"
       />
 
       <TxConfirmModal

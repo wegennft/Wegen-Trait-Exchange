@@ -641,7 +641,7 @@ router.post(
     const currentPoints = pointRow?.totalPoints ?? 0;
 
     if (currentPoints < bundle.pointCost) {
-      res.status(400).json({ error: `Not enough Smackz (need ${bundle.pointCost}, have ${currentPoints})` }); return;
+      res.status(400).json({ error: `Not enough We Smackz (need ${bundle.pointCost}, have ${currentPoints})` }); return;
     }
 
     // Fetch bundle items

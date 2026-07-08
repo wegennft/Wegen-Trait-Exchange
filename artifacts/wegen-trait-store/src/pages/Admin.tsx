@@ -7443,7 +7443,7 @@ function BountiesAdminTab() {
             <Package className="w-4 h-4" /> Reward Bundles
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Create bundles of multiple reward traits. Users redeem a bundle for a single Smackz price and receive all included traits at once.
+            Create bundles of multiple reward traits. Users redeem a bundle for a single We Smackz price and receive all included traits at once.
           </p>
         </div>
 
@@ -7502,7 +7502,7 @@ function BountiesAdminTab() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Smackz Cost</Label>
+              <Label className="text-xs">We Smackz Cost</Label>
               <Input
                 type="number"
                 value={bundleForm.pointCost}

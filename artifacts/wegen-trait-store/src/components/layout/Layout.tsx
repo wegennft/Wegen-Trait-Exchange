@@ -156,11 +156,11 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { href: "/", label: "Store", icon: ShoppingBag },
-    { href: "/bundles-points", label: "Packs & Smackz", icon: Coins },
+    { href: "/bundles-points", label: "Packs & We Smackz", icon: Coins },
     { href: "/locker", label: "Trait Locker", icon: Package },
     { href: "/nfts", label: `My ${collectionLabel}`, icon: Gem },
     { href: "/my-legends", label: "Legends & 1/1's", icon: Crown },
-    { href: "/bounties", label: "Bounties & Smackz", icon: Trophy },
+    { href: "/bounties", label: "Bounties & We Smackz", icon: Trophy },
     { href: "/swap", label: "Trait Swap", icon: Repeat2 },
     { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
   ];

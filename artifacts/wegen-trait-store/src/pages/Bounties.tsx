@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCollection } from "@/contexts/CollectionContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SmackzCoin } from "@/components/SmackzCoin";
 import {
   Trophy, Star, Zap, Flame, ShieldCheck, Lock, CheckCircle2, Gift,
-  TrendingUp, Award, Crown, Sparkles, Clock, Coins, Package,
+  TrendingUp, Award, Crown, Sparkles, Clock, Coins, Package, X,
 } from "lucide-react";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
@@ -108,6 +108,29 @@ export function Bounties() {
   const qc = useQueryClient();
 
   const [lbView, setLbView] = useState<"current" | "earned">("current");
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationPoints, setCelebrationPoints] = useState(0);
+
+  // Game settings (celebration media)
+  const { data: gameSettings } = useQuery({
+    queryKey: ["game-settings"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/game-settings");
+      if (!r.ok) return null;
+      return r.json() as Promise<{ celebrationGifUrl: string | null; celebrationMediaType: string | null }>;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const celebrationUrl = gameSettings?.celebrationGifUrl ?? null;
+  const celebrationMediaType = gameSettings?.celebrationMediaType ?? null;
+
+  // Auto-dismiss gif celebrations (videos self-dismiss via onEnded)
+  useEffect(() => {
+    if (!showCelebration || celebrationMediaType === "video") return;
+    const t = setTimeout(() => setShowCelebration(false), 6000);
+    return () => clearTimeout(t);
+  }, [showCelebration, celebrationMediaType]);
 
   // Leaderboard
   const { data: lbData } = useQuery({
@@ -158,6 +181,7 @@ export function Bounties() {
       toast({ title: `+${d.pointsAwarded} We Smackz earned!`, description: `${colLabel}: ${d.dailyCompletions}/${d.dailyLimit} bounties today.` });
       qc.invalidateQueries({ queryKey: ["bounties-me"] });
       qc.invalidateQueries({ queryKey: ["bounties-leaderboard"] });
+      if (celebrationUrl) { setCelebrationPoints(d.pointsAwarded ?? 5); setShowCelebration(true); }
     },
     onError: (e: Error) => {
       toast({ title: "Bounty failed", description: e.message, variant: "destructive" });
@@ -1067,6 +1091,48 @@ export function Bounties() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Celebration overlay */}
+      {showCelebration && celebrationUrl && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(4px)" }}
+          onClick={() => setShowCelebration(false)}
+        >
+          <div className="relative flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
+            {celebrationMediaType === "video" ? (
+              <video
+                src={celebrationUrl}
+                autoPlay
+                playsInline
+                className="max-w-[90vw] max-h-[75vh] rounded-2xl shadow-2xl"
+                style={{ boxShadow: `0 0 60px ${glow}` }}
+                onEnded={() => setShowCelebration(false)}
+              />
+            ) : (
+              <img
+                src={celebrationUrl}
+                alt="Bounty Celebration"
+                className="max-w-[90vw] max-h-[75vh] rounded-2xl shadow-2xl"
+                style={{ boxShadow: `0 0 60px ${glow}` }}
+              />
+            )}
+            <div
+              className="text-base font-black uppercase tracking-widest"
+              style={{ ...BANGERS, color: accent, textShadow: `0 0 20px ${glow}` }}
+            >
+              +{celebrationPoints} We Smackz Earned!
+            </div>
+            <button
+              className="absolute -top-4 -right-4 rounded-full p-1.5 transition-colors"
+              style={{ background: "rgba(255,255,255,0.1)" }}
+              onClick={() => setShowCelebration(false)}
+            >
+              <X className="w-5 h-5 text-white/70" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

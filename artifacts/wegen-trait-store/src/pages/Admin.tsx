@@ -7620,10 +7620,12 @@ function BundlesPointsAdminTab() {
 
   const [bundleForm, setBundleForm] = useState({ name: "", description: "", imageUrl: "", priceUsd: "", totalSupply: -1, isActive: true, traitIds: [] as number[] });
   const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
+  const [bundleTraitSearch, setBundleTraitSearch] = useState("");
+  const [editBundleTraitSearch, setEditBundleTraitSearch] = useState("");
   const { ethUsd: bundleEthUsd } = useEthPrice();
 
   const resetPackForm = () => setPackForm({ name: "", description: "", imageUrl: "", usdValue: "", pointsGranted: 100, isActive: true });
-  const resetBundleForm = () => setBundleForm({ name: "", description: "", imageUrl: "", priceUsd: "", totalSupply: -1, isActive: true, traitIds: [] });
+  const resetBundleForm = () => { setBundleForm({ name: "", description: "", imageUrl: "", priceUsd: "", totalSupply: -1, isActive: true, traitIds: [] }); setBundleTraitSearch(""); };
 
   const handleCreatePack = () => {
     if (!packForm.name || !packForm.usdValue || !packForm.pointsGranted) {
@@ -7848,19 +7850,30 @@ function BundlesPointsAdminTab() {
                   ))}
                 </div>
               </div>
+              <Input
+                placeholder="Search traits by name…"
+                value={bundleTraitSearch}
+                onChange={(e) => setBundleTraitSearch(e.target.value)}
+                className="h-7 text-xs"
+              />
               <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 p-2 rounded-md border border-border/50">
-                {allTraits.map((trait) => (
-                  <button
-                    key={trait.id}
-                    type="button"
-                    onClick={() => toggleTraitId(trait.id, bundleForm.traitIds, (ids) => setBundleForm((f) => ({ ...f, traitIds: ids })))}
-                    className={`text-left text-xs px-2 py-1.5 rounded border truncate ${
-                      bundleForm.traitIds.includes(trait.id) ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
-                    }`}
-                  >
-                    {trait.name}
-                  </button>
-                ))}
+                {allTraits
+                  .filter((t) => t.name.toLowerCase().includes(bundleTraitSearch.toLowerCase()))
+                  .map((trait) => (
+                    <button
+                      key={trait.id}
+                      type="button"
+                      onClick={() => toggleTraitId(trait.id, bundleForm.traitIds, (ids) => setBundleForm((f) => ({ ...f, traitIds: ids })))}
+                      className={`text-left text-xs px-2 py-1.5 rounded border truncate ${
+                        bundleForm.traitIds.includes(trait.id) ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                      }`}
+                    >
+                      {trait.name}
+                    </button>
+                  ))}
+                {allTraits.filter((t) => t.name.toLowerCase().includes(bundleTraitSearch.toLowerCase())).length === 0 && (
+                  <p className="col-span-full text-center text-xs text-muted-foreground py-3">No traits match "{bundleTraitSearch}"</p>
+                )}
               </div>
             </div>
             <Button size="sm" onClick={handleCreateBundle} disabled={createBundle.isPending} className="gap-1.5">
@@ -7922,7 +7935,7 @@ function BundlesPointsAdminTab() {
       </Dialog>
 
       {/* ── Edit Bundle Dialog ── */}
-      <Dialog open={!!editingBundle} onOpenChange={(open) => !open && setEditingBundle(null)}>
+      <Dialog open={!!editingBundle} onOpenChange={(open) => { if (!open) { setEditingBundle(null); setEditBundleTraitSearch(""); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Edit Bundle</DialogTitle></DialogHeader>
           {editingBundle && (
@@ -7954,29 +7967,40 @@ function BundlesPointsAdminTab() {
                     ))}
                   </div>
                 </div>
+                <Input
+                  placeholder="Search traits by name…"
+                  value={editBundleTraitSearch}
+                  onChange={(e) => setEditBundleTraitSearch(e.target.value)}
+                  className="h-7 text-xs"
+                />
                 <div className="max-h-48 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-2 rounded-md border border-border/50">
-                  {allTraits.map((trait) => {
-                    const selected = editingBundle.traits.some((t) => t.id === trait.id);
-                    return (
-                      <button
-                        key={trait.id}
-                        type="button"
-                        onClick={() =>
-                          setEditingBundle({
-                            ...editingBundle,
-                            traits: selected
-                              ? editingBundle.traits.filter((t) => t.id !== trait.id)
-                              : [...editingBundle.traits, trait],
-                          })
-                        }
-                        className={`text-left text-xs px-2 py-1.5 rounded border truncate ${
-                          selected ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
-                        }`}
-                      >
-                        {trait.name}
-                      </button>
-                    );
-                  })}
+                  {allTraits
+                    .filter((t) => t.name.toLowerCase().includes(editBundleTraitSearch.toLowerCase()))
+                    .map((trait) => {
+                      const selected = editingBundle.traits.some((t) => t.id === trait.id);
+                      return (
+                        <button
+                          key={trait.id}
+                          type="button"
+                          onClick={() =>
+                            setEditingBundle({
+                              ...editingBundle,
+                              traits: selected
+                                ? editingBundle.traits.filter((t) => t.id !== trait.id)
+                                : [...editingBundle.traits, trait],
+                            })
+                          }
+                          className={`text-left text-xs px-2 py-1.5 rounded border truncate ${
+                            selected ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground"
+                          }`}
+                        >
+                          {trait.name}
+                        </button>
+                      );
+                    })}
+                  {allTraits.filter((t) => t.name.toLowerCase().includes(editBundleTraitSearch.toLowerCase())).length === 0 && (
+                    <p className="col-span-full text-center text-xs text-muted-foreground py-3">No traits match "{editBundleTraitSearch}"</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2"><Switch checked={editingBundle.isActive} onCheckedChange={(v) => setEditingBundle({ ...editingBundle, isActive: v })} /><Label className="text-xs">Active</Label></div>

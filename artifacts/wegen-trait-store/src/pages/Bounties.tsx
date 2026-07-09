@@ -400,64 +400,132 @@ export function Bounties() {
       </div>
 
       {/* ── Exclusive Rewards Preview ── */}
-      {traits.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
+      {(traits.length > 0 || bundles.length > 0) && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
             <h2 className="text-base font-bold uppercase tracking-widest" style={{ ...BANGERS, color: `hsl(${accentHsl} / 0.85)`, letterSpacing: "0.12em" }}>
               Exclusive Rewards
             </h2>
             <span className="text-sm font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>Redeem with We Smackz in the Rewards Store</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {traits.map((trait) => {
-              const canAfford = myPoints >= trait.pointCost;
-              const soldOut = trait.remainingSupply !== -1 && trait.remainingSupply <= 0;
-              const atLimit = trait.walletPurchaseCount >= 2;
-              return (
-                <div
-                  key={trait.id}
-                  className="item-glow-gold rounded-xl overflow-hidden"
-                  style={{
-                    background: "hsl(272 20% 6%)",
-                    opacity: soldOut || atLimit ? 0.5 : 1,
-                  }}
-                >
-                  <div className="w-full aspect-square bg-secondary/20 relative overflow-hidden">
-                    {trait.imageUrl ? (
-                      <img src={trait.imageUrl} alt={trait.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Gift className="w-10 h-10 opacity-20" />
-                      </div>
-                    )}
-                    {atLimit && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <CheckCircle2 className="w-6 h-6" style={{ color: accent }} />
-                      </div>
-                    )}
-                    {soldOut && !atLimit && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-xs font-bold text-red-400">SOLD OUT</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3 space-y-1.5">
-                    <div className="text-sm font-semibold truncate text-foreground">{trait.name}</div>
+
+          {/* Bundles row */}
+          {bundles.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5" style={{ color: "#a855f7" }} />
+                <span className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: "#a855f7" }}>Reward Bundles</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {bundles.map((bundle) => {
+                  const canAfford = myPoints >= bundle.pointCost;
+                  const soldOut = bundle.remainingSupply !== -1 && bundle.remainingSupply <= 0;
+                  return (
                     <div
-                      className="text-sm font-bold flex items-center gap-1"
-                      style={{ color: canAfford && !soldOut && !atLimit ? accent : "hsl(var(--muted-foreground))" }}
+                      key={bundle.id}
+                      className="rounded-xl overflow-hidden flex gap-3 p-3"
+                      style={{ background: "hsl(272 20% 6%)", border: "1px solid #a855f740", opacity: soldOut ? 0.6 : 1 }}
                     >
-                      <SmackzCoin size={16} />
-                      {trait.pointCost.toLocaleString()} We Smackz
+                      {/* Trait thumbnails */}
+                      <div className="flex-shrink-0 grid grid-cols-2 gap-0.5 w-20 h-20">
+                        {bundle.items.slice(0, 4).map((item) => (
+                          <div key={item.trait.id} className="rounded overflow-hidden bg-secondary/20">
+                            {item.trait.imageUrl ? (
+                              <img src={item.trait.imageUrl} alt={item.trait.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="w-3 h-3 opacity-20" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Bundle info */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="text-sm font-semibold truncate text-foreground">{bundle.name}</div>
+                        <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                          {bundle.items.length} trait{bundle.items.length !== 1 ? "s" : ""} included
+                        </div>
+                        <div
+                          className="text-sm font-bold flex items-center gap-1"
+                          style={{ color: canAfford && !soldOut ? "#a855f7" : "hsl(var(--muted-foreground))" }}
+                        >
+                          <SmackzCoin size={14} />
+                          {bundle.pointCost.toLocaleString()} We Smackz
+                        </div>
+                        {soldOut && <span className="text-[10px] font-bold text-red-400">SOLD OUT</span>}
+                        {bundle.totalSupply !== -1 && !soldOut && (
+                          <div className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>{bundle.remainingSupply}/{bundle.totalSupply} left</div>
+                        )}
+                      </div>
                     </div>
-                    {trait.totalSupply !== -1 && (
-                      <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{trait.remainingSupply}/{trait.totalSupply} left</div>
-                    )}
-                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Individual traits row */}
+          {traits.length > 0 && (
+            <div className="space-y-2">
+              {bundles.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Gift className="w-3.5 h-3.5" style={{ color: accent }} />
+                  <span className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: accent }}>Individual Traits</span>
                 </div>
-              );
-            })}
-          </div>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {traits.map((trait) => {
+                  const canAfford = myPoints >= trait.pointCost;
+                  const soldOut = trait.remainingSupply !== -1 && trait.remainingSupply <= 0;
+                  const atLimit = trait.walletPurchaseCount >= 2;
+                  return (
+                    <div
+                      key={trait.id}
+                      className="item-glow-gold rounded-xl overflow-hidden"
+                      style={{
+                        background: "hsl(272 20% 6%)",
+                        opacity: soldOut || atLimit ? 0.5 : 1,
+                      }}
+                    >
+                      <div className="w-full aspect-square bg-secondary/20 relative overflow-hidden">
+                        {trait.imageUrl ? (
+                          <img src={trait.imageUrl} alt={trait.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Gift className="w-10 h-10 opacity-20" />
+                          </div>
+                        )}
+                        {atLimit && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <CheckCircle2 className="w-6 h-6" style={{ color: accent }} />
+                          </div>
+                        )}
+                        {soldOut && !atLimit && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <span className="text-xs font-bold text-red-400">SOLD OUT</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3 space-y-1.5">
+                        <div className="text-sm font-semibold truncate text-foreground">{trait.name}</div>
+                        <div
+                          className="text-sm font-bold flex items-center gap-1"
+                          style={{ color: canAfford && !soldOut && !atLimit ? accent : "hsl(var(--muted-foreground))" }}
+                        >
+                          <SmackzCoin size={16} />
+                          {trait.pointCost.toLocaleString()} We Smackz
+                        </div>
+                        {trait.totalSupply !== -1 && (
+                          <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{trait.remainingSupply}/{trait.totalSupply} left</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -311,31 +311,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           lastError = undefined;
           break;
         } catch (signErr) {
-          const code = (signErr as { code?: number }).code;
-          if (code === -32000 || code === 32000 || code === 4200) {
-            try {
-              const hexMsg = hexlify(toUtf8Bytes(message));
-              // Use rawAddress (original wallet casing) — Phantom validates this
-              // strictly and rejects lowercase addresses with code -32000.
-              signature = await raw.request({
-                method: "personal_sign",
-                params: [hexMsg, rawAddress],
-              }) as string;
-              lastError = undefined;
-              break;
-            } catch (fallbackErr) {
-              lastError = fallbackErr;
-              if (isAddressMismatchError(fallbackErr) && attempt === 0) {
-                continue; // retry once with a freshly-resolved account + new nonce
-              }
-              throw fallbackErr;
+          // Some wallets (or ethers' own error-normalization layer) return
+          // malformed/unrecognized error shapes that ethers can't parse into
+          // a standard code — surfacing as ethers' generic "could not
+          // coalesce error" instead of the wallet's real error. Rather than
+          // gate the fallback on specific numeric codes (which misses these
+          // cases), always retry with the raw personal_sign RPC call, which
+          // is the more universally-compatible signing path.
+          try {
+            const hexMsg = hexlify(toUtf8Bytes(message));
+            // Use rawAddress (original wallet casing) — Phantom validates this
+            // strictly and rejects lowercase addresses with code -32000.
+            signature = await raw.request({
+              method: "personal_sign",
+              params: [hexMsg, rawAddress],
+            }) as string;
+            lastError = undefined;
+            break;
+          } catch (fallbackErr) {
+            lastError = fallbackErr;
+            if (isAddressMismatchError(fallbackErr) && attempt === 0) {
+              continue; // retry once with a freshly-resolved account + new nonce
             }
-          } else {
-            lastError = signErr;
             if (isAddressMismatchError(signErr) && attempt === 0) {
               continue; // retry once with a freshly-resolved account + new nonce
             }
-            throw signErr;
+            throw fallbackErr;
           }
         }
       }

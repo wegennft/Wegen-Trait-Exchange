@@ -181,15 +181,17 @@ export function BundlesPoints() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pointPacks.map((pack) => (
               <Card key={pack.id} className="item-glow-gold overflow-hidden">
+                {pack.imageUrl ? (
+                  <TraitImageZoom url={pack.imageUrl} alt={pack.name} className="w-full aspect-video">
+                    <img src={pack.imageUrl} alt={pack.name} className="w-full h-full object-cover" />
+                  </TraitImageZoom>
+                ) : (
+                  <div className="w-full aspect-video flex items-center justify-center bg-secondary/20">
+                    <Coins className="w-14 h-14" style={{ color: accent }} />
+                  </div>
+                )}
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-3">
-                    {pack.imageUrl ? (
-                      <TraitImageZoom url={pack.imageUrl} alt={pack.name} className="w-14 h-14 rounded-md flex-shrink-0">
-                        <img src={pack.imageUrl} alt={pack.name} className="w-14 h-14 rounded-md object-cover" />
-                      </TraitImageZoom>
-                    ) : (
-                      <Coins className="w-8 h-8" style={{ color: accent }} />
-                    )}
                     <span className="truncate">{pack.name}</span>
                   </CardTitle>
                 </CardHeader>

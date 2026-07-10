@@ -34,7 +34,11 @@ export async function awardPoints(
   description?: string,
   pending = false,
 ) {
-  const wallet = walletAddress.toLowerCase();
+  // EVM addresses (0x...) are normalized to lowercase everywhere in this app;
+  // Solana addresses are base58 and case-sensitive, so must be left untouched.
+  const wallet = walletAddress.startsWith("0x")
+    ? walletAddress.toLowerCase()
+    : walletAddress;
 
   // Pending transactions (admin airdrops) are NOT added to wallet total yet
   if (!pending) {

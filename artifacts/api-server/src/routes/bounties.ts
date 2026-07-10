@@ -14,7 +14,7 @@ import {
   wegenNftsTable,
   traitsTable,
 } from "@workspace/db";
-import { requireWalletOwnership, requireAdmin } from "../middleware/requireAuth";
+import { requireWalletOwnership, requireAdmin, getEffectiveWallet } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
@@ -34,11 +34,13 @@ export async function awardPoints(
   description?: string,
   pending = false,
 ) {
+  const wallet = walletAddress.toLowerCase();
+
   // Pending transactions (admin airdrops) are NOT added to wallet total yet
   if (!pending) {
     await db
       .insert(walletPointsTable)
-      .values({ walletAddress, totalPoints: points, updatedAt: new Date() })
+      .values({ walletAddress: wallet, totalPoints: points, updatedAt: new Date() })
       .onConflictDoUpdate({
         target: walletPointsTable.walletAddress,
         set: {
@@ -49,7 +51,7 @@ export async function awardPoints(
   }
 
   await db.insert(pointTransactionsTable).values({
-    walletAddress,
+    walletAddress: wallet,
     type,
     points,
     description: description ?? null,
@@ -92,7 +94,7 @@ router.get(
   "/bounties/me",
   requireWalletOwnership(),
   async (req, res): Promise<void> => {
-    const walletAddress = req.session.walletAddress!;
+    const walletAddress = getEffectiveWallet(req)!;
 
     const [pointRow] = await db
       .select()
@@ -102,10 +104,10 @@ router.get(
     const totalPoints = pointRow?.totalPoints ?? 0;
 
     // Rank = count wallets with more points + 1
-    const [rankRow] = await db.execute<{ rank: number }>(
+    const rankResult = await db.execute<{ rank: number }>(
       sql`SELECT COUNT(*)::int + 1 AS rank FROM wallet_points WHERE total_points > ${totalPoints}`,
     );
-    const rank = rankRow?.rank ?? 1;
+    const rank = rankResult.rows[0]?.rank ?? 1;
 
     // Daily sandbox completions today — per collection
     const today = new Date().toISOString().slice(0, 10);
@@ -164,7 +166,7 @@ router.post(
   "/bounties/sandbox-complete",
   requireWalletOwnership(),
   async (req, res): Promise<void> => {
-    const walletAddress = req.session.walletAddress!;
+    const walletAddress = getEffectiveWallet(req)!;
     const today = new Date().toISOString().slice(0, 10);
 
     // Accept nftCollection from body; default to "wegens"
@@ -225,7 +227,7 @@ router.post(
   "/bounties/claim-points",
   requireWalletOwnership(),
   async (req, res): Promise<void> => {
-    const walletAddress = req.session.walletAddress!;
+    const walletAddress = getEffectiveWallet(req)!;
 
     // Find all pending (unclaimed) transactions for this wallet
     const pending = await db
@@ -356,7 +358,7 @@ router.post(
       return;
     }
 
-    const walletAddress = req.session.walletAddress!;
+    const walletAddress = getEffectiveWallet(req)!;
 
     const [trait] = await db
       .select()
@@ -374,10 +376,10 @@ router.post(
     }
 
     // Check wallet purchase limit
-    const [purchaseCount] = await db.execute<{ count: number }>(
+    const purchaseCountResult = await db.execute<{ count: number }>(
       sql`SELECT COUNT(*)::int AS count FROM bounty_purchases WHERE wallet_address = ${walletAddress} AND bounty_trait_id = ${traitId}`,
     );
-    const alreadyOwned = purchaseCount?.count ?? 0;
+    const alreadyOwned = purchaseCountResult.rows[0]?.count ?? 0;
     if (alreadyOwned >= MAX_BOUNTY_TRAIT_PER_WALLET) {
       res.status(400).json({
         error: `Limit reached — max ${MAX_BOUNTY_TRAIT_PER_WALLET} of this trait per wallet`,
@@ -669,7 +671,7 @@ router.post(
     const bundleId = parseInt(rawId, 10);
     if (isNaN(bundleId)) { res.status(400).json({ error: "Invalid bundle ID" }); return; }
 
-    const walletAddress = req.session.walletAddress!;
+    const walletAddress = getEffectiveWallet(req)!;
 
     const [bundle] = await db
       .select()

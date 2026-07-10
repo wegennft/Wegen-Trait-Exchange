@@ -18,3 +18,12 @@ untouched — the bypass only changes what "effective wallet" resolves to.
 add the bypass check inside the shared "who is the current user" helper, and
 verify explicitly (curl before/after toggling the flag) that turning the flag
 off restores normal 401/403 behavior.
+
+**Drift risk (hit 2026-07-10):** the middleware (`requireWalletOwnership`)
+correctly used `getEffectiveWallet(req)`, but several route handlers in the
+same file read `req.session.walletAddress!` directly to get the actual wallet
+value to query with. Under bypass, that's `undefined` — the middleware lets
+the request through, then the handler silently queries with `undefined` and
+returns empty/zeroed results instead of erroring. Grep for
+`req.session.walletAddress` in route files and make sure every read goes
+through `getEffectiveWallet(req)`, not just the auth-check middleware.

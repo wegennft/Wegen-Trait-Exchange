@@ -4,6 +4,7 @@ import {
   db,
   walletPointsTable,
   pointTransactionsTable,
+  pointTxTypeEnum,
   bountyTraitsTable,
   bountyPurchasesTable,
   bountyBundlesTable,
@@ -915,10 +916,12 @@ router.get("/admin/bounties/point-log", async (req, res): Promise<void> => {
   const page = Math.max(1, parseInt((req.query.page as string) ?? "1", 10));
   const limit = 50;
   const offset = (page - 1) * limit;
+  const type = req.query.type as string | undefined;
 
   const rows = await db
     .select()
     .from(pointTransactionsTable)
+    .where(type ? eq(pointTransactionsTable.type, type as (typeof pointTxTypeEnum.enumValues)[number]) : undefined)
     .orderBy(desc(pointTransactionsTable.createdAt))
     .limit(limit)
     .offset(offset);

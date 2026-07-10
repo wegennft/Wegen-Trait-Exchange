@@ -6,3 +6,4 @@
 - [SIWE nonce storage](siwe-nonce-storage.md) — sign-in nonces live in Postgres (`auth_nonces`), not an in-memory Map, so restarts/scaling don't break in-flight wallet sign-ins.
 - [Points currency renamed to We Smackz](we-smackz-currency-rename.md) — in-app points currency is user-facing "We Smackz" (short "Smackz"); admin panel intentionally left unrenamed.
 - [Router-mounted middleware scoping](router-mounted-middleware-scoping.md) — unscoped `router.use(mw)` in a root-mounted sub-router blocks ALL requests app-wide, not just that router's routes; always path-scope it.
+- [Admin sends are pending, not missing](admin-sends-pending-not-missing.md) — "user didn't receive X" reports for admin airdrops are usually a claim/visibility gap, not a broken send; check pending state before assuming a delivery bug.

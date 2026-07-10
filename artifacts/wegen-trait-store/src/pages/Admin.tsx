@@ -1122,6 +1122,9 @@ export function Admin() {
           <TabsTrigger value="airdrop" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Gift className="w-4 h-4" /> Airdrop
           </TabsTrigger>
+          <TabsTrigger value="send-log" className="flex items-center gap-2 rounded-sm px-4 py-2">
+            <History className="w-4 h-4" /> Send Log
+          </TabsTrigger>
           <TabsTrigger value="variant-packs" className="flex items-center gap-2 rounded-sm px-4 py-2">
             <Package className="w-4 h-4" /> Variant Packs
           </TabsTrigger>
@@ -1868,6 +1871,10 @@ export function Admin() {
 
         <TabsContent value="airdrop" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
           <AirdropTab />
+        </TabsContent>
+
+        <TabsContent value="send-log" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
+          <SendLogTab />
         </TabsContent>
 
         <TabsContent value="variant-packs" className="border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
@@ -6404,6 +6411,160 @@ function AirdropTab() {
                         )}
                         <span className="font-medium">{row.traitName}</span>
                       </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Send Log Tab (traits + We Smackz admin sends, with confirmed-received status) ──
+
+type PointLogRow = {
+  id: number;
+  walletAddress: string;
+  type: string;
+  points: number;
+  description: string | null;
+  claimedAt: string | null;
+  createdAt: string;
+};
+
+type SendLogEntry = {
+  id: string;
+  kind: "trait" | "points";
+  wallet: string;
+  label: string;
+  amount: string;
+  sentAt: string;
+  confirmed: boolean;
+};
+
+function SendLogTab() {
+  const { data: airdropData, isLoading: airdropLoading, refetch: refetchAirdrops } = useQuery<{ airdrops: AirdropHistoryRow[] }>({
+    queryKey: ["admin-airdrop-history"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/airdrop-history?limit=100");
+      if (!r.ok) throw new Error("Failed to load airdrop history");
+      return r.json();
+    },
+  });
+
+  const { data: pointLogData, isLoading: pointsLoading, refetch: refetchPoints } = useQuery<{ log: PointLogRow[] }>({
+    queryKey: ["admin-points-send-log"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/bounties/point-log?type=admin_airdrop");
+      if (!r.ok) throw new Error("Failed to load We Smackz send log");
+      return r.json();
+    },
+  });
+
+  const entries: SendLogEntry[] = useMemo(() => {
+    const traitEntries: SendLogEntry[] = (airdropData?.airdrops ?? []).map((r) => ({
+      id: `trait-${r.id}`,
+      kind: "trait",
+      wallet: r.walletAddress,
+      label: r.traitName,
+      amount: "1",
+      sentAt: r.purchasedAt,
+      // Trait airdrops write directly into the recipient's Locker in the same
+      // transaction as the send, so a logged row is proof of delivery.
+      confirmed: true,
+    }));
+    const pointEntries: SendLogEntry[] = (pointLogData?.log ?? []).map((r) => ({
+      id: `points-${r.id}`,
+      kind: "points",
+      wallet: r.walletAddress,
+      label: r.description?.trim() || "Admin point airdrop",
+      amount: `${r.points.toLocaleString()} We Smackz`,
+      sentAt: r.createdAt,
+      // We Smackz are sent as a pending point_transactions row — only added
+      // to the wallet's balance once the user claims it.
+      confirmed: !!r.claimedAt,
+    }));
+    return [...traitEntries, ...pointEntries].sort(
+      (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+    );
+  }, [airdropData, pointLogData]);
+
+  const isLoading = airdropLoading || pointsLoading;
+  const pendingCount = entries.filter((e) => !e.confirmed).length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+            <History className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-base" style={BANGERS_AD}>Send Log</div>
+            <div className="text-sm text-muted-foreground">
+              Every trait airdrop and We Smackz send, with destination wallet and confirmed-received status.
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => { refetchAirdrops(); refetchPoints(); }}
+          className="text-xs font-mono px-3 py-1.5 rounded-lg border border-border/40 hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+        >
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </button>
+      </div>
+
+      {pendingCount > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-300 flex items-center gap-2">
+          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+          {pendingCount} We Smackz send{pendingCount !== 1 ? "s" : ""} not yet claimed by the recipient wallet.
+        </div>
+      )}
+
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-4">
+        {isLoading ? (
+          <div className="text-center py-10 text-muted-foreground/40 text-sm flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading send log…
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground/40 text-sm">
+            Nothing sent yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border/30">
+                  {["When", "Type", "Wallet", "Sent", "Status"].map((h) => (
+                    <th key={h} className="text-left py-2.5 pr-4 text-muted-foreground/50 font-mono uppercase tracking-widest whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((row) => (
+                  <tr key={row.id} className="border-b border-border/15 hover:bg-secondary/20 transition-colors">
+                    <td className="py-2.5 pr-4 whitespace-nowrap text-muted-foreground/50 font-mono">
+                      {new Date(row.sentAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}{" "}
+                      <span className="text-muted-foreground/30">{new Date(row.sentAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wide ${row.kind === "trait" ? "bg-primary/15 text-primary" : "bg-amber-500/15 text-amber-300"}`}>
+                        {row.kind === "trait" ? "Trait" : "We Smackz"}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4 font-mono" style={{ color: "hsl(272 100% 72%)" }}>
+                      {row.wallet.slice(0, 6)}…{row.wallet.slice(-4)}
+                    </td>
+                    <td className="py-2.5 pr-4">{row.label} <span className="text-muted-foreground/50">({row.amount})</span></td>
+                    <td className="py-2.5 pr-4">
+                      {row.confirmed ? (
+                        <span className="inline-flex items-center gap-1 text-green-400"><CheckCircle2 className="w-3.5 h-3.5" /> Received</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-amber-300"><Clock className="w-3.5 h-3.5" /> Pending claim</span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -304,21 +304,42 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   };
 
   return (
-    <div className="flex flex-col animate-in fade-in duration-500" style={{ height: "calc(100vh - 60px)" }}>
+    <div className="flex flex-col animate-in fade-in duration-500 sm:h-[calc(100vh-60px)]">
 
       {/* ── Top Bar ── */}
       <div
-        className="flex-shrink-0 flex items-center gap-3 px-4 py-2 border-b"
+        className="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b"
         style={{ background: 'linear-gradient(90deg,rgba(30,20,40,0.98),rgba(16,11,24,0.98))', borderColor: 'rgba(157,0,255,0.2)' }}
       >
         {/* Title */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-primary text-xl" style={BANGERS}>TRAIT</span>
-          <span className="text-accent text-xl" style={BANGERS}>LOCKER</span>
+          <span className="text-primary text-lg sm:text-xl" style={BANGERS}>TRAIT</span>
+          <span className="text-accent text-lg sm:text-xl" style={BANGERS}>LOCKER</span>
         </div>
 
+        {/* Lock/Unlock toggle — moved next to title on mobile so it never gets squeezed off */}
+        <button
+          onClick={() => setIsOpen(o => !o)}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase transition-all order-2 sm:order-none ml-auto sm:ml-0"
+          style={{
+            ...BANGERS,
+            background: isOpen ? 'rgba(255,200,0,0.12)' : 'rgba(157,0,255,0.15)',
+            border: isOpen ? '1px solid rgba(255,200,0,0.45)' : '1px solid rgba(157,0,255,0.45)',
+            color: isOpen ? 'hsl(43 100% 62%)' : 'hsl(272 100% 72%)',
+          }}
+        >
+          {isOpen ? <><Unlock className="w-3.5 h-3.5" />OPEN</> : <><Lock className="w-3.5 h-3.5" />LOCKED</>}
+        </button>
+
+        {/* Demo badge */}
+        {demo && (
+          <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono rounded order-3 sm:order-none" style={{ background: 'rgba(255,200,0,0.1)', border: '1px solid rgba(255,200,0,0.3)', color: 'hsl(43 100% 65%)' }}>
+            <Eye className="w-3 h-3" />DEMO
+          </div>
+        )}
+
         {/* NFT selector chips */}
-        <div className="flex items-center gap-2 overflow-x-auto flex-1 mx-2">
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto sm:flex-1 sm:mx-2 order-4 sm:order-none -mx-3 px-3 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
           {isLoadingNfts ? (
             <>{[1,2,3].map(i => <Skeleton key={i} className="h-8 w-20 flex-shrink-0" />)}</>
           ) : nfts.length > 0 ? nfts.map(nft => {
@@ -327,7 +348,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
               <button
                 key={nft.tokenId}
                 onClick={() => setSelectedTokenId(nft.tokenId)}
-                className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono transition-all"
+                className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono transition-all"
                 style={{
                   background: isSel ? 'rgba(157,0,255,0.18)' : 'rgba(157,0,255,0.05)',
                   border: isSel ? '1px solid rgba(157,0,255,0.7)' : '1px solid rgba(157,0,255,0.2)',
@@ -349,27 +370,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
             <span className="text-muted-foreground text-xs font-mono">// no {collectionLabel} found //</span>
           )}
         </div>
-
-        {/* Demo badge */}
-        {demo && (
-          <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono rounded" style={{ background: 'rgba(255,200,0,0.1)', border: '1px solid rgba(255,200,0,0.3)', color: 'hsl(43 100% 65%)' }}>
-            <Eye className="w-3 h-3" />DEMO
-          </div>
-        )}
-
-        {/* Lock/Unlock toggle */}
-        <button
-          onClick={() => setIsOpen(o => !o)}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase transition-all"
-          style={{
-            ...BANGERS,
-            background: isOpen ? 'rgba(255,200,0,0.12)' : 'rgba(157,0,255,0.15)',
-            border: isOpen ? '1px solid rgba(255,200,0,0.45)' : '1px solid rgba(157,0,255,0.45)',
-            color: isOpen ? 'hsl(43 100% 62%)' : 'hsl(272 100% 72%)',
-          }}
-        >
-          {isOpen ? <><Unlock className="w-3.5 h-3.5" />OPEN</> : <><Lock className="w-3.5 h-3.5" />LOCKED</>}
-        </button>
       </div>
 
       {/* ── NFT Preview Panel ── */}
@@ -378,13 +378,13 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
         style={{ background: 'linear-gradient(180deg,rgba(22,14,34,0.98),rgba(16,11,24,0.97))', borderColor: 'rgba(157,0,255,0.18)' }}
       >
         {activeNft ? (
-          <div className="flex items-start gap-4 px-4 py-3">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 px-3 sm:px-4 py-3">
 
             {/* Composited preview image — drop target */}
             <div
-              className="relative flex-shrink-0 overflow-hidden transition-all"
+              className="relative flex-shrink-0 overflow-hidden transition-all w-[220px] h-[220px] sm:w-[280px] sm:h-[280px]"
               style={{
-                width: 280, height: 280, background: '#0a0612',
+                background: '#0a0612',
                 border: dragOverPreview
                   ? '2px solid rgba(157,0,255,0.9)'
                   : '1px solid rgba(157,0,255,0.25)',
@@ -469,7 +469,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
             </div>
 
             {/* Right side: NFT info + equipped strip + confirm */}
-            <div className="flex-1 min-w-0 flex flex-col gap-2.5 py-1" style={{ minHeight: 280 }}>
+            <div className="flex-1 w-full min-w-0 flex flex-col gap-2.5 py-1 sm:min-h-[280px]">
 
               {/* NFT name + equipped count */}
               <div>

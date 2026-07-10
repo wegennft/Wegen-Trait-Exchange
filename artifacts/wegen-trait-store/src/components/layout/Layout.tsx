@@ -6,9 +6,10 @@ import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins, Menu } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 const DISPLAY = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: '0.04em' };
@@ -113,6 +114,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [walletPickerOpen, setWalletPickerOpen] = useState(false);
   const [detectedWallets, setDetectedWallets] = useState<DetectedWallet[]>([]);
   const [detectedSolanaWallets, setDetectedSolanaWallets] = useState<DetectedSolanaWallet[]>([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const doConnect = async (wallet: DetectedWallet) => {
     setWalletPickerOpen(false);
@@ -379,7 +381,7 @@ export function Layout({ children }: { children: ReactNode }) {
           }}
         />
 
-        <div className="w-full px-5 h-[82px] flex items-center gap-4">
+        <div className="w-full px-3 sm:px-5 h-[64px] sm:h-[82px] flex items-center gap-2 sm:gap-4">
           {/* ── Logo (fixed left) ── */}
           <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-85 group flex-shrink-0">
             {settings.logoUrl ? (
@@ -530,11 +532,82 @@ export function Layout({ children }: { children: ReactNode }) {
 
             <Link
               href="/admin"
-              className="text-muted-foreground/60 hover:text-primary transition-colors p-1"
+              className="hidden sm:inline-flex text-muted-foreground/60 hover:text-primary transition-colors p-1"
               title="Admin"
             >
               <ShieldAlert className="w-4 h-4" />
             </Link>
+
+            {/* ── Mobile menu trigger ── */}
+            {!isAdminPage && (
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    className="md:hidden flex items-center justify-center w-9 h-9 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 transition-colors flex-shrink-0"
+                    aria-label="Open menu"
+                  >
+                    <Menu className="w-5 h-5" style={{ color: accent }} />
+                  </button>
+                </SheetTrigger>
+                <SheetContent
+                  side="right"
+                  className="w-[85vw] max-w-sm border-l border-white/10 bg-black/95 backdrop-blur-xl p-0 flex flex-col"
+                >
+                  <div className="flex items-center justify-between px-4 h-16 border-b border-white/10 flex-shrink-0">
+                    <span style={{ ...BANGERS, fontSize: '1.1rem', color: accent }}>MENU</span>
+                  </div>
+
+                  {/* Collection switcher */}
+                  <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2 flex-shrink-0">
+                    {(["wegens", "wegenettes"] as NftCollection[]).map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setCollection(c)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs flex-1"
+                        style={{
+                          ...BANGERS,
+                          fontSize: '0.7rem',
+                          background: collection === c ? gradient2 : 'transparent',
+                          border: `1px solid ${collection === c ? accent : '#ffffff22'}`,
+                          color: collection === c ? accent : undefined,
+                        }}
+                      >
+                        <Layers className="w-3 h-3 flex-shrink-0" />
+                        {c === "wegens" ? "Wegens" : "Wegenettes"}
+                      </button>
+                    ))}
+                  </div>
+
+                  <nav className="flex-1 overflow-y-auto py-2">
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = location === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                            isActive ? "text-primary bg-white/5" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                          <span style={{ ...BANGERS, fontSize: '0.8rem', letterSpacing: '0.05em' }}>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-muted-foreground/60 hover:text-primary hover:bg-white/5 transition-colors"
+                    >
+                      <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                      <span style={{ ...BANGERS, fontSize: '0.8rem', letterSpacing: '0.05em' }}>Admin</span>
+                    </Link>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            )}
 
             {isConnected && walletAddress ? (
               <DropdownMenu>
@@ -622,7 +695,7 @@ export function Layout({ children }: { children: ReactNode }) {
       )}
 
       {/* ── Main ── */}
-      <main className="flex-1 container mx-auto px-4 py-8" style={{ position: 'relative', zIndex: 1 }}>
+      <main className="flex-1 container mx-auto px-3 py-5 sm:px-4 sm:py-8" style={{ position: 'relative', zIndex: 1 }}>
         {children}
       </main>
 

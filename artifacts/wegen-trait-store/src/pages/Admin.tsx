@@ -1093,8 +1093,9 @@ export function Admin() {
         }
       `}</style>
       <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") || "dashboard"} className="space-y-6">
-        <TabsList className="admin-nav-tabs bg-secondary border border-border/50 p-1 h-auto">
-          <TabsTrigger value="dashboard" className="flex items-center gap-2 rounded-sm px-4 py-2">
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+        <TabsList className="admin-nav-tabs bg-secondary border border-border/50 p-1 h-auto flex-nowrap w-max">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2 rounded-sm px-4 py-2 whitespace-nowrap">
             <BarChart3 className="w-4 h-4" /> Dashboard
           </TabsTrigger>
           <TabsTrigger value="appearance" className="flex items-center gap-2 rounded-sm px-4 py-2">
@@ -1137,6 +1138,7 @@ export function Admin() {
             <Coins className="w-4 h-4" /> Packs & We Smackz
           </TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="dashboard" className="space-y-8 border border-primary/40 rounded-lg p-6 shadow-[0_0_20px_rgba(124,58,237,0.08)]">
 
@@ -4005,7 +4007,7 @@ function TransactionsLog() {
           <p className="text-xs">Activity will appear here as users buy and equip traits.</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-border/50 overflow-hidden">
+        <div className="rounded-lg border border-border/50 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary/30 hover:bg-secondary/30">
@@ -8153,6 +8155,7 @@ function BundlesPointsAdminTab() {
           </CardContent>
         </Card>
 
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -8181,6 +8184,7 @@ function BundlesPointsAdminTab() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <Separator />
@@ -8277,6 +8281,7 @@ function BundlesPointsAdminTab() {
           </CardContent>
         </Card>
 
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -8307,6 +8312,7 @@ function BundlesPointsAdminTab() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* ── Edit We Smackz Pack Dialog ── */}

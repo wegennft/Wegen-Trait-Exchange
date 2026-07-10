@@ -431,7 +431,7 @@ export function Bounties() {
                       {itemCount > 0 && (
                         <div className="flex flex-wrap gap-1.5 p-3">
                           {bundle.items.map((item) => (
-                            <div key={item.trait.id} className="rounded-lg overflow-hidden bg-secondary/20 relative w-[72px] h-[72px] flex-shrink-0">
+                            <div key={item.trait.id} className="rounded-lg overflow-hidden bg-secondary/20 relative w-[110px] h-[110px] flex-shrink-0">
                               {item.trait.imageUrl ? (
                                 <img src={item.trait.imageUrl} alt={item.trait.name} className="w-full h-full object-cover" />
                               ) : (

@@ -7903,6 +7903,64 @@ function NftRegistryTab() {
   );
 }
 
+function PackImageUploader({
+  currentImageUrl,
+  onUploadComplete,
+  onClear,
+}: {
+  currentImageUrl?: string | null;
+  onUploadComplete: (url: string) => void;
+  onClear: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: (response) => onUploadComplete(`/api/storage${response.objectPath}`),
+    onError: (err) => toast({ title: `Upload failed: ${err.message}`, variant: "destructive" }),
+  });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className="w-12 h-12 flex-shrink-0 rounded-lg border border-dashed border-border/60 bg-secondary/20 overflow-hidden cursor-pointer hover:border-primary/60 transition-colors flex items-center justify-center"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {isUploading ? (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        ) : currentImageUrl ? (
+          <img src={currentImageUrl} alt="Pack" className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
+        )}
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp,image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <div className="flex gap-1">
+        <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+          {currentImageUrl ? "Replace" : "Upload"}
+        </Button>
+        {currentImageUrl && (
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={onClear}>
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BundlesPointsAdminTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -8078,7 +8136,14 @@ function BundlesPointsAdminTab() {
             <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={packForm.name} onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1"><Label className="text-xs">USD Value</Label><Input type="number" step="0.01" value={packForm.usdValue} onChange={(e) => setPackForm((f) => ({ ...f, usdValue: e.target.value }))} /></div>
             <div className="space-y-1"><Label className="text-xs">We Smackz Granted</Label><Input type="number" value={packForm.pointsGranted} onChange={(e) => setPackForm((f) => ({ ...f, pointsGranted: Number(e.target.value) }))} /></div>
-            <div className="space-y-1 lg:col-span-2"><Label className="text-xs">Image URL (optional)</Label><Input value={packForm.imageUrl} onChange={(e) => setPackForm((f) => ({ ...f, imageUrl: e.target.value }))} /></div>
+            <div className="space-y-1 lg:col-span-2">
+              <Label className="text-xs">Image (optional)</Label>
+              <PackImageUploader
+                currentImageUrl={packForm.imageUrl}
+                onUploadComplete={(url) => setPackForm((f) => ({ ...f, imageUrl: url }))}
+                onClear={() => setPackForm((f) => ({ ...f, imageUrl: "" }))}
+              />
+            </div>
             <div className="sm:col-span-2 lg:col-span-5 space-y-1"><Label className="text-xs">Description (optional)</Label><Textarea value={packForm.description} onChange={(e) => setPackForm((f) => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="lg:col-span-5">
               <Button size="sm" onClick={handleCreatePack} disabled={createPointPack.isPending} className="gap-1.5">
@@ -8253,7 +8318,14 @@ function BundlesPointsAdminTab() {
               <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={editingPack.name} onChange={(e) => setEditingPack({ ...editingPack, name: e.target.value })} /></div>
               <div className="space-y-1"><Label className="text-xs">USD Value</Label><Input type="number" step="0.01" value={editingPack.usdValue} onChange={(e) => setEditingPack({ ...editingPack, usdValue: e.target.value })} /></div>
               <div className="space-y-1"><Label className="text-xs">We Smackz Granted</Label><Input type="number" value={editingPack.pointsGranted} onChange={(e) => setEditingPack({ ...editingPack, pointsGranted: Number(e.target.value) })} /></div>
-              <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={editingPack.imageUrl ?? ""} onChange={(e) => setEditingPack({ ...editingPack, imageUrl: e.target.value })} /></div>
+              <div className="space-y-1">
+                <Label className="text-xs">Image</Label>
+                <PackImageUploader
+                  currentImageUrl={editingPack.imageUrl}
+                  onUploadComplete={(url) => setEditingPack({ ...editingPack, imageUrl: url })}
+                  onClear={() => setEditingPack({ ...editingPack, imageUrl: "" })}
+                />
+              </div>
               <div className="space-y-1"><Label className="text-xs">Description</Label><Textarea value={editingPack.description ?? ""} onChange={(e) => setEditingPack({ ...editingPack, description: e.target.value })} rows={2} /></div>
               <div className="flex items-center gap-2"><Switch checked={editingPack.isActive} onCheckedChange={(v) => setEditingPack({ ...editingPack, isActive: v })} /><Label className="text-xs">Active</Label></div>
               <Button onClick={handleUpdatePack} disabled={updatePointPack.isPending} className="w-full gap-1.5">

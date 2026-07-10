@@ -7,6 +7,7 @@ import {
   useCallback,
 } from "react";
 import { BrowserProvider, Eip1193Provider, hexlify, toUtf8Bytes } from "ethers";
+import bs58 from "bs58";
 
 // ─── Wallet detection ───────────────────────────────────────────────────────
 
@@ -106,9 +107,65 @@ export function detectWallets(): DetectedWallet[] {
   return results;
 }
 
+// ─── Native Solana wallet detection ────────────────────────────────────────
+// Separate from the EVM `detectWallets()` above — these are wallets' native
+// Solana-namespace providers (ed25519 signing), not their EVM-compat layer.
+
+export type SolanaWalletId = "phantom-sol" | "solflare" | "backpack-sol" | "solana-injected";
+
+export interface SolanaProvider {
+  publicKey?: { toString(): string; toBytes?: () => Uint8Array } | null;
+  isPhantom?: boolean;
+  isSolflare?: boolean;
+  isBackpack?: boolean;
+  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
+  disconnect?: () => Promise<void>;
+  signMessage: (message: Uint8Array, display?: string) => Promise<{ signature: Uint8Array } | Uint8Array>;
+}
+
+export interface DetectedSolanaWallet {
+  id: SolanaWalletId;
+  name: string;
+  provider: SolanaProvider;
+}
+
+type SolanaWindow = Window & {
+  phantom?: { solana?: SolanaProvider };
+  solflare?: SolanaProvider;
+  backpack?: { solana?: SolanaProvider };
+  solana?: SolanaProvider;
+};
+
+export function detectSolanaWallets(): DetectedSolanaWallet[] {
+  const w = window as SolanaWindow;
+  const results: DetectedSolanaWallet[] = [];
+  const seen = new Set<unknown>();
+
+  const tryAdd = (id: SolanaWalletId, name: string, provider: SolanaProvider | undefined) => {
+    if (!provider?.connect || seen.has(provider)) return;
+    seen.add(provider);
+    results.push({ id, name, provider });
+  };
+
+  tryAdd("phantom-sol", "Phantom", w.phantom?.solana);
+  tryAdd("solflare", "Solflare", w.solflare);
+  tryAdd("backpack-sol", "Backpack", w.backpack?.solana);
+
+  // Generic window.solana fallback (older wallets / non-namespaced injections)
+  const sol = w.solana;
+  if (sol?.connect && !seen.has(sol)) {
+    if (sol.isPhantom) tryAdd("phantom-sol", "Phantom", sol);
+    else if (sol.isBackpack) tryAdd("backpack-sol", "Backpack", sol);
+    else tryAdd("solana-injected", "Solana Wallet", sol);
+  }
+
+  return results;
+}
+
 // ─── Context types ───────────────────────────────────────────────────────────
 
 export type ConnectStep = "requesting" | "signing" | null;
+export type WalletChainFamily = "evm" | "solana";
 
 interface WalletContextState {
   // ── EVM (existing — unchanged) ──────────────────────────────────────
@@ -118,7 +175,9 @@ interface WalletContextState {
   isConnecting: boolean;
   connectStep: ConnectStep;
   chainId: string | null;
+  walletChain: WalletChainFamily | null;
   connect: (provider?: Eip1193Provider) => Promise<void>;
+  connectSolana: (wallet: DetectedSolanaWallet) => Promise<void>;
   disconnect: () => void;
 }
 
@@ -131,17 +190,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [chainId, setChainId] = useState<string | null>(null);
+  const [walletChain, setWalletChain] = useState<WalletChainFamily | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectStep, setConnectStep] = useState<ConnectStep>(null);
 
   // Restore an existing server session on mount
   useEffect(() => {
     fetch("/api/auth/session")
-      .then((r) => (r.ok ? (r.json() as Promise<{ walletAddress: string }>) : null))
+      .then((r) => (r.ok ? (r.json() as Promise<{ walletAddress: string; walletChain?: WalletChainFamily }>) : null))
       .then((data) => {
         if (data?.walletAddress) {
           setWalletAddress(data.walletAddress);
           setIsVerified(true);
+          setWalletChain(data.walletChain ?? "evm");
         }
       })
       .catch(() => {});
@@ -151,6 +212,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (accounts.length === 0) {
       setWalletAddress(null);
       setIsVerified(false);
+      setWalletChain(null);
       fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
     }
   }, []);
@@ -291,7 +353,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const verifyRes = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, message, signature }),
+        body: JSON.stringify({ address, message, signature, chain: "evm" }),
       });
       if (!verifyRes.ok) {
         const err = await verifyRes.json().catch(() => ({}));
@@ -300,6 +362,54 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       setWalletAddress(address);
       setIsVerified(true);
+      setWalletChain("evm");
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsConnecting(false);
+      setConnectStep(null);
+    }
+  };
+
+  // ── Native Solana connect flow (ed25519 signMessage, separate from EVM) ──
+  const connectSolana = async (wallet: DetectedSolanaWallet) => {
+    setIsConnecting(true);
+    setConnectStep("requesting");
+    try {
+      const { provider } = wallet;
+      const { publicKey } = await provider.connect();
+      const address = publicKey.toString();
+
+      // 1. Fetch one-time nonce challenge for this Solana address
+      const nonceRes = await fetch(
+        `/api/auth/nonce?address=${encodeURIComponent(address)}&chain=solana`,
+      );
+      if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
+      const { message } = (await nonceRes.json()) as { nonce: string; message: string };
+
+      // 2. Sign the challenge message with the wallet's native ed25519 key
+      setConnectStep("signing");
+      const messageBytes = new TextEncoder().encode(message);
+      const signResult = await provider.signMessage(messageBytes, "utf8");
+      const signatureBytes =
+        signResult instanceof Uint8Array ? signResult : signResult.signature;
+      const signature = bs58.encode(signatureBytes);
+
+      // 3. Server verifies the ed25519 signature and creates a session
+      const verifyRes = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, message, signature, chain: "solana" }),
+      });
+      if (!verifyRes.ok) {
+        const err = await verifyRes.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Signature verification failed");
+      }
+
+      setWalletAddress(address);
+      setIsVerified(true);
+      setWalletChain("solana");
+      setChainId(null); // Solana has no EVM chain ID — clear any stale EVM chain state
     } catch (error) {
       throw error;
     } finally {
@@ -312,6 +422,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setWalletAddress(null);
     setIsVerified(false);
     setChainId(null);
+    setWalletChain(null);
     fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
   };
 
@@ -324,7 +435,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isConnecting,
         connectStep,
         chainId,
+        walletChain,
         connect,
+        connectSolana,
         disconnect,
       }}
     >

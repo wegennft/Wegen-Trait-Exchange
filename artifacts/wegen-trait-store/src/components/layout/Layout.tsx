@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useWallet, detectWallets, type DetectedWallet, type WalletId } from "@/contexts/WalletContext";
+import { useWallet, detectWallets, detectSolanaWallets, type DetectedWallet, type DetectedSolanaWallet, type WalletId, type SolanaWalletId } from "@/contexts/WalletContext";
 import { NetworkMismatchBanner } from "@/components/wallet/NetworkMismatchBanner";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
@@ -16,7 +16,7 @@ const MARKER  = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.0
 
 // ─── Wallet metadata ──────────────────────────────────────────────────────────
 
-const WALLET_COLORS: Record<WalletId, string> = {
+const WALLET_COLORS: Record<WalletId | SolanaWalletId, string> = {
   metamask: "#E2761B",
   phantom:  "#AB9FF2",
   backpack: "#E33E3F",
@@ -27,9 +27,13 @@ const WALLET_COLORS: Record<WalletId, string> = {
   rainbow:  "#174299",
   brave:    "#FF5500",
   injected: "#6B7280",
+  "phantom-sol":  "#AB9FF2",
+  solflare:       "#FC9965",
+  "backpack-sol": "#E33E3F",
+  "solana-injected": "#14F195",
 };
 
-const WALLET_ICONS: Partial<Record<WalletId, string>> = {
+const WALLET_ICONS: Partial<Record<WalletId | SolanaWalletId, string>> = {
   metamask: "https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg",
   phantom:  "https://raw.githubusercontent.com/phantom-labs/phantom-brand-assets/main/phantom-icon-purple.svg",
   backpack: "https://raw.githubusercontent.com/coral-xyz/backpack/master/assets/backpack.png",
@@ -39,9 +43,11 @@ const WALLET_ICONS: Partial<Record<WalletId, string>> = {
   rabby:    "https://raw.githubusercontent.com/RabbyHub/Rabby/master/src/_raw/images/icon-128.png",
   rainbow:  "https://avatars.githubusercontent.com/u/48327834",
   brave:    "https://brave.com/static-assets/images/brave-logo-sans-text.svg",
+  "phantom-sol": "https://raw.githubusercontent.com/phantom-labs/phantom-brand-assets/main/phantom-icon-purple.svg",
+  "backpack-sol": "https://raw.githubusercontent.com/coral-xyz/backpack/master/assets/backpack.png",
 };
 
-const WALLET_DESC: Partial<Record<WalletId, string>> = {
+const WALLET_DESC: Partial<Record<WalletId | SolanaWalletId, string>> = {
   metamask: "MetaMask browser extension",
   phantom:  "Phantom — Ethereum provider",
   backpack: "Backpack — Ethereum provider",
@@ -52,9 +58,13 @@ const WALLET_DESC: Partial<Record<WalletId, string>> = {
   rainbow:  "Rainbow — Ethereum wallet",
   brave:    "Brave browser built-in wallet",
   injected: "Browser-injected EVM wallet",
+  "phantom-sol": "Phantom — native Solana provider",
+  solflare: "Solflare — Solana wallet",
+  "backpack-sol": "Backpack — native Solana provider",
+  "solana-injected": "Browser-injected Solana wallet",
 };
 
-function WalletIcon({ id, name }: { id: WalletId; name: string }) {
+function WalletIcon({ id, name }: { id: WalletId | SolanaWalletId; name: string }) {
   const iconUrl = WALLET_ICONS[id];
   const color = WALLET_COLORS[id];
   const initial = name.charAt(0).toUpperCase();
@@ -95,13 +105,14 @@ function WalletIcon({ id, name }: { id: WalletId; name: string }) {
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { walletAddress, isConnected, connect, disconnect, isConnecting, connectStep } = useWallet();
+  const { walletAddress, isConnected, connect, connectSolana, disconnect, isConnecting, connectStep } = useWallet();
   const { settings } = useSiteSettings();
   const { collection, collectionLabel, setCollection, theme } = useCollection();
   const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { toast } = useToast();
   const [walletPickerOpen, setWalletPickerOpen] = useState(false);
   const [detectedWallets, setDetectedWallets] = useState<DetectedWallet[]>([]);
+  const [detectedSolanaWallets, setDetectedSolanaWallets] = useState<DetectedSolanaWallet[]>([]);
 
   const doConnect = async (wallet: DetectedWallet) => {
     setWalletPickerOpen(false);
@@ -125,26 +136,42 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   };
 
+  const doConnectSolana = async (wallet: DetectedSolanaWallet) => {
+    setWalletPickerOpen(false);
+    try {
+      await connectSolana(wallet);
+    } catch (err) {
+      const code = (err as { code?: number }).code;
+      if (code === 4001) return; // user cancelled — silent
+      const description = err instanceof Error ? err.message : "Could not connect wallet";
+      toast({ title: "Connection failed", description, variant: "destructive" });
+    }
+  };
+
   const handleConnect = () => {
     const evmWallets = detectWallets();
+    const solanaWallets = detectSolanaWallets();
+    const totalWallets = evmWallets.length + solanaWallets.length;
 
-    if (evmWallets.length === 0) {
+    if (totalWallets === 0) {
       toast({
         title: "No wallet found",
         description:
-          "Install MetaMask, Backpack, Phantom, Coinbase Wallet, or another EVM wallet, then refresh. " +
+          "Install MetaMask, Backpack, Phantom, Solflare, or another EVM/Solana wallet, then refresh. " +
           "Note: wallet extensions don't work inside iframes — open the app in its own browser tab.",
         variant: "destructive",
       });
       return;
     }
-    // Single EVM wallet — connect immediately
-    if (evmWallets.length === 1) {
-      void doConnect(evmWallets[0]);
+    // Exactly one wallet across both chains — connect immediately
+    if (totalWallets === 1) {
+      if (evmWallets.length === 1) void doConnect(evmWallets[0]);
+      else void doConnectSolana(solanaWallets[0]);
       return;
     }
-    // Show picker for multiple wallets
+    // Show picker for multiple wallets (EVM and/or Solana)
     setDetectedWallets(evmWallets);
+    setDetectedSolanaWallets(solanaWallets);
     setWalletPickerOpen(true);
   };
 
@@ -177,7 +204,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <Wallet className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">
               <strong>Wallet extensions don't work inside this preview.</strong>
-              {" "}Open the app in its own tab to connect MetaMask or Phantom.
+              {" "}Open the app in its own tab to connect MetaMask, Phantom, or a Solana wallet.
             </span>
           </div>
           <a
@@ -701,7 +728,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex flex-col gap-2 mt-2">
             {detectedWallets.map((w) => (
               <button
-                key={w.id}
+                key={`evm-${w.id}`}
                 onClick={() => void doConnect(w)}
                 className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
               >
@@ -717,6 +744,27 @@ export function Layout({ children }: { children: ReactNode }) {
                   style={{ color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }}
                 >
                   EVM
+                </span>
+              </button>
+            ))}
+            {detectedSolanaWallets.map((w) => (
+              <button
+                key={`sol-${w.id}`}
+                onClick={() => void doConnectSolana(w)}
+                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
+              >
+                <WalletIcon id={w.id} name={w.name} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm leading-tight">{w.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {WALLET_DESC[w.id] ?? "Solana wallet"}
+                  </div>
+                </div>
+                <span
+                  className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                  style={{ color: "#14F195", borderColor: "#14F19544", background: "#14F19511" }}
+                >
+                  SOL
                 </span>
               </button>
             ))}

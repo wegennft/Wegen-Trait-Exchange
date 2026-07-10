@@ -14,6 +14,7 @@
     "@types/express-session": "^1.19.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "bs58": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "drizzle-orm": "catalog:",
@@ -24,6 +25,7 @@
     "pino": "^9",
     "pino-http": "^10",
     "sharp": "^0.35.1",
+    "tweetnacl": "^1.0.3",
     "zod": "catalog:"
   },
   "devDependencies": {

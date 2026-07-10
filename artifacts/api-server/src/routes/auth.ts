@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { verifyMessage } from "ethers";
 import crypto from "crypto";
+import nacl from "tweetnacl";
+import bs58 from "bs58";
 import { db, authNoncesTable } from "@workspace/db";
 import { eq, lt } from "drizzle-orm";
 
@@ -11,8 +13,19 @@ const router: Router = Router();
 // TTL of 5 minutes per challenge.
 const NONCE_TTL_MS = 5 * 60 * 1000;
 
+type ChainFamily = "evm" | "solana";
+
 async function pruneExpiredNonces(): Promise<void> {
   await db.delete(authNoncesTable).where(lt(authNoncesTable.expiresAt, new Date()));
+}
+
+function isEvmAddress(address: string): boolean {
+  return /^0x[0-9a-f]{40}$/.test(address);
+}
+
+// Base58, 32-44 chars — standard Solana public key encoding (32-byte ed25519 key).
+function isSolanaAddress(address: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
 }
 
 function buildSiweMessage(params: {
@@ -36,14 +49,41 @@ function buildSiweMessage(params: {
   ].join("\n");
 }
 
-// GET /api/auth/nonce?address=0x...&chainId=1
+function buildSolanaMessage(params: { domain: string; address: string; nonce: string; issuedAt: string }): string {
+  return [
+    `${params.domain} wants you to sign in with your Solana account:`,
+    params.address,
+    "",
+    "Sign in to Wegen Trait Store",
+    "",
+    `URI: https://${params.domain}`,
+    "Version: 1",
+    `Nonce: ${params.nonce}`,
+    `Issued At: ${params.issuedAt}`,
+  ].join("\n");
+}
+
+// GET /api/auth/nonce?address=0x...&chainId=1&chain=evm|solana
 router.get("/auth/nonce", async (req, res): Promise<void> => {
   await pruneExpiredNonces();
-  const address = (req.query.address as string)?.toLowerCase();
+  const chain: ChainFamily = req.query.chain === "solana" ? "solana" : "evm";
   const chainId = (req.query.chainId as string) || "1";
-  if (!address || !/^0x[0-9a-f]{40}$/.test(address)) {
-    res.status(400).json({ error: "Invalid address" });
-    return;
+  const rawAddress = req.query.address as string;
+
+  let address: string | undefined;
+  if (chain === "solana") {
+    // Solana addresses are base58 and case-sensitive — do not lowercase.
+    address = rawAddress;
+    if (!address || !isSolanaAddress(address)) {
+      res.status(400).json({ error: "Invalid Solana address" });
+      return;
+    }
+  } else {
+    address = rawAddress?.toLowerCase();
+    if (!address || !isEvmAddress(address)) {
+      res.status(400).json({ error: "Invalid address" });
+      return;
+    }
   }
 
   const nonce = crypto.randomBytes(16).toString("hex");
@@ -59,21 +99,35 @@ router.get("/auth/nonce", async (req, res): Promise<void> => {
       set: { nonce, expiresAt },
     });
 
-  const message = buildSiweMessage({ domain, address, nonce, issuedAt, chainId });
+  const message =
+    chain === "solana"
+      ? buildSolanaMessage({ domain, address, nonce, issuedAt })
+      : buildSiweMessage({ domain, address, nonce, issuedAt, chainId });
   res.json({ nonce, message });
 });
 
-// POST /api/auth/verify  { address, message, signature }
+// POST /api/auth/verify  { address, message, signature, chain? }
 router.post("/auth/verify", async (req, res): Promise<void> => {
-  const { address: rawAddress, message, signature } = req.body as {
+  const { address: rawAddress, message, signature, chain: rawChain } = req.body as {
     address: string;
     message: string;
     signature: string;
+    chain?: string;
   };
-  const address = rawAddress?.toLowerCase();
+  const chain: ChainFamily = rawChain === "solana" ? "solana" : "evm";
+  const address = chain === "solana" ? rawAddress : rawAddress?.toLowerCase();
 
   if (!address || !message || !signature) {
     res.status(400).json({ error: "address, message, and signature are required" });
+    return;
+  }
+
+  if (chain === "solana" && !isSolanaAddress(address)) {
+    res.status(400).json({ error: "Invalid Solana address" });
+    return;
+  }
+  if (chain === "evm" && !isEvmAddress(address)) {
+    res.status(400).json({ error: "Invalid address" });
     return;
   }
 
@@ -92,35 +146,52 @@ router.post("/auth/verify", async (req, res): Promise<void> => {
     return;
   }
 
-  try {
-    const recovered = (await verifyMessage(message, signature)).toLowerCase();
-    if (recovered !== address) {
-      res.status(401).json({ error: "Signature verification failed" });
+  if (chain === "solana") {
+    try {
+      const signatureBytes = bs58.decode(signature);
+      const messageBytes = new TextEncoder().encode(message);
+      const publicKeyBytes = bs58.decode(address);
+      const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+      if (!isValid) {
+        res.status(401).json({ error: "Signature verification failed" });
+        return;
+      }
+    } catch {
+      res.status(401).json({ error: "Invalid signature" });
       return;
     }
-  } catch {
-    res.status(401).json({ error: "Invalid signature" });
-    return;
+  } else {
+    try {
+      const recovered = (await verifyMessage(message, signature)).toLowerCase();
+      if (recovered !== address) {
+        res.status(401).json({ error: "Signature verification failed" });
+        return;
+      }
+    } catch {
+      res.status(401).json({ error: "Invalid signature" });
+      return;
+    }
   }
 
   // Consume nonce (prevent replay attacks)
   await db.delete(authNoncesTable).where(eq(authNoncesTable.address, address));
 
   req.session.walletAddress = address;
+  req.session.walletChain = chain;
   req.session.save((err) => {
     if (err) {
       req.log?.error({ err }, "Session save error");
       res.status(500).json({ error: "Session error" });
       return;
     }
-    res.json({ success: true, walletAddress: address });
+    res.json({ success: true, walletAddress: address, walletChain: chain });
   });
 });
 
 // GET /api/auth/session — check current session
 router.get("/auth/session", (req, res): void => {
   if (req.session.walletAddress) {
-    res.json({ walletAddress: req.session.walletAddress });
+    res.json({ walletAddress: req.session.walletAddress, walletChain: req.session.walletChain ?? "evm" });
   } else {
     res.status(401).json({ walletAddress: null });
   }

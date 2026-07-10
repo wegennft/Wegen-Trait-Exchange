@@ -3,5 +3,6 @@ import "express-session";
 declare module "express-session" {
   interface SessionData {
     walletAddress: string;
+    walletChain?: "evm" | "solana";
   }
 }

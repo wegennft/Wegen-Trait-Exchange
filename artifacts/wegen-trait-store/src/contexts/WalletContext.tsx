@@ -177,6 +177,10 @@ interface WalletContextState {
   connectStep: ConnectStep;
   chainId: string | null;
   walletChain: WalletChainFamily | null;
+  /** True when the server is treating this request as an authenticated admin
+   *  via the dev-only DEV_AUTO_ADMIN bypass, rather than a real wallet
+   *  connection. Never true in production. */
+  isDevBypass: boolean;
   connect: (provider?: Eip1193Provider) => Promise<void>;
   connectSolana: (wallet: DetectedSolanaWallet) => Promise<void>;
   disconnect: () => void;
@@ -195,13 +199,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [walletChain, setWalletChain] = useState<WalletChainFamily | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectStep, setConnectStep] = useState<ConnectStep>(null);
+  const [isDevBypass, setIsDevBypass] = useState(false);
 
   // Restore an existing server session on mount
   useEffect(() => {
     fetch("/api/auth/session")
       .then((r) =>
         r.ok
-          ? (r.json() as Promise<{ walletAddress: string; walletChain?: WalletChainFamily; isAdmin?: boolean }>)
+          ? (r.json() as Promise<{
+              walletAddress: string;
+              walletChain?: WalletChainFamily;
+              isAdmin?: boolean;
+              isDevBypass?: boolean;
+            }>)
           : null,
       )
       .then((data) => {
@@ -210,6 +220,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           setIsVerified(true);
           setWalletChain(data.walletChain ?? "evm");
           setIsAdmin(!!data.isAdmin);
+          setIsDevBypass(!!data.isDevBypass);
         }
       })
       .catch(() => {});
@@ -445,6 +456,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false);
     setChainId(null);
     setWalletChain(null);
+    setIsDevBypass(false);
     fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
   };
 
@@ -459,13 +471,37 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         connectStep,
         chainId,
         walletChain,
+        isDevBypass,
         connect,
         connectSolana,
         disconnect,
       }}
     >
+      {isDevBypass && <DevBypassBanner walletAddress={walletAddress} />}
       {children}
     </WalletContext.Provider>
+  );
+}
+
+/**
+ * Dev-only visual warning shown whenever DEV_AUTO_ADMIN is active on the
+ * server, so it's never mistaken for a real connected wallet during local
+ * testing. The server already guarantees this flag can never be true in
+ * production (see getDevBypassWallet).
+ */
+function DevBypassBanner({ walletAddress }: { walletAddress: string | null }) {
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[DEV_AUTO_ADMIN] Auto-admin bypass is active — requests are being treated as admin wallet ${walletAddress ?? "(unknown)"} without a real wallet connection. Set DEV_AUTO_ADMIN=false to test real sign-in flows.`,
+    );
+  }, [walletAddress]);
+
+  return (
+    <div className="sticky top-0 z-50 w-full bg-amber-500 px-4 py-2 text-center text-sm font-medium text-black">
+      ⚠️ Dev auto-admin bypass is ON — you're auto-signed-in as {walletAddress} without connecting a real wallet.
+      Disable <code className="font-mono">DEV_AUTO_ADMIN</code> to test real wallet sign-in.
+    </div>
   );
 }
 

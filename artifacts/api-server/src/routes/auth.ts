@@ -196,6 +196,7 @@ router.get("/auth/session", (req, res): void => {
       walletAddress: req.session.walletAddress,
       walletChain: req.session.walletChain ?? "evm",
       isAdmin: isAdminWallet(req.session.walletAddress),
+      isDevBypass: false,
     });
     return;
   }
@@ -208,6 +209,7 @@ router.get("/auth/session", (req, res): void => {
       walletAddress: bypassWallet,
       walletChain: "evm",
       isAdmin: isAdminWallet(bypassWallet),
+      isDevBypass: true,
     });
     return;
   }

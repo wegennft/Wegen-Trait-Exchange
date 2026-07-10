@@ -172,6 +172,7 @@ interface WalletContextState {
   walletAddress: string | null;
   isConnected: boolean;
   isVerified: boolean;
+  isAdmin: boolean;
   isConnecting: boolean;
   connectStep: ConnectStep;
   chainId: string | null;
@@ -189,6 +190,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // ── EVM state (unchanged) ─────────────────────────────────────────────────
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [chainId, setChainId] = useState<string | null>(null);
   const [walletChain, setWalletChain] = useState<WalletChainFamily | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -197,12 +199,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Restore an existing server session on mount
   useEffect(() => {
     fetch("/api/auth/session")
-      .then((r) => (r.ok ? (r.json() as Promise<{ walletAddress: string; walletChain?: WalletChainFamily }>) : null))
+      .then((r) =>
+        r.ok
+          ? (r.json() as Promise<{ walletAddress: string; walletChain?: WalletChainFamily; isAdmin?: boolean }>)
+          : null,
+      )
       .then((data) => {
         if (data?.walletAddress) {
           setWalletAddress(data.walletAddress);
           setIsVerified(true);
           setWalletChain(data.walletChain ?? "evm");
+          setIsAdmin(!!data.isAdmin);
         }
       })
       .catch(() => {});
@@ -213,6 +220,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setWalletAddress(null);
       setIsVerified(false);
       setWalletChain(null);
+      setIsAdmin(false);
       fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
     }
   }, []);
@@ -364,6 +372,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setWalletAddress(address);
       setIsVerified(true);
       setWalletChain("evm");
+
+      // Fetch admin status now that a session exists
+      fetch("/api/auth/session")
+        .then((r) => (r.ok ? (r.json() as Promise<{ isAdmin?: boolean }>) : null))
+        .then((data) => setIsAdmin(!!data?.isAdmin))
+        .catch(() => setIsAdmin(false));
     } catch (error) {
       throw error;
     } finally {
@@ -411,6 +425,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsVerified(true);
       setWalletChain("solana");
       setChainId(null); // Solana has no EVM chain ID — clear any stale EVM chain state
+
+      // Fetch admin status now that a session exists
+      fetch("/api/auth/session")
+        .then((r) => (r.ok ? (r.json() as Promise<{ isAdmin?: boolean }>) : null))
+        .then((data) => setIsAdmin(!!data?.isAdmin))
+        .catch(() => setIsAdmin(false));
     } catch (error) {
       throw error;
     } finally {
@@ -422,6 +442,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const disconnect = () => {
     setWalletAddress(null);
     setIsVerified(false);
+    setIsAdmin(false);
     setChainId(null);
     setWalletChain(null);
     fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
@@ -433,6 +454,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         walletAddress,
         isConnected: !!walletAddress && isVerified,
         isVerified,
+        isAdmin,
         isConnecting,
         connectStep,
         chainId,

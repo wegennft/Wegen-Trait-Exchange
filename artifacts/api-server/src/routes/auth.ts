@@ -5,6 +5,7 @@ import nacl from "tweetnacl";
 import bs58 from "bs58";
 import { db, authNoncesTable } from "@workspace/db";
 import { eq, lt } from "drizzle-orm";
+import { isAdminWallet } from "../middleware/requireAuth";
 
 const router: Router = Router();
 
@@ -191,9 +192,13 @@ router.post("/auth/verify", async (req, res): Promise<void> => {
 // GET /api/auth/session — check current session
 router.get("/auth/session", (req, res): void => {
   if (req.session.walletAddress) {
-    res.json({ walletAddress: req.session.walletAddress, walletChain: req.session.walletChain ?? "evm" });
+    res.json({
+      walletAddress: req.session.walletAddress,
+      walletChain: req.session.walletChain ?? "evm",
+      isAdmin: isAdminWallet(req.session.walletAddress),
+    });
   } else {
-    res.status(401).json({ walletAddress: null });
+    res.status(401).json({ walletAddress: null, isAdmin: false });
   }
 });
 

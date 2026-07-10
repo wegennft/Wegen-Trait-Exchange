@@ -1,8 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { db, legendsTable, legendVariantsTable, wegenNftsTable } from "@workspace/db";
+import { requireAdmin } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
+
+// All /admin/* routes on this router require an authenticated admin session.
+router.use("/admin", requireAdmin);
 
 function getNftCollection(q: Record<string, unknown>): string {
   return q.nftCollection === "wegenettes" ? "wegenettes" : "wegens";

@@ -12,6 +12,7 @@ import { Store } from "@/pages/Store";
 import { Locker } from "@/pages/Locker";
 import { Nfts } from "@/pages/Nfts";
 import { Admin } from "@/pages/Admin";
+import { AdminGuard } from "@/components/shared/AdminGuard";
 import { Swap } from "@/pages/Swap";
 import { Sandbox } from "@/pages/Sandbox";
 import { MyLegends } from "@/pages/MyLegends";
@@ -50,7 +51,11 @@ function Router() {
         <Route path="/my-legends" component={MyLegends} />
         <Route path="/bounties" component={Bounties} />
         <Route path="/bundles-points" component={BundlesPoints} />
-        <Route path="/admin" component={Admin} />
+        <Route path="/admin">
+          <AdminGuard>
+            <Admin />
+          </AdminGuard>
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>

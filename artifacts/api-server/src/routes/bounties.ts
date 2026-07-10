@@ -13,9 +13,12 @@ import {
   wegenNftsTable,
   traitsTable,
 } from "@workspace/db";
-import { requireWalletOwnership } from "../middleware/requireAuth";
+import { requireWalletOwnership, requireAdmin } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
+
+// All /admin/* routes on this router require an authenticated admin session.
+router.use("/admin", requireAdmin);
 
 const DAILY_BOUNTY_LIMIT_PER_COLLECTION = 5;
 const BOUNTY_POINTS_PER_COMPLETION = 5;

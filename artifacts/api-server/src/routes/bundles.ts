@@ -15,10 +15,13 @@ import {
   CreateBundleBody,
   PurchaseBundleBody,
 } from "@workspace/api-zod";
-import { requireWalletOwnership } from "../middleware/requireAuth";
+import { requireWalletOwnership, requireAdmin } from "../middleware/requireAuth";
 import { getEthUsdRate, convertUsdToEth, EthPriceUnavailableError } from "../lib/ethPriceService";
 
 const router: IRouter = Router();
+
+// All /admin/* routes on this router require an authenticated admin session.
+router.use("/admin", requireAdmin);
 
 function parseId(raw: unknown): number | null {
   const v = Array.isArray(raw) ? raw[0] : raw;

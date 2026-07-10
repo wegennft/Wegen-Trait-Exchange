@@ -1,5 +1,36 @@
 import type { Request, Response, NextFunction } from "express";
 
+function getAdminAllowlist(): string[] {
+  const raw = process.env["ADMIN_WALLETS"] ?? "";
+  return raw
+    .split(",")
+    .map((w) => w.trim().toLowerCase())
+    .filter((w) => w.length > 0);
+}
+
+export function isAdminWallet(walletAddress: string | undefined | null): boolean {
+  if (!walletAddress) return false;
+  return getAdminAllowlist().includes(walletAddress.toLowerCase());
+}
+
+/**
+ * Middleware that requires the session wallet to be on the admin allowlist
+ * (ADMIN_WALLETS env var, comma-separated addresses). Returns 401 if there's
+ * no session, 403 if the wallet is not an admin.
+ */
+export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const wallet = req.session.walletAddress;
+  if (!wallet) {
+    res.status(401).json({ error: "Wallet not authenticated — please sign in" });
+    return;
+  }
+  if (!isAdminWallet(wallet)) {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  next();
+}
+
 /**
  * Middleware that requires a verified wallet session.
  * Returns 401 if the session is missing or doesn't match the wallet address

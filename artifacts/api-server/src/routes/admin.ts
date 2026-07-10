@@ -26,6 +26,7 @@ async function getOrCreateSettings(nftCollection: string) {
 import { z } from "zod";
 import { encryptAuthorityKey, verifyStoredKey } from "../keyEncryption.js";
 import { getEthUsdRate, EthPriceUnavailableError } from "../lib/ethPriceService";
+import { requireAdmin } from "../middleware/requireAuth";
 
 const UpdateFeesBody = z.object({
   buyingFeePercent: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number"),
@@ -49,6 +50,12 @@ import {
 import { ethers } from "ethers";
 
 const router: IRouter = Router();
+
+// All /admin/* routes require an authenticated session whose wallet is on
+// the ADMIN_WALLETS allowlist. Must be registered before any route below.
+// Scoped to "/admin" so this router (mounted at the app root) never
+// intercepts requests destined for other, later-mounted routers.
+router.use("/admin", requireAdmin);
 
 function validatePayoutSplits(
   splits: { walletAddress: string; percentage: number }[],

@@ -66,10 +66,10 @@
   --primary-foreground: 0 0% 100%;
 
   --secondary: 268 30% 9%;
-  --secondary-foreground: 38 20% 88%;
+  --secondary-foreground: 38 25% 94%;
 
   --muted: 268 22% 12%;
-  --muted-foreground: 32 28% 78%;
+  --muted-foreground: 32 35% 88%;
 
   --accent: 43 100% 52%;
   --accent-foreground: 270 45% 2%;
@@ -100,10 +100,10 @@
   --primary-foreground: 0 0% 100%;
 
   --secondary: 268 30% 8%;
-  --secondary-foreground: 38 20% 88%;
+  --secondary-foreground: 38 25% 94%;
 
   --muted: 268 22% 11%;
-  --muted-foreground: 32 28% 78%;
+  --muted-foreground: 32 35% 88%;
 
   --accent: 43 100% 52%;
   --accent-foreground: 270 45% 2%;
@@ -198,7 +198,7 @@
 
   body {
     font-weight: 500;
-    font-size: 15px;
+    font-size: 16.5px;
   }
 
   h1, h2, h3 {

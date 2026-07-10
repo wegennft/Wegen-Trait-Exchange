@@ -834,15 +834,15 @@ export function Bounties() {
                           style={{ background: "hsl(270 25% 6%)", border: "1px solid #a855f740" }}
                         >
                           {/* Bundle image */}
-                          <div className="aspect-video bg-secondary/20 relative overflow-hidden">
+                          <div className="aspect-square bg-secondary/20 relative overflow-hidden">
                             {bundle.imageUrl ? (
-                              <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover" />
+                              <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-contain" />
                             ) : bundle.items.length > 0 ? (
                               <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-0.5">
                                 {bundle.items.slice(0, 4).map((item) => (
-                                  <div key={item.trait.id} className="bg-secondary/30 overflow-hidden">
+                                  <div key={item.trait.id} className="bg-secondary/30 overflow-hidden aspect-square">
                                     {item.trait.imageUrl ? (
-                                      <img src={item.trait.imageUrl} alt={item.trait.name} className="w-full h-full object-cover" />
+                                      <img src={item.trait.imageUrl} alt={item.trait.name} className="w-full h-full object-contain" />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center">
                                         <Package className="w-6 h-6 opacity-20" style={{ color: "#a855f7" }} />

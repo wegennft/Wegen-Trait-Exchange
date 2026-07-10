@@ -964,12 +964,14 @@ export function Store() {
                   >
                     <div className="relative aspect-square overflow-hidden bg-black flex items-center justify-center">
                       {imageUrl ? (
-                        <TraitMedia
-                          url={imageUrl}
-                          mediaType={mediaType}
-                          alt={legend.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
+                        <TraitImageZoom url={imageUrl} mediaType={mediaType} alt={legend.name} className="w-full h-full">
+                          <TraitMedia
+                            url={imageUrl}
+                            mediaType={mediaType}
+                            alt={legend.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </TraitImageZoom>
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-card to-black">
                           <Crown className="w-16 h-16" style={{ color: `${accent}40` }} />
@@ -1459,7 +1461,9 @@ export function Store() {
                   {/* Thumbnail */}
                   <div className="w-14 h-14 rounded-lg overflow-hidden bg-secondary/40 flex-shrink-0 border border-border/20">
                     {trait.imageUrl ? (
-                      <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" />
+                      <TraitImageZoom url={trait.imageUrl} mediaType={(trait as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
+                        <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" />
+                      </TraitImageZoom>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
                         {trait.category?.[0]}

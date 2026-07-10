@@ -823,6 +823,20 @@ export function Bounties() {
                           <div className="aspect-video bg-secondary/20 relative overflow-hidden">
                             {bundle.imageUrl ? (
                               <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover" />
+                            ) : bundle.items.length > 0 ? (
+                              <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-0.5">
+                                {bundle.items.slice(0, 4).map((item) => (
+                                  <div key={item.trait.id} className="bg-secondary/30 overflow-hidden">
+                                    {item.trait.imageUrl ? (
+                                      <img src={item.trait.imageUrl} alt={item.trait.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <Package className="w-6 h-6 opacity-20" style={{ color: "#a855f7" }} />
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 <Package className="w-16 h-16 opacity-20" style={{ color: "#a855f7" }} />
@@ -831,26 +845,6 @@ export function Bounties() {
                             {soldOut && (
                               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                                 <Badge variant="destructive">Sold Out</Badge>
-                              </div>
-                            )}
-                            {/* Included traits preview */}
-                            {bundle.items.length > 0 && (
-                              <div className="absolute bottom-2 right-2 flex -space-x-2">
-                                {bundle.items.slice(0, 4).map((item) =>
-                                  item.trait.imageUrl ? (
-                                    <img
-                                      key={item.trait.id}
-                                      src={item.trait.imageUrl}
-                                      alt={item.trait.name}
-                                      className="w-8 h-8 rounded-full object-cover border-2 border-background"
-                                    />
-                                  ) : null,
-                                )}
-                                {bundle.items.length > 4 && (
-                                  <div className="w-8 h-8 rounded-full bg-background/80 border-2 border-background flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                                    +{bundle.items.length - 4}
-                                  </div>
-                                )}
                               </div>
                             )}
                           </div>

@@ -7,3 +7,4 @@
 - [Points currency renamed to We Smackz](we-smackz-currency-rename.md) — in-app points currency is user-facing "We Smackz" (short "Smackz"); admin panel intentionally left unrenamed.
 - [Router-mounted middleware scoping](router-mounted-middleware-scoping.md) — unscoped `router.use(mw)` in a root-mounted sub-router blocks ALL requests app-wide, not just that router's routes; always path-scope it.
 - [Admin sends are pending, not missing](admin-sends-pending-not-missing.md) — "user didn't receive X" reports for admin airdrops are usually a claim/visibility gap, not a broken send; check pending state before assuming a delivery bug.
+- [Dev-only auto-admin bypass](dev-auto-admin-bypass.md) — gate any local-auth shortcut on NODE_ENV + an explicit opt-in flag, and resolve at the effective-wallet layer so it never touches real SIWE code.

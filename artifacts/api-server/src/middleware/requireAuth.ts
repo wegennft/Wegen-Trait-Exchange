@@ -14,12 +14,33 @@ export function isAdminWallet(walletAddress: string | undefined | null): boolean
 }
 
 /**
+ * Dev-only auto-admin bypass. Requires BOTH:
+ *  - NODE_ENV !== "production"
+ *  - explicit opt-in flag DEV_AUTO_ADMIN=true
+ * When active, requests are treated as an already-authenticated admin wallet
+ * (the first address in ADMIN_WALLETS) without going through SIWE. This never
+ * touches the real verify/session code path, and is fully inert unless both
+ * conditions hold, so it can never be silently active in production.
+ */
+export function getDevBypassWallet(): string | undefined {
+  if (process.env["NODE_ENV"] === "production") return undefined;
+  if (process.env["DEV_AUTO_ADMIN"] !== "true") return undefined;
+  const [firstAdmin] = getAdminAllowlist();
+  return firstAdmin;
+}
+
+/** Resolves the effective wallet for a request: real session, or dev bypass. */
+export function getEffectiveWallet(req: Request): string | undefined {
+  return req.session.walletAddress ?? getDevBypassWallet();
+}
+
+/**
  * Middleware that requires the session wallet to be on the admin allowlist
  * (ADMIN_WALLETS env var, comma-separated addresses). Returns 401 if there's
  * no session, 403 if the wallet is not an admin.
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  const wallet = req.session.walletAddress;
+  const wallet = getEffectiveWallet(req);
   if (!wallet) {
     res.status(401).json({ error: "Wallet not authenticated — please sign in" });
     return;
@@ -37,7 +58,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
  * expected for the request (e.g. from req.params or req.body).
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  if (!req.session.walletAddress) {
+  if (!getEffectiveWallet(req)) {
     res.status(401).json({ error: "Wallet not authenticated — please sign in" });
     return;
   }
@@ -53,7 +74,7 @@ export function requireWalletOwnership(
   bodyField = "walletAddress",
 ) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const session = req.session.walletAddress;
+    const session = getEffectiveWallet(req);
     if (!session) {
       res.status(401).json({ error: "Wallet not authenticated — please sign in" });
       return;

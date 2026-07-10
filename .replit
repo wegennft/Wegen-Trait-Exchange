@@ -46,3 +46,6 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ADMIN_WALLETS = "0xdF9d0ADCB9b77B34c2C4414c0F76B671A5429bE0"
+
+[userenv.development]
+DEV_AUTO_ADMIN = "true"

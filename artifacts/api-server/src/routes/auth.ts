@@ -5,7 +5,7 @@ import nacl from "tweetnacl";
 import bs58 from "bs58";
 import { db, authNoncesTable } from "@workspace/db";
 import { eq, lt } from "drizzle-orm";
-import { isAdminWallet } from "../middleware/requireAuth";
+import { isAdminWallet, getDevBypassWallet } from "../middleware/requireAuth";
 
 const router: Router = Router();
 
@@ -197,9 +197,22 @@ router.get("/auth/session", (req, res): void => {
       walletChain: req.session.walletChain ?? "evm",
       isAdmin: isAdminWallet(req.session.walletAddress),
     });
-  } else {
-    res.status(401).json({ walletAddress: null, isAdmin: false });
+    return;
   }
+
+  // Dev-only auto-admin bypass (see getDevBypassWallet) — never active in
+  // production, and never touches the real SIWE session above.
+  const bypassWallet = getDevBypassWallet();
+  if (bypassWallet) {
+    res.json({
+      walletAddress: bypassWallet,
+      walletChain: "evm",
+      isAdmin: isAdminWallet(bypassWallet),
+    });
+    return;
+  }
+
+  res.status(401).json({ walletAddress: null, isAdmin: false });
 });
 
 // POST /api/auth/disconnect

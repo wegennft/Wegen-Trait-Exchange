@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, desc } from "drizzle-orm";
-import { db, pointPacksTable, storePointsTable, storePointPurchasesTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, pointPacksTable, walletPointsTable, storePointPurchasesTable } from "@workspace/db";
 import {
   ListPointPacksResponse,
   ListAdminPointPacksResponse,
@@ -9,6 +9,7 @@ import {
   GetStorePointsResponse,
 } from "@workspace/api-zod";
 import { requireWalletOwnership, requireAdmin } from "../middleware/requireAuth";
+import { awardPoints } from "./bounties";
 
 const router: IRouter = Router();
 
@@ -47,8 +48,8 @@ router.get("/wallet/:walletAddress/points", async (req, res): Promise<void> => {
 
   const [row] = await db
     .select()
-    .from(storePointsTable)
-    .where(eq(storePointsTable.walletAddress, walletAddress));
+    .from(walletPointsTable)
+    .where(eq(walletPointsTable.walletAddress, walletAddress));
 
   res.json(
     GetStorePointsResponse.parse({
@@ -99,25 +100,14 @@ router.post(
       txHash: txHash ?? null,
     });
 
-    await db
-      .insert(storePointsTable)
-      .values({
-        walletAddress,
-        totalPoints: pack.pointsGranted,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: storePointsTable.walletAddress,
-        set: {
-          totalPoints: sql`${storePointsTable.totalPoints} + ${pack.pointsGranted}`,
-          updatedAt: new Date(),
-        },
-      });
+    // Purchased We Smackz are credited immediately (not pending) to the same
+    // shared wallet_points balance used by bounties/airdrops/redemptions.
+    await awardPoints(walletAddress, pack.pointsGranted, "purchase", `Purchased pack: ${pack.name}`);
 
     const [updated] = await db
       .select()
-      .from(storePointsTable)
-      .where(eq(storePointsTable.walletAddress, walletAddress));
+      .from(walletPointsTable)
+      .where(eq(walletPointsTable.walletAddress, walletAddress));
 
     res.status(201).json(
       GetStorePointsResponse.parse({

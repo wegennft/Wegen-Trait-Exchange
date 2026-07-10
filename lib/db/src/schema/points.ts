@@ -9,9 +9,12 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-// "Store Points" — purchased with ETH, pegged to a fixed USD value set by admins.
-// Kept separate from the bounty `wallet_points` system, which is earned for free
-// and redeemed for bounty traits. These are two distinct currencies.
+// Point packs are purchased with ETH, pegged to a fixed USD value set by admins.
+// Purchases credit the shared `wallet_points` balance (see bounties.ts schema) —
+// there is only one "We Smackz" balance shown across the whole app. The
+// `storePointsTable` below is legacy/unused (superseded by wallet_points) and
+// kept only so existing rows aren't silently dropped; `storePointPurchasesTable`
+// remains the purchase receipt/history log for point-pack buys.
 
 export const pointPacksTable = pgTable("point_packs", {
   id: serial("id").primaryKey(),

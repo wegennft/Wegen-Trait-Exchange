@@ -416,47 +416,61 @@ export function Bounties() {
                 <Package className="w-3.5 h-3.5" style={{ color: "#a855f7" }} />
                 <span className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: "#a855f7" }}>Reward Bundles</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {bundles.map((bundle) => {
                   const canAfford = myPoints >= bundle.pointCost;
                   const soldOut = bundle.remainingSupply !== -1 && bundle.remainingSupply <= 0;
+                  const itemCount = bundle.items.length;
                   return (
                     <div
                       key={bundle.id}
-                      className="rounded-xl overflow-hidden flex gap-3 p-3"
+                      className="rounded-xl overflow-hidden"
                       style={{ background: "hsl(272 20% 6%)", border: "1px solid #a855f740", opacity: soldOut ? 0.6 : 1 }}
                     >
                       {/* Trait thumbnails */}
-                      <div className="flex-shrink-0 grid grid-cols-2 gap-0.5 w-20 h-20">
-                        {bundle.items.slice(0, 4).map((item) => (
-                          <div key={item.trait.id} className="rounded overflow-hidden bg-secondary/20">
-                            {item.trait.imageUrl ? (
-                              <img src={item.trait.imageUrl} alt={item.trait.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Package className="w-3 h-3 opacity-20" />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      {itemCount > 0 && (
+                        <div className="flex flex-wrap gap-1.5 p-3">
+                          {bundle.items.map((item) => (
+                            <div key={item.trait.id} className="rounded-lg overflow-hidden bg-secondary/20 relative w-[72px] h-[72px] flex-shrink-0">
+                              {item.trait.imageUrl ? (
+                                <img src={item.trait.imageUrl} alt={item.trait.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="w-5 h-5 opacity-20" />
+                                </div>
+                              )}
+                              <span
+                                className="absolute bottom-0 left-0 right-0 px-1 py-0.5 text-[9px] font-medium truncate text-white"
+                                style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75), transparent)" }}
+                                title={item.trait.name}
+                              >
+                                {item.trait.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {/* Bundle info */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="text-sm font-semibold truncate text-foreground">{bundle.name}</div>
-                        <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                          {bundle.items.length} trait{bundle.items.length !== 1 ? "s" : ""} included
+                      <div className="flex items-center justify-between gap-3 p-3 pt-1">
+                        <div className="min-w-0 space-y-1">
+                          <div className="text-sm font-semibold truncate text-foreground">{bundle.name}</div>
+                          <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                            {itemCount} trait{itemCount !== 1 ? "s" : ""} included
+                          </div>
                         </div>
-                        <div
-                          className="text-sm font-bold flex items-center gap-1"
-                          style={{ color: canAfford && !soldOut ? "#a855f7" : "hsl(var(--muted-foreground))" }}
-                        >
-                          <SmackzCoin size={14} />
-                          {bundle.pointCost.toLocaleString()} We Smackz
+                        <div className="flex-shrink-0 text-right space-y-1">
+                          <div
+                            className="text-sm font-bold flex items-center gap-1 justify-end"
+                            style={{ color: canAfford && !soldOut ? "#a855f7" : "hsl(var(--muted-foreground))" }}
+                          >
+                            <SmackzCoin size={14} />
+                            {bundle.pointCost.toLocaleString()} We Smackz
+                          </div>
+                          {soldOut && <span className="text-[10px] font-bold text-red-400">SOLD OUT</span>}
+                          {bundle.totalSupply !== -1 && !soldOut && (
+                            <div className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>{bundle.remainingSupply}/{bundle.totalSupply} left</div>
+                          )}
                         </div>
-                        {soldOut && <span className="text-[10px] font-bold text-red-400">SOLD OUT</span>}
-                        {bundle.totalSupply !== -1 && !soldOut && (
-                          <div className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>{bundle.remainingSupply}/{bundle.totalSupply} left</div>
-                        )}
                       </div>
                     </div>
                   );

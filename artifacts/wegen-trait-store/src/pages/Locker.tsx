@@ -398,7 +398,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   </button>
                 );
               };
-              const hasBoth = wegens.length > 0 && wegenettes.length > 0;
               return (
                 <div
                   className="flex-shrink-0 flex flex-col border-r"
@@ -408,8 +407,8 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                     <div className="p-2 space-y-1.5">
                       {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-10 w-full" />)}
                     </div>
-                  ) : hasBoth ? (
-                    <Tabs defaultValue="wegens" className="flex flex-col h-full">
+                  ) : (
+                    <Tabs defaultValue="wegens" className="flex flex-col">
                       <TabsList className="w-full rounded-none border-b h-8 px-1 gap-1 flex-shrink-0"
                         style={{ background: 'rgba(16,11,24,0.98)', borderColor: 'rgba(157,0,255,0.15)' }}>
                         <TabsTrigger value="wegens"
@@ -421,29 +420,21 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                           Wegenettes <span className="ml-1 opacity-60">{wegenettes.length}</span>
                         </TabsTrigger>
                       </TabsList>
-                      <TabsContent value="wegens" className="mt-0 overflow-y-auto" style={{ maxHeight: '280px' }}>
-                        {wegens.map(renderNftRow)}
+                      <TabsContent value="wegens" className="mt-0 overflow-y-auto" style={{ maxHeight: '290px' }}>
+                        {wegens.length > 0 ? wegens.map(renderNftRow) : (
+                          <div className="p-4 text-center">
+                            <span className="text-[9px] font-mono text-muted-foreground/40 uppercase">// no wegens //</span>
+                          </div>
+                        )}
                       </TabsContent>
-                      <TabsContent value="wegenettes" className="mt-0 overflow-y-auto" style={{ maxHeight: '280px' }}>
-                        {wegenettes.map(renderNftRow)}
+                      <TabsContent value="wegenettes" className="mt-0 overflow-y-auto" style={{ maxHeight: '290px' }}>
+                        {wegenettes.length > 0 ? wegenettes.map(renderNftRow) : (
+                          <div className="p-4 text-center">
+                            <span className="text-[9px] font-mono text-muted-foreground/40 uppercase">// no wegenettes //</span>
+                          </div>
+                        )}
                       </TabsContent>
                     </Tabs>
-                  ) : (
-                    <div className="overflow-y-auto" style={{ maxHeight: '320px' }}>
-                      {nfts.length === 0 ? (
-                        <div className="p-3 text-center">
-                          <span className="text-[9px] font-mono text-muted-foreground/40 uppercase">// none found //</span>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="px-2 py-1 text-[9px] font-mono uppercase tracking-widest sticky top-0 z-10"
-                            style={{ background: 'rgba(16,11,24,0.98)', color: 'hsl(272 60% 55%)' }}>
-                            {wegens.length > 0 ? `Wegens · ${wegens.length}` : `Wegenettes · ${wegenettes.length}`}
-                          </div>
-                          {nfts.map(renderNftRow)}
-                        </>
-                      )}
-                    </div>
                   )}
                 </div>
               );

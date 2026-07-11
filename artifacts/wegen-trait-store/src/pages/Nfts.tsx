@@ -505,22 +505,32 @@ function NftsContent() {
         );
 
         return (
-          <div className="space-y-12">
+          <Tabs defaultValue={wegens.length > 0 ? "wegens" : "wegenettes"} className="w-full">
+            <TabsList className="mb-6 h-auto p-1 gap-1 bg-card/60 border border-border/40">
+              {wegens.length > 0 && (
+                <TabsTrigger value="wegens" className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                  Wegens
+                  <Badge variant="secondary" className="ml-0.5 text-[11px] h-5 px-1.5">{wegens.length}</Badge>
+                </TabsTrigger>
+              )}
+              {wegenettes.length > 0 && (
+                <TabsTrigger value="wegenettes" className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                  Wegenettes
+                  <Badge variant="secondary" className="ml-0.5 text-[11px] h-5 px-1.5">{wegenettes.length}</Badge>
+                </TabsTrigger>
+              )}
+            </TabsList>
             {wegens.length > 0 && (
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight mb-1">Wegens</h2>
-                <p className="text-sm text-muted-foreground mb-6">{wegens.length} NFT{wegens.length !== 1 ? "s" : ""}</p>
+              <TabsContent value="wegens" className="mt-0">
                 {renderGrid(wegens)}
-              </div>
+              </TabsContent>
             )}
             {wegenettes.length > 0 && (
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight mb-1">Wegenettes</h2>
-                <p className="text-sm text-muted-foreground mb-6">{wegenettes.length} NFT{wegenettes.length !== 1 ? "s" : ""}</p>
+              <TabsContent value="wegenettes" className="mt-0">
                 {renderGrid(wegenettes)}
-              </div>
+              </TabsContent>
             )}
-          </div>
+          </Tabs>
         );
       })()}
 

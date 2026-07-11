@@ -6,7 +6,7 @@ import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins, Menu } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins, Menu, ExternalLink, Smartphone } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -152,28 +152,8 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const handleConnect = () => {
     const evmWallets = detectWallets();
-    const solanaWallets = detectSolanaWallets();
-    const totalWallets = evmWallets.length + solanaWallets.length;
-
-    if (totalWallets === 0) {
-      toast({
-        title: "No wallet found",
-        description:
-          "Install MetaMask, Backpack, Phantom, Solflare, or another EVM/Solana wallet, then refresh. " +
-          "Note: wallet extensions don't work inside iframes — open the app in its own browser tab.",
-        variant: "destructive",
-      });
-      return;
-    }
-    // Exactly one wallet across both chains — connect immediately
-    if (totalWallets === 1) {
-      if (evmWallets.length === 1) void doConnect(evmWallets[0]);
-      else void doConnectSolana(solanaWallets[0]);
-      return;
-    }
-    // Show picker for multiple wallets (EVM and/or Solana)
     setDetectedWallets(evmWallets);
-    setDetectedSolanaWallets(solanaWallets);
+    setDetectedSolanaWallets([]);
     setWalletPickerOpen(true);
   };
 
@@ -788,65 +768,119 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Wallet Picker Dialog ── */}
       <Dialog open={walletPickerOpen} onOpenChange={setWalletPickerOpen}>
-        <DialogContent className="sm:max-w-sm border border-white/10 bg-black/90 backdrop-blur-xl">
-          <DialogHeader>
-            <DialogTitle className="text-center text-lg" style={BANGERS}>
-              Choose Wallet
-            </DialogTitle>
-            <p className="text-center text-xs text-muted-foreground mt-1">
-              Select which wallet to connect with
-            </p>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-[390px] p-0 gap-0 border border-white/10 bg-black/92 backdrop-blur-2xl overflow-hidden">
 
-          <div className="flex flex-col gap-2 mt-2">
-            {detectedWallets.map((w) => (
-              <button
-                key={`evm-${w.id}`}
-                onClick={() => void doConnect(w)}
-                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
-              >
-                <WalletIcon id={w.id} name={w.name} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm leading-tight">{w.name}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {WALLET_DESC[w.id] ?? "Browser wallet"}
-                  </div>
+          {/* Header + anti-phishing strip */}
+          <div className="px-5 pt-5 pb-4 border-b border-white/8">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl mb-3" style={BANGERS}>
+                Connect Wallet
+              </DialogTitle>
+            </DialogHeader>
+            {/* Anti-phishing domain verification */}
+            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg"
+              style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.18)' }}>
+              <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#4ade80' }} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-mono uppercase tracking-wider font-bold" style={{ color: '#4ade80' }}>
+                  Sign-In With Ethereum · EIP-4361
                 </div>
-                <span
-                  className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
-                  style={{ color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }}
-                >
-                  EVM
-                </span>
-              </button>
-            ))}
-            {detectedSolanaWallets.map((w) => (
-              <button
-                key={`sol-${w.id}`}
-                onClick={() => void doConnectSolana(w)}
-                className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left group"
-              >
-                <WalletIcon id={w.id} name={w.name} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm leading-tight">{w.name}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {WALLET_DESC[w.id] ?? "Solana wallet"}
-                  </div>
+                <div className="text-[10px] font-mono mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  {window.location.hostname}
                 </div>
-                <span
-                  className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
-                  style={{ color: "#14F195", borderColor: "#14F19544", background: "#14F19511" }}
-                >
-                  SOL
-                </span>
-              </button>
-            ))}
+              </div>
+            </div>
           </div>
 
-          {/* Mobile deep-link hint */}
-          <p className="text-center text-[10px] text-muted-foreground/40 font-mono mt-3 px-2">
-            On mobile? Open this app inside your wallet's browser (MetaMask, Phantom, Trust, OKX) for the best experience.
-          </p>
+          <div className="px-5 py-4 flex flex-col gap-4 max-h-[65vh] overflow-y-auto">
+
+            {/* ── Detected EVM wallets ── */}
+            {detectedWallets.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Detected wallets
+                </div>
+                {detectedWallets.map((w) => (
+                  <button
+                    key={`evm-${w.id}`}
+                    onClick={() => void doConnect(w)}
+                    className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left"
+                  >
+                    <WalletIcon id={w.id} name={w.name} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm leading-tight">{w.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{WALLET_DESC[w.id] ?? "EVM browser wallet"}</div>
+                    </div>
+                    <span className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                      style={{ color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }}>
+                      EVM
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              /* No wallet detected — show install options */
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Install a wallet
+                </div>
+                <p className="text-xs text-muted-foreground/70 mb-2">
+                  No EVM wallet detected. Install one of these or open this app inside your mobile wallet's browser.
+                </p>
+                {([
+                  { id: "metamask" as WalletId, name: "MetaMask",      desc: "Most popular — desktop & mobile", url: "https://metamask.io/download" },
+                  { id: "rabby"    as WalletId, name: "Rabby",          desc: "Best for DeFi & NFTs",            url: "https://rabby.io" },
+                  { id: "coinbase" as WalletId, name: "Coinbase Wallet",desc: "Easy setup, mobile-first",        url: "https://www.coinbase.com/wallet/downloads" },
+                  { id: "rainbow"  as WalletId, name: "Rainbow",        desc: "Beautiful mobile wallet",         url: "https://rainbow.me/download" },
+                ] as const).map((w) => (
+                  <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left">
+                    <WalletIcon id={w.id} name={w.name} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm leading-tight">{w.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{w.desc}</div>
+                    </div>
+                    <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground/40" />
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* ── Mobile deep-link section ── */}
+            <div className="border-t border-white/8 pt-4">
+              <div className="flex items-center gap-1.5 mb-3">
+                <Smartphone className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                <div className="text-[10px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Open in mobile wallet
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {(() => {
+                  const appUrl = encodeURIComponent(window.location.href);
+                  const host   = window.location.hostname + window.location.pathname;
+                  return ([
+                    { id: "metamask" as WalletId, name: "MetaMask", url: `https://metamask.app.link/dapp/${host}` },
+                    { id: "trust"    as WalletId, name: "Trust",    url: `https://link.trustwallet.com/open_url?coin_id=60&url=${appUrl}` },
+                    { id: "coinbase" as WalletId, name: "Coinbase", url: `https://go.cb-wallet.com/dapp?url=${appUrl}` },
+                    { id: "rainbow"  as WalletId, name: "Rainbow",  url: `https://rnbwapp.com/wc?uri=${appUrl}` },
+                  ] as const).map((w) => (
+                    <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/8 hover:bg-white/5 transition-all text-center">
+                      <WalletIcon id={w.id} name={w.name} />
+                      <span className="text-[9px] font-mono leading-tight" style={{ color: 'rgba(255,255,255,0.35)' }}>{w.name}</span>
+                    </a>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Security footer */}
+            <p className="text-center text-[10px] font-mono px-2 pb-1" style={{ color: 'rgba(255,255,255,0.22)' }}>
+              You will only sign a message — no transaction is sent
+              <br />Always verify the domain before signing
+            </p>
+
+          </div>
         </DialogContent>
       </Dialog>
     </div>

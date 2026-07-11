@@ -371,21 +371,24 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   <button
                     key={nft.tokenId}
                     onClick={() => setSelectedTokenId(nft.tokenId)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-left transition-all"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-all"
                     style={{
-                      background: isSel ? 'rgba(157,0,255,0.16)' : 'transparent',
-                      borderLeft: isSel ? '2px solid rgba(157,0,255,0.8)' : '2px solid transparent',
+                      background: isSel ? 'rgba(157,0,255,0.18)' : 'transparent',
+                      borderLeft: isSel ? '3px solid rgba(157,0,255,0.9)' : '3px solid transparent',
                     }}
                   >
                     {nft.imageUrl
-                      ? <img src={nft.imageUrl} alt="" className="w-9 h-9 object-cover flex-shrink-0" style={{ imageRendering: 'crisp-edges' }} />
-                      : <div className="w-9 h-9 flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(157,0,255,0.15)' }}><Gem className="w-4 h-4 text-primary/40" /></div>
+                      ? <img src={nft.imageUrl} alt="" className="w-12 h-12 object-cover flex-shrink-0 rounded" style={{ imageRendering: 'crisp-edges' }} />
+                      : <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded" style={{ background: 'rgba(157,0,255,0.15)' }}><Gem className="w-5 h-5 text-primary/40" /></div>
                     }
                     <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-bold truncate leading-tight" style={{ color: isSel ? 'hsl(272 100% 80%)' : 'hsl(0 0% 85%)' }}>
+                      <div className="text-[12px] font-bold truncate leading-tight" style={{ color: isSel ? 'hsl(272 100% 82%)' : 'hsl(0 0% 88%)' }}>
                         {nft.name}
                       </div>
-                      <div className="text-[9px] font-mono mt-0.5" style={{ color: 'hsl(272 30% 55%)' }}>
+                      <div className="text-[9px] font-mono mt-0.5" style={{ color: isSel ? 'hsl(272 60% 65%)' : 'hsl(272 30% 50%)' }}>
+                        #{nft.tokenId}
+                      </div>
+                      <div className="text-[9px] font-mono mt-0.5" style={{ color: 'hsl(272 25% 45%)' }}>
                         {nft.equippedTraits.length > 0
                           ? `${nft.equippedTraits.length} trait${nft.equippedTraits.length !== 1 ? 's' : ''} equipped`
                           : 'no traits'}
@@ -397,7 +400,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
               return (
                 <div
                   className="flex-shrink-0 flex flex-col overflow-y-auto border-r"
-                  style={{ width: '180px', maxHeight: '320px', borderColor: 'rgba(157,0,255,0.15)' }}
+                  style={{ width: '240px', maxHeight: '320px', borderColor: 'rgba(157,0,255,0.15)' }}
                 >
                   {isLoadingNfts ? (
                     <div className="p-2 space-y-1.5">

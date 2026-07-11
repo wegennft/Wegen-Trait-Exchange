@@ -36,6 +36,19 @@ const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.
 
 const RARITY_ORDER: Record<string, number> = { legendary: 4, rare: 3, uncommon: 2, common: 1 };
 
+const CATEGORY_LAYER_ORDER: Record<string, number> = {
+  background: 0, bg: 0,
+  base: 1, skin: 1, body: 2,
+  clothing: 3, outfit: 3, shirt: 3, pants: 3, jacket: 3, top: 3, bottom: 3,
+  accessory: 4, accessories: 4, jewelry: 4, necklace: 4, earring: 4,
+  hat: 5, headwear: 5, head: 5,
+  glasses: 5, eyewear: 5, mask: 5, face: 5,
+  overlay: 6, effect: 7, special: 8,
+};
+function getLayerZ(category: string): number {
+  return CATEGORY_LAYER_ORDER[category.toLowerCase()] ?? 3;
+}
+
 /* ─── Sample / Demo data ──────────────────────────────────────────── */
 
 const SAMPLE_NFTS = [
@@ -409,14 +422,16 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 <img src={activeNft.imageUrl} alt={activeNft.name} className="absolute inset-0 w-full h-full object-cover" />
               )}
 
-              {/* Equipped trait layers (skip hovered category) */}
-              {activeNft.equippedTraits
+              {/* Equipped trait layers — sorted by canonical z-order so categories render correctly */}
+              {[...activeNft.equippedTraits]
+                .sort((a, b) => getLayerZ(a.category) - getLayerZ(b.category))
                 .filter(et => !hoverTrait || et.category !== hoverTrait.category)
                 .map(et => {
                   const imgUrl = getVariantImageUrl(et.trait.id, et.trait.imageUrl);
                   return imgUrl ? (
                     <img key={et.category} src={imgUrl} alt={et.trait.name}
-                      className="absolute inset-0 w-full h-full object-cover" />
+                      className="absolute inset-0 w-full h-full object-cover"
+                      style={{ zIndex: getLayerZ(et.category) + 1 }} />
                   ) : null;
                 })}
 

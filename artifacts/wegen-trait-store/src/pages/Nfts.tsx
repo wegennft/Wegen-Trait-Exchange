@@ -277,7 +277,7 @@ function NftsContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="bg-card border-border/50">
-              <Skeleton className="h-[400px] w-full rounded-none" />
+              <Skeleton className="aspect-square w-full rounded-none" />
               <CardContent className="p-6">
                 <Skeleton className="h-8 w-3/4 mb-4" />
                 <div className="space-y-2">
@@ -288,22 +288,24 @@ function NftsContent() {
             </Card>
           ))}
         </div>
-      ) : nftsData?.nfts?.length === 0 ? (
+      ) : !nftsData?.nfts?.length ? (
         <div className="text-center py-24 border border-dashed border-border/50 rounded-xl bg-card/90">
           <div className="w-20 h-20 rounded-full bg-secondary mx-auto flex items-center justify-center mb-6">
             <Gem className="w-10 h-10 text-muted-foreground" />
           </div>
-          <h3 className="text-2xl font-bold mb-2">
-            No {collectionLabel} Found
-          </h3>
+          <h3 className="text-2xl font-bold mb-2">No NFTs Found</h3>
           <p className="text-muted-foreground max-w-md mx-auto">
-            We couldn't find any {collectionLabel} NFTs in your connected
-            wallet.
+            We couldn't find any Wegen NFTs in your connected wallet.
           </p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {nftsData?.nfts?.map((nft) => {
+      ) : (() => {
+        const allNfts = nftsData.nfts;
+        const wegens = allNfts.filter(n => !n.name?.toLowerCase().includes("wegenette"));
+        const wegenettes = allNfts.filter(n => n.name?.toLowerCase().includes("wegenette"));
+
+        const renderGrid = (nfts: typeof allNfts) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {nfts.map((nft) => {
             const nftExt = nft as WegenNft & {
               metadataTxHash?: string | null;
               metadataUpdatedAt?: string | null;
@@ -355,61 +357,18 @@ function NftsContent() {
                   )}
                 </div>
 
-                <div className="relative aspect-[3/4] bg-secondary/30 overflow-hidden p-6 flex flex-col items-center justify-center">
+                <div className="relative aspect-square bg-secondary/30 overflow-hidden">
                   {nft.imageUrl ? (
                     <img
                       src={nft.imageUrl}
                       alt={nft.name}
-                      className="absolute inset-0 w-full h-full object-cover z-0"
+                      className="absolute inset-0 w-full h-full object-contain z-0"
                     />
                   ) : (
                     <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-secondary to-background z-0 flex items-center justify-center">
                       <Gem className="w-24 h-24 text-muted-foreground/20" />
                     </div>
                   )}
-                  <div className="relative z-10 w-full h-full flex flex-col justify-end gap-2 p-2">
-                    {nft.equippedTraits.map((et) => (
-                      <div
-                        key={et.category}
-                        className="bg-black/70 backdrop-blur-md rounded-md p-2 flex items-center gap-3 border border-white/10"
-                      >
-                        {et.trait.imageUrl ? (
-                          <img
-                            src={et.trait.imageUrl}
-                            alt={et.trait.name}
-                            className="w-8 h-8 object-contain rounded"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-xs font-bold uppercase">
-                            {et.category[0]}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div
-                            className={`text-xs font-bold truncate ${getRarityColor(et.trait.rarity)}`}
-                          >
-                            {et.trait.name}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            {et.category}
-                          </div>
-                        </div>
-                        {!isLegend && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                            onClick={(e) =>
-                              handleRemoveTrait(nft, et.category, e)
-                            }
-                            disabled={removeTrait.isPending}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
                 <CardContent className="p-6 flex flex-col flex-1 border-t border-border/50 bg-card">
@@ -418,7 +377,7 @@ function NftsContent() {
                   </h3>
 
                   {isOnChain && (
-                    <div className="mt-2 mb-4 flex items-center gap-2 text-xs text-muted-foreground font-mono">
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground font-mono">
                       <Link2 className="w-3 h-3 shrink-0 text-green-500" />
                       <span className="truncate">
                         {nftExt.metadataTxHash?.slice(0, 18)}…
@@ -431,7 +390,53 @@ function NftsContent() {
                     </div>
                   )}
 
-                  <div className={`mt-auto space-y-2 ${!isOnChain ? "mt-6" : ""}`}>
+                  {/* Equipped traits list */}
+                  {nft.equippedTraits.length > 0 && (
+                    <div className="mt-4 space-y-1.5">
+                      <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">
+                        Equipped Traits
+                      </p>
+                      {nft.equippedTraits.map((et) => (
+                        <div
+                          key={et.category}
+                          className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 bg-secondary/40 border border-border/40"
+                        >
+                          {et.trait.imageUrl ? (
+                            <img
+                              src={et.trait.imageUrl}
+                              alt={et.trait.name}
+                              className="w-7 h-7 object-contain rounded shrink-0"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded bg-secondary flex items-center justify-center text-xs font-bold uppercase shrink-0">
+                              {et.category[0]}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className={`text-xs font-semibold truncate ${getRarityColor(et.trait.rarity)}`}>
+                              {et.trait.name}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              {et.category}
+                            </div>
+                          </div>
+                          {!isLegend && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                              onClick={(e) => handleRemoveTrait(nft, et.category, e)}
+                              disabled={removeTrait.isPending}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-auto pt-4 space-y-2">
                     {isLegend ? (
                       <div
                         className="w-full flex items-center justify-center gap-2 rounded-md px-4 py-2 text-xs text-amber-300/70 border"
@@ -496,8 +501,28 @@ function NftsContent() {
               </Card>
             );
           })}
-        </div>
-      )}
+          </div>
+        );
+
+        return (
+          <div className="space-y-12">
+            {wegens.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight mb-1">Wegens</h2>
+                <p className="text-sm text-muted-foreground mb-6">{wegens.length} NFT{wegens.length !== 1 ? "s" : ""}</p>
+                {renderGrid(wegens)}
+              </div>
+            )}
+            {wegenettes.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight mb-1">Wegenettes</h2>
+                <p className="text-sm text-muted-foreground mb-6">{wegenettes.length} NFT{wegenettes.length !== 1 ? "s" : ""}</p>
+                {renderGrid(wegenettes)}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Equip Traits Dialog ───────────────────────────────────────────── */}
       <Dialog

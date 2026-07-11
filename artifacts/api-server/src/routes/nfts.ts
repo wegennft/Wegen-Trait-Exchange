@@ -19,6 +19,49 @@ import { requireWalletOwnership } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
+// ── On-chain NFT lookup via Alchemy (demo endpoint — no key required) ─────────
+
+const WEGEN_CONTRACT = "0x31a53ce49c99b0c05085dd76d17669871dacd6c0";
+const ALCHEMY_BASE = "https://eth-mainnet.g.alchemy.com/nft/v3/demo";
+
+interface AlchemyNft {
+  tokenId: string;
+  name: string;
+  image?: { cachedUrl?: string; thumbnailUrl?: string; originalUrl?: string };
+}
+
+/**
+ * Returns all Wegens owned by walletAddress from the Ethereum contract.
+ * Pages through Alchemy results automatically (100 per page).
+ * Returns [] on network failure so the rest of the route degrades gracefully.
+ */
+async function fetchOnChainWegens(walletAddress: string): Promise<AlchemyNft[]> {
+  const results: AlchemyNft[] = [];
+  let pageKey: string | undefined;
+  try {
+    do {
+      const url = new URL(`${ALCHEMY_BASE}/getNFTsForOwner`);
+      url.searchParams.set("owner", walletAddress);
+      url.searchParams.append("contractAddresses[]", WEGEN_CONTRACT);
+      url.searchParams.set("limit", "100");
+      if (pageKey) url.searchParams.set("pageKey", pageKey);
+
+      const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
+      if (!resp.ok) break;
+      const data = await resp.json() as { ownedNfts?: AlchemyNft[]; pageKey?: string };
+      if (data.ownedNfts) results.push(...data.ownedNfts);
+      pageKey = data.pageKey;
+    } while (pageKey);
+  } catch {
+    // Network/timeout — return whatever we collected
+  }
+  return results;
+}
+
+function bestImageUrl(nft: AlchemyNft): string | null {
+  return nft.image?.cachedUrl ?? nft.image?.thumbnailUrl ?? nft.image?.originalUrl ?? null;
+}
+
 async function getNftWithTraits(tokenId: number) {
   const [nft] = await db
     .select()
@@ -65,22 +108,20 @@ router.get("/nfts/:walletAddress/detect-collection", async (req, res): Promise<v
     return;
   }
 
-  const nfts = await db
-    .select({ name: wegenNftsTable.name })
-    .from(wegenNftsTable)
-    .where(eq(wegenNftsTable.walletAddress, walletAddress));
+  // Use live on-chain data to detect which collection this wallet holds
+  const onChain = await fetchOnChainWegens(walletAddress);
 
-  const hasWegenettes = nfts.some((n) =>
+  const hasWegenettes = onChain.some((n) =>
     n.name.toLowerCase().includes("wegenette"),
   );
-  const hasWegens = nfts.some(
+  const hasWegens = onChain.some(
     (n) => !n.name.toLowerCase().includes("wegenette"),
   );
 
   let collection: "wegens" | "wegenettes" | null = null;
   if (hasWegenettes && !hasWegens) {
     collection = "wegenettes";
-  } else if (hasWegens || nfts.length === 0) {
+  } else if (hasWegens || onChain.length === 0) {
     collection = "wegens";
   }
 
@@ -97,38 +138,100 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
     return;
   }
 
-  const nfts = await db
-    .select()
-    .from(wegenNftsTable)
-    .where(eq(wegenNftsTable.walletAddress, params.data.walletAddress));
+  const wallet = params.data.walletAddress;
 
-  const nftsWithTraits = await Promise.all(
-    nfts.map((nft) => getNftWithTraits(nft.tokenId)),
-  );
+  // Fetch on-chain ownership and local DB records in parallel
+  const [onChain, localNfts] = await Promise.all([
+    fetchOnChainWegens(wallet),
+    db.select().from(wegenNftsTable).where(eq(wegenNftsTable.walletAddress, wallet)),
+  ]);
 
-  const filtered = nftsWithTraits.filter(Boolean) as NonNullable<
-    Awaited<ReturnType<typeof getNftWithTraits>>
-  >[];
+  // Build a map of local DB records keyed by tokenId for fast lookup
+  const localByTokenId = new Map(localNfts.map((n) => [n.tokenId, n]));
 
-  const tokenIds = filtered.map((n) => n.tokenId);
+  // Merge: on-chain is the source of truth for ownership + image.
+  // Local DB fills in equipped-trait state, SOC metadata, etc.
+  const merged = onChain.map((oc) => {
+    const tokenId = parseInt(oc.tokenId, 10);
+    const local = localByTokenId.get(tokenId);
+    return {
+      tokenId,
+      walletAddress: wallet,
+      name: oc.name,
+      imageUrl: bestImageUrl(oc) ?? local?.imageUrl ?? null,
+      metadataTxHash: local?.metadataTxHash ?? null,
+      metadataUpdatedAt: local?.metadataUpdatedAt ?? null,
+      variantPack: local?.variantPack ?? null,
+      createdAt: local?.createdAt ?? new Date(),
+    };
+  });
+
+  // Also include any DB-only NFTs that aren't on-chain yet (edge case / seeded data)
+  for (const local of localNfts) {
+    if (!merged.find((m) => m.tokenId === local.tokenId)) {
+      merged.push(local);
+    }
+  }
+
+  // Fetch equipped traits for all token IDs
+  const tokenIds = merged.map((n) => n.tokenId);
+  const equippedRows =
+    tokenIds.length > 0
+      ? await db
+          .select({
+            equippedToTokenId: lockerItemsTable.equippedToTokenId,
+            lockerItemId: lockerItemsTable.id,
+            category: traitsTable.category,
+            trait: {
+              id: traitsTable.id,
+              name: traitsTable.name,
+              category: traitsTable.category,
+              description: traitsTable.description,
+              imageUrl: traitsTable.imageUrl,
+              priceUsd: traitsTable.priceUsd,
+              priceEth: traitsTable.priceEth,
+              priceWei: traitsTable.priceWei,
+              totalSupply: traitsTable.totalSupply,
+              remainingSupply: traitsTable.remainingSupply,
+              isActive: traitsTable.isActive,
+              rarity: traitsTable.rarity,
+              payoutSplits: traitsTable.payoutSplits,
+              createdAt: traitsTable.createdAt,
+            },
+          })
+          .from(lockerItemsTable)
+          .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
+          .where(inArray(lockerItemsTable.equippedToTokenId, tokenIds))
+      : [];
+
+  // Group equipped traits by tokenId
+  const equippedByTokenId = new Map<number, typeof equippedRows>();
+  for (const row of equippedRows) {
+    if (row.equippedToTokenId === null) continue;
+    const arr = equippedByTokenId.get(row.equippedToTokenId) ?? [];
+    arr.push(row);
+    equippedByTokenId.set(row.equippedToTokenId, arr);
+  }
+
+  // Fetch legend flags
   const legendRows =
     tokenIds.length > 0
       ? await db
           .select({ tokenId: legendsTable.tokenId })
           .from(legendsTable)
-          .where(
-            and(
-              eq(legendsTable.isActive, true),
-              inArray(legendsTable.tokenId, tokenIds),
-            ),
-          )
+          .where(and(eq(legendsTable.isActive, true), inArray(legendsTable.tokenId, tokenIds)))
       : [];
   const legendTokenIds = new Set(
     legendRows.map((r) => r.tokenId).filter((id): id is number => id !== null),
   );
 
-  const nftsWithLegendFlag = filtered.map((nft) => ({
+  const nftsWithLegendFlag = merged.map((nft) => ({
     ...nft,
+    equippedTraits: (equippedByTokenId.get(nft.tokenId) ?? []).map((r) => ({
+      lockerItemId: r.lockerItemId,
+      category: r.category,
+      trait: r.trait,
+    })),
     isLegend: legendTokenIds.has(nft.tokenId),
   }));
 

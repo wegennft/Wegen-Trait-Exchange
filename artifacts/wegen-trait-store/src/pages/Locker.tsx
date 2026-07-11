@@ -31,6 +31,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 
@@ -397,41 +398,52 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   </button>
                 );
               };
+              const hasBoth = wegens.length > 0 && wegenettes.length > 0;
               return (
                 <div
-                  className="flex-shrink-0 flex flex-col overflow-y-auto border-r"
-                  style={{ width: '240px', maxHeight: '320px', borderColor: 'rgba(157,0,255,0.15)' }}
+                  className="flex-shrink-0 flex flex-col border-r"
+                  style={{ width: '240px', borderColor: 'rgba(157,0,255,0.15)' }}
                 >
                   {isLoadingNfts ? (
                     <div className="p-2 space-y-1.5">
                       {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-10 w-full" />)}
                     </div>
+                  ) : hasBoth ? (
+                    <Tabs defaultValue="wegens" className="flex flex-col h-full">
+                      <TabsList className="w-full rounded-none border-b h-8 px-1 gap-1 flex-shrink-0"
+                        style={{ background: 'rgba(16,11,24,0.98)', borderColor: 'rgba(157,0,255,0.15)' }}>
+                        <TabsTrigger value="wegens"
+                          className="flex-1 h-6 text-[10px] font-mono uppercase tracking-wider data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                          Wegens <span className="ml-1 opacity-60">{wegens.length}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="wegenettes"
+                          className="flex-1 h-6 text-[10px] font-mono uppercase tracking-wider data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                          Wegenettes <span className="ml-1 opacity-60">{wegenettes.length}</span>
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="wegens" className="mt-0 overflow-y-auto" style={{ maxHeight: '280px' }}>
+                        {wegens.map(renderNftRow)}
+                      </TabsContent>
+                      <TabsContent value="wegenettes" className="mt-0 overflow-y-auto" style={{ maxHeight: '280px' }}>
+                        {wegenettes.map(renderNftRow)}
+                      </TabsContent>
+                    </Tabs>
                   ) : (
-                    <>
-                      {wegens.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-[9px] font-mono uppercase tracking-widest sticky top-0 z-10"
-                            style={{ background: 'rgba(16,11,24,0.98)', color: 'hsl(272 60% 55%)' }}>
-                            Wegens · {wegens.length}
-                          </div>
-                          {wegens.map(renderNftRow)}
-                        </div>
-                      )}
-                      {wegenettes.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-[9px] font-mono uppercase tracking-widest sticky top-0 z-10"
-                            style={{ background: 'rgba(16,11,24,0.98)', color: 'hsl(320 60% 55%)' }}>
-                            Wegenettes · {wegenettes.length}
-                          </div>
-                          {wegenettes.map(renderNftRow)}
-                        </div>
-                      )}
-                      {nfts.length === 0 && (
+                    <div className="overflow-y-auto" style={{ maxHeight: '320px' }}>
+                      {nfts.length === 0 ? (
                         <div className="p-3 text-center">
                           <span className="text-[9px] font-mono text-muted-foreground/40 uppercase">// none found //</span>
                         </div>
+                      ) : (
+                        <>
+                          <div className="px-2 py-1 text-[9px] font-mono uppercase tracking-widest sticky top-0 z-10"
+                            style={{ background: 'rgba(16,11,24,0.98)', color: 'hsl(272 60% 55%)' }}>
+                            {wegens.length > 0 ? `Wegens · ${wegens.length}` : `Wegenettes · ${wegenettes.length}`}
+                          </div>
+                          {nfts.map(renderNftRow)}
+                        </>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               );

@@ -351,38 +351,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
           </div>
         )}
 
-        {/* NFT selector chips */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto sm:flex-1 sm:mx-2 order-4 sm:order-none -mx-3 px-3 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {isLoadingNfts ? (
-            <>{[1,2,3].map(i => <Skeleton key={i} className="h-8 w-20 flex-shrink-0" />)}</>
-          ) : nfts.length > 0 ? nfts.map(nft => {
-            const isSel = (selectedTokenId ?? nfts[0]?.tokenId) === nft.tokenId;
-            return (
-              <button
-                key={nft.tokenId}
-                onClick={() => setSelectedTokenId(nft.tokenId)}
-                className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono transition-all"
-                style={{
-                  background: isSel ? 'rgba(157,0,255,0.18)' : 'rgba(157,0,255,0.05)',
-                  border: isSel ? '1px solid rgba(157,0,255,0.7)' : '1px solid rgba(157,0,255,0.2)',
-                  boxShadow: isSel ? '0 0 10px rgba(157,0,255,0.3)' : 'none',
-                  color: isSel ? 'hsl(272 100% 78%)' : 'hsl(272 30% 70%)',
-                }}
-              >
-                {nft.imageUrl
-                  ? <img src={nft.imageUrl} alt="" className="w-5 h-5 object-cover rounded-sm" />
-                  : <Gem className="w-3.5 h-3.5 opacity-50" />
-                }
-                <span>#{nft.tokenId}</span>
-                {nft.equippedTraits.length > 0 && (
-                  <span className="text-accent text-[10px]">· {nft.equippedTraits.length}</span>
-                )}
-              </button>
-            );
-          }) : (
-            <span className="text-muted-foreground text-xs font-mono">// no {collectionLabel} found //</span>
-          )}
-        </div>
       </div>
 
       {/* ── NFT Preview Panel ── */}
@@ -391,11 +359,87 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
         style={{ background: 'linear-gradient(180deg,rgba(22,14,34,0.98),rgba(16,11,24,0.97))', borderColor: 'rgba(157,0,255,0.18)' }}
       >
         {activeNft ? (
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 px-3 sm:px-4 py-3">
+          <div className="flex flex-row items-stretch min-h-0">
+
+            {/* ── Left: NFT Selector Sidebar ── */}
+            {(() => {
+              const wegens     = nfts.filter(n => !n.name?.toLowerCase().includes("wegenette"));
+              const wegenettes = nfts.filter(n =>  n.name?.toLowerCase().includes("wegenette"));
+              const renderNftRow = (nft: typeof nfts[0]) => {
+                const isSel = (selectedTokenId ?? nfts[0]?.tokenId) === nft.tokenId;
+                return (
+                  <button
+                    key={nft.tokenId}
+                    onClick={() => setSelectedTokenId(nft.tokenId)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-left transition-all"
+                    style={{
+                      background: isSel ? 'rgba(157,0,255,0.16)' : 'transparent',
+                      borderLeft: isSel ? '2px solid rgba(157,0,255,0.8)' : '2px solid transparent',
+                    }}
+                  >
+                    {nft.imageUrl
+                      ? <img src={nft.imageUrl} alt="" className="w-9 h-9 object-cover flex-shrink-0" style={{ imageRendering: 'crisp-edges' }} />
+                      : <div className="w-9 h-9 flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(157,0,255,0.15)' }}><Gem className="w-4 h-4 text-primary/40" /></div>
+                    }
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] font-bold truncate leading-tight" style={{ color: isSel ? 'hsl(272 100% 80%)' : 'hsl(0 0% 85%)' }}>
+                        {nft.name}
+                      </div>
+                      <div className="text-[9px] font-mono mt-0.5" style={{ color: 'hsl(272 30% 55%)' }}>
+                        {nft.equippedTraits.length > 0
+                          ? `${nft.equippedTraits.length} trait${nft.equippedTraits.length !== 1 ? 's' : ''} equipped`
+                          : 'no traits'}
+                      </div>
+                    </div>
+                  </button>
+                );
+              };
+              return (
+                <div
+                  className="flex-shrink-0 flex flex-col overflow-y-auto border-r"
+                  style={{ width: '180px', maxHeight: '320px', borderColor: 'rgba(157,0,255,0.15)' }}
+                >
+                  {isLoadingNfts ? (
+                    <div className="p-2 space-y-1.5">
+                      {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+                    </div>
+                  ) : (
+                    <>
+                      {wegens.length > 0 && (
+                        <div>
+                          <div className="px-2 py-1 text-[9px] font-mono uppercase tracking-widest sticky top-0 z-10"
+                            style={{ background: 'rgba(16,11,24,0.98)', color: 'hsl(272 60% 55%)' }}>
+                            Wegens · {wegens.length}
+                          </div>
+                          {wegens.map(renderNftRow)}
+                        </div>
+                      )}
+                      {wegenettes.length > 0 && (
+                        <div>
+                          <div className="px-2 py-1 text-[9px] font-mono uppercase tracking-widest sticky top-0 z-10"
+                            style={{ background: 'rgba(16,11,24,0.98)', color: 'hsl(320 60% 55%)' }}>
+                            Wegenettes · {wegenettes.length}
+                          </div>
+                          {wegenettes.map(renderNftRow)}
+                        </div>
+                      )}
+                      {nfts.length === 0 && (
+                        <div className="p-3 text-center">
+                          <span className="text-[9px] font-mono text-muted-foreground/40 uppercase">// none found //</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── Center + Right: preview + info ── */}
+            <div className="flex flex-1 flex-col sm:flex-row items-center sm:items-start gap-4 px-3 sm:px-4 py-3 min-w-0">
 
             {/* Composited preview image — drop target */}
             <div
-              className="relative flex-shrink-0 overflow-hidden transition-all w-[220px] h-[220px] sm:w-[280px] sm:h-[280px]"
+              className="relative flex-shrink-0 overflow-hidden transition-all w-[200px] h-[200px] sm:w-[260px] sm:h-[260px]"
               style={{
                 background: '#0a0612',
                 border: dragOverPreview
@@ -484,53 +528,67 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
             </div>
 
             {/* Right side: NFT info + equipped strip + confirm */}
-            <div className="flex-1 w-full min-w-0 flex flex-col gap-2.5 py-1 sm:min-h-[280px]">
+            <div className="flex-1 w-full min-w-0 flex flex-col gap-3 py-2">
 
-              {/* NFT name + equipped count */}
+              {/* NFT header */}
               <div>
-                <div className="text-lg font-bold leading-tight" style={BANGERS}>{activeNft.name}</div>
-                <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                  {activeNft.equippedTraits.length} trait{activeNft.equippedTraits.length !== 1 ? 's' : ''} equipped
-                  {hoverTrait && <span className="ml-1.5 text-primary">· previewing {hoverTrait.category}</span>}
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: 'hsl(272 60% 50%)' }}>Selected NFT</div>
+                <div className="text-2xl font-bold leading-tight" style={BANGERS}>{activeNft.name}</div>
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <span className="text-[10px] font-mono px-1.5 py-0.5" style={{ background: 'rgba(157,0,255,0.1)', border: '1px solid rgba(157,0,255,0.25)', color: 'hsl(272 60% 65%)' }}>
+                    Token #{activeNft.tokenId}
+                  </span>
+                  <span className="text-[10px] font-mono" style={{ color: 'hsl(272 30% 50%)' }}>
+                    {activeNft.equippedTraits.length} trait{activeNft.equippedTraits.length !== 1 ? 's' : ''} equipped
+                    {hoverTrait && <span className="ml-1.5" style={{ color: 'hsl(272 100% 72%)' }}>· previewing {hoverTrait.category}</span>}
+                  </span>
                 </div>
               </div>
 
-              {/* Equipped traits strip */}
+              {/* Equipped traits */}
               <div className="flex-1 flex flex-col gap-1.5 min-h-0">
-                <div className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Equipped Traits</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest" style={{ color: 'hsl(272 30% 45%)' }}>Equipped Traits</div>
 
                 {activeNft.equippedTraits.length === 0 ? (
-                  <div className="flex items-center gap-2 py-2">
-                    <Package className="w-4 h-4 text-muted-foreground/20" />
-                    <span className="text-[10px] font-mono text-muted-foreground/35 uppercase">// nothing equipped yet — hover a trait below to preview //</span>
+                  <div className="flex-1 flex flex-col items-center justify-center py-6 gap-3 rounded"
+                    style={{ border: '1px dashed rgba(157,0,255,0.18)', background: 'rgba(157,0,255,0.03)' }}>
+                    <Package className="w-8 h-8" style={{ color: 'rgba(157,0,255,0.2)' }} />
+                    <div className="text-center">
+                      <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: 'hsl(272 30% 40%)' }}>
+                        No traits equipped
+                      </div>
+                      <div className="text-[10px] font-mono mt-1" style={{ color: 'hsl(272 20% 35%)' }}>
+                        Hover or drag a trait from the stash below to preview it on this Wegen
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {activeNft.equippedTraits.map(et => (
                       <div
                         key={et.category}
-                        className="group/et flex items-center gap-1.5 px-2 py-1 transition-all"
-                        style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.2)' }}
+                        className="group/et flex items-center gap-2 px-2.5 py-1.5 transition-all rounded"
+                        style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.18)' }}
                       >
                         {et.trait.imageUrl ? (
-                          <div className="w-6 h-6 flex-shrink-0 overflow-hidden bg-black/40">
+                          <div className="w-8 h-8 flex-shrink-0 overflow-hidden bg-black/40 rounded">
                             <TraitMedia url={et.trait.imageUrl} mediaType={(et.trait as Record<string,unknown>).mediaType as string}
                               alt={et.trait.name} className="w-full h-full object-cover" />
                           </div>
                         ) : (
-                          <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-primary"
-                            style={{ background: 'rgba(157,0,255,0.2)' }}>
+                          <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-[10px] font-bold rounded"
+                            style={{ background: 'rgba(157,0,255,0.2)', color: 'hsl(272 100% 78%)' }}>
                             {et.category[0]}
                           </div>
                         )}
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-bold truncate max-w-[100px]">{et.trait.name}</div>
-                          <div className="text-[8px] font-mono text-primary/50 uppercase">{et.category}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-bold truncate" style={{ color: 'hsl(0 0% 88%)' }}>{et.trait.name}</div>
+                          <div className="text-[9px] font-mono uppercase" style={{ color: 'hsl(272 50% 55%)' }}>{et.category}</div>
                         </div>
                         <button
                           onClick={() => handleRemove(et.category)}
                           disabled={removeTrait.isPending}
-                          className="ml-0.5 w-4 h-4 flex items-center justify-center transition-all flex-shrink-0 opacity-40 group-hover/et:opacity-100 hover:text-red-400 text-muted-foreground"
+                          className="w-5 h-5 flex items-center justify-center flex-shrink-0 opacity-30 group-hover/et:opacity-100 hover:text-red-400 text-muted-foreground transition-all"
                         >
                           {removeTrait.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
                         </button>
@@ -573,6 +631,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 )}
               </div>
             </div>
+            </div> {/* closes center+right wrapper */}
           </div>
         ) : (
           /* No NFT state */

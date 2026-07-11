@@ -300,8 +300,8 @@ function NftsContent() {
         </div>
       ) : (() => {
         const allNfts = nftsData.nfts;
-        const wegens = allNfts.filter(n => !n.name?.toLowerCase().includes("wegenette"));
-        const wegenettes = allNfts.filter(n => n.name?.toLowerCase().includes("wegenette"));
+        const wegens = allNfts.filter(n => !n.isWegenette);
+        const wegenettes = allNfts.filter(n => n.isWegenette);
 
         const renderGrid = (nfts: typeof allNfts) => (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

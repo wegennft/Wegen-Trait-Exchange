@@ -364,8 +364,8 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
 
             {/* ── Left: NFT Selector Sidebar ── */}
             {(() => {
-              const wegens     = nfts.filter(n => !n.name?.toLowerCase().includes("wegenette"));
-              const wegenettes = nfts.filter(n =>  n.name?.toLowerCase().includes("wegenette"));
+              const wegens     = nfts.filter(n => !n.isWegenette);
+              const wegenettes = nfts.filter(n =>  n.isWegenette);
               const renderNftRow = (nft: typeof nfts[0]) => {
                 const isSel = (selectedTokenId ?? nfts[0]?.tokenId) === nft.tokenId;
                 return (

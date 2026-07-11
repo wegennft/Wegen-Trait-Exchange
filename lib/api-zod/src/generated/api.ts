@@ -406,6 +406,11 @@ export const GetUserNftsResponse = zod.object({
         .describe(
           "True if this NFT is registered as a Legend or 1\/1 — trait equipping is disabled for these.",
         ),
+      isWegenette: zod
+        .boolean()
+        .describe(
+          "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette').",
+        ),
       equippedTraits: zod.array(
         zod.object({
           category: zod.string(),
@@ -501,6 +506,11 @@ export const ApplyTraitResponse = zod.object({
       .optional()
       .describe(
         "True if this NFT is registered as a Legend or 1\/1 — trait equipping is disabled for these.",
+      ),
+    isWegenette: zod
+      .boolean()
+      .describe(
+        "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette').",
       ),
     equippedTraits: zod.array(
       zod.object({
@@ -655,6 +665,11 @@ export const RemoveTraitResponse = zod.object({
       .optional()
       .describe(
         "True if this NFT is registered as a Legend or 1\/1 — trait equipping is disabled for these.",
+      ),
+    isWegenette: zod
+      .boolean()
+      .describe(
+        "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette').",
       ),
     equippedTraits: zod.array(
       zod.object({

@@ -28,6 +28,13 @@ interface AlchemyNft {
   tokenId: string;
   name: string;
   image?: { cachedUrl?: string; thumbnailUrl?: string; originalUrl?: string };
+  raw?: { metadata?: { attributes?: Array<{ trait_type: string; value: unknown }> } };
+}
+
+function getOriginAttribute(nft: AlchemyNft): string | null {
+  const attrs = nft.raw?.metadata?.attributes ?? [];
+  const origin = attrs.find((a) => a.trait_type === "Origin");
+  return typeof origin?.value === "string" ? origin.value.toLowerCase() : null;
 }
 
 /**
@@ -44,6 +51,7 @@ async function fetchOnChainWegens(walletAddress: string): Promise<AlchemyNft[]> 
       url.searchParams.set("owner", walletAddress);
       url.searchParams.append("contractAddresses[]", WEGEN_CONTRACT);
       url.searchParams.set("limit", "100");
+      url.searchParams.set("includeRawMetadata", "true");
       if (pageKey) url.searchParams.set("pageKey", pageKey);
 
       const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
@@ -111,12 +119,8 @@ router.get("/nfts/:walletAddress/detect-collection", async (req, res): Promise<v
   // Use live on-chain data to detect which collection this wallet holds
   const onChain = await fetchOnChainWegens(walletAddress);
 
-  const hasWegenettes = onChain.some((n) =>
-    n.name.toLowerCase().includes("wegenette"),
-  );
-  const hasWegens = onChain.some(
-    (n) => !n.name.toLowerCase().includes("wegenette"),
-  );
+  const hasWegenettes = onChain.some((n) => getOriginAttribute(n) === "wegenette");
+  const hasWegens = onChain.some((n) => getOriginAttribute(n) !== "wegenette");
 
   let collection: "wegens" | "wegenettes" | null = null;
   if (hasWegenettes && !hasWegens) {
@@ -163,13 +167,14 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
       metadataUpdatedAt: local?.metadataUpdatedAt ?? null,
       variantPack: local?.variantPack ?? null,
       createdAt: local?.createdAt ?? new Date(),
+      isWegenette: getOriginAttribute(oc) === "wegenette",
     };
   });
 
   // Also include any DB-only NFTs that aren't on-chain yet (edge case / seeded data)
   for (const local of localNfts) {
     if (!merged.find((m) => m.tokenId === local.tokenId)) {
-      merged.push(local);
+      merged.push({ ...local, isWegenette: false });
     }
   }
 

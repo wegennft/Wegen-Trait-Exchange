@@ -1331,6 +1331,9 @@ components:
         isLegend:
           type: boolean
           description: "True if this NFT is registered as a Legend or 1/1 — trait equipping is disabled for these."
+        isWegenette:
+          type: boolean
+          description: "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette')."
         equippedTraits:
           type: array
           items:
@@ -1339,6 +1342,7 @@ components:
         - tokenId
         - walletAddress
         - name
+        - isWegenette
         - equippedTraits
 
     NftListResponse:

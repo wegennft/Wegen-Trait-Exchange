@@ -207,11 +207,13 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
         }
       }
 
-      // Sort matched traits by layer order and resolve URLs
+      // Sort matched traits by layer order: layerOrder[0] is the FRONT layer
+      // (topmost), last entry is BACK (bottommost). Composite back→front, so
+      // sort DESCENDING by index — highest index (back) comes first as base.
       const sorted = [...matched].sort((a, b) => {
         const ai = order.indexOf(a.category);
         const bi = order.indexOf(b.category);
-        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        return (bi === -1 ? 1000 : bi) - (ai === -1 ? 1000 : ai);
       });
 
       for (const item of sorted) {

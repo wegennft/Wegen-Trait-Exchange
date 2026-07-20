@@ -149,11 +149,13 @@ router.get(
         }
       }
 
-      // Sort equipped items by layer order (bottom → top)
+      // Sort equipped items back→front for compositing.
+      // layerOrder[0] = frontmost (topmost) layer, last entry = backmost.
+      // Sort DESCENDING so the backmost layer (highest index) comes first as base.
       const sorted = [...equippedRows].sort((a, b) => {
         const ai = layerOrder.indexOf(a.category);
         const bi = layerOrder.indexOf(b.category);
-        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        return (bi === -1 ? 1000 : bi) - (ai === -1 ? 1000 : ai);
       });
 
       // Resolve each layer's image URL (use variant if available)

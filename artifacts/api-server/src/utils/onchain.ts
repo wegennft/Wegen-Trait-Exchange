@@ -18,6 +18,7 @@ export function bestImageUrl(nft: AlchemyNft): string | null {
   return nft.image?.cachedUrl ?? nft.image?.thumbnailUrl ?? nft.image?.originalUrl ?? null;
 }
 
+/** NFT has a "Golden Ticket" trait_type (any value) */
 export function hasGoldenTicketAttr(nft: AlchemyNft): boolean {
   const attrs = nft.raw?.metadata?.attributes ?? [];
   return attrs.some(
@@ -25,6 +26,28 @@ export function hasGoldenTicketAttr(nft: AlchemyNft): boolean {
       String(a.trait_type).toLowerCase() === "golden ticket" ||
       String(a.value).toLowerCase() === "golden ticket",
   );
+}
+
+/** NFT has a "Team" trait_type — identifies team Wegens */
+export function hasTeamAttr(nft: AlchemyNft): boolean {
+  const attrs = nft.raw?.metadata?.attributes ?? [];
+  return attrs.some((a) => String(a.trait_type).toLowerCase() === "team");
+}
+
+/** NFT has a "Legend" trait_type — identifies 1-of-1 legendary characters */
+export function hasLegendAttr(nft: AlchemyNft): boolean {
+  const attrs = nft.raw?.metadata?.attributes ?? [];
+  return attrs.some((a) => String(a.trait_type).toLowerCase() === "legend");
+}
+
+/** Returns which special category this NFT belongs to (or null) */
+export function getNftLegendCategory(
+  nft: AlchemyNft,
+): "golden_ticket" | "team" | "legend" | null {
+  if (hasGoldenTicketAttr(nft)) return "golden_ticket";
+  if (hasTeamAttr(nft)) return "team";
+  if (hasLegendAttr(nft)) return "legend";
+  return null;
 }
 
 /**
@@ -50,6 +73,36 @@ export async function fetchOnChainWegens(walletAddress: string): Promise<Alchemy
       if (data.ownedNfts) results.push(...data.ownedNfts);
       pageKey = data.pageKey;
     } while (pageKey);
+  } catch {
+    // Network/timeout — return whatever we collected
+  }
+  return results;
+}
+
+/**
+ * Fetches ALL NFTs in the Wegen contract by scanning the full collection.
+ * Pages through up to `maxPages` pages (default 100 = 10,000 NFTs).
+ * Returns whatever was collected on network failure.
+ */
+export async function fetchAllCollectionNfts(maxPages = 100): Promise<AlchemyNft[]> {
+  const results: AlchemyNft[] = [];
+  let pageKey: string | undefined;
+  let pages = 0;
+  try {
+    do {
+      const url = new URL(`${ALCHEMY_BASE}/getNFTsForCollection`);
+      url.searchParams.set("contractAddress", WEGEN_CONTRACT);
+      url.searchParams.set("limit", "100");
+      url.searchParams.set("withMetadata", "true");
+      if (pageKey) url.searchParams.set("pageKey", pageKey);
+
+      const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
+      if (!resp.ok) break;
+      const data = (await resp.json()) as { nfts?: AlchemyNft[]; pageKey?: string };
+      if (data.nfts) results.push(...data.nfts);
+      pageKey = data.pageKey;
+      pages++;
+    } while (pageKey && pages < maxPages);
   } catch {
     // Network/timeout — return whatever we collected
   }

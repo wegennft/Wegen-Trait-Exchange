@@ -6650,13 +6650,18 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
     setSyncing(true);
     try {
       const res = await fetch("/api/admin/legends/sync-golden-tickets", { method: "POST" });
-      const data = await res.json() as { added?: number; walletsScanned?: number };
+      const data = await res.json() as { added?: number; scanned?: number; goldenTickets?: number; team?: number; legends?: number };
       invalidate();
+      const added = data.added ?? 0;
+      const parts: string[] = [];
+      if (data.goldenTickets) parts.push(`${data.goldenTickets} Golden Ticket${data.goldenTickets === 1 ? "" : "s"}`);
+      if (data.team) parts.push(`${data.team} Team Wegen${data.team === 1 ? "" : "s"}`);
+      if (data.legends) parts.push(`${data.legends} Legend${data.legends === 1 ? "" : "s"}`);
       toast({
-        title: data.added === 0
-          ? "Already up to date"
-          : `Added ${data.added} Golden Ticket legend${data.added === 1 ? "" : "s"}`,
-        description: `Scanned ${data.walletsScanned ?? 0} wallet${(data.walletsScanned ?? 0) === 1 ? "" : "s"}`,
+        title: added === 0 ? "Already up to date" : `Added ${added} new legend${added === 1 ? "" : "s"}`,
+        description: added === 0
+          ? `Scanned ${data.scanned ?? 0} NFTs — all already in the table`
+          : parts.join(" · ") + ` · ${data.scanned ?? 0} NFTs scanned`,
       });
     } catch {
       toast({ title: "Sync failed", variant: "destructive" });
@@ -6710,14 +6715,14 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
       {/* Info banner */}
       <div className="flex items-start gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm">
         <Crown className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
-        <div className="space-y-0.5">
-          <p className="text-yellow-200/80 font-medium">Two ways an NFT becomes a Legend</p>
-          <p className="text-muted-foreground text-xs">
-            <span className="text-foreground/60">Manually</span> — enter its Wegen or Wegenette # below and it&apos;s recognized immediately.
-          </p>
-          <p className="text-muted-foreground text-xs">
-            <span className="text-foreground/60">Automatically</span> — any NFT with a <span className="font-mono text-yellow-400/80">Golden Ticket</span> trait is flagged as a Legend without a manual entry.
-          </p>
+        <div className="space-y-1">
+          <p className="text-yellow-200/80 font-medium">Auto-sync pulls three categories from the blockchain</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+            <p className="text-muted-foreground text-xs"><span className="font-mono text-yellow-400/80">Golden Ticket</span> — any NFT with a Golden Ticket trait</p>
+            <p className="text-muted-foreground text-xs"><span className="font-mono text-purple-400/80">Team</span> — official team Wegens</p>
+            <p className="text-muted-foreground text-xs"><span className="font-mono text-orange-400/80">Legend</span> — on-chain legendary 1-of-1s</p>
+          </div>
+          <p className="text-muted-foreground/60 text-xs">Click <span className="text-foreground/50">Sync</span> to scan the full collection and add any missing entries.</p>
         </div>
       </div>
 

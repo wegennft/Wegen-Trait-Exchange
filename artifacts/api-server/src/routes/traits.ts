@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and, isNotNull, asc } from "drizzle-orm";
+import { eq, sql, and, isNotNull, asc, inArray } from "drizzle-orm";
 import { db, traitsTable, storeSettingsTable, traitVariantsTable } from "@workspace/db";
+import sharp from "sharp";
 import {
   ListTraitsQueryParams,
   ListTraitsResponse,
@@ -96,6 +97,160 @@ router.get("/traits/variant-collections", async (req, res): Promise<void> => {
     )
     .orderBy(asc(traitVariantsTable.name));
   res.json({ collections: rows.map((r) => r.name) });
+});
+
+// ── GET /traits/variant-preview-image — composited PNG from on-chain attributes + variant pack ──
+// ?variant=Cyber+Punks&nftCollection=wegens&attrs=Background:Don't+Be+Hating|Body:Albino|...
+router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const variant = typeof req.query.variant === "string" ? req.query.variant : "";
+  const attrsRaw = typeof req.query.attrs === "string" ? req.query.attrs : "";
+
+  const makePlaceholder = () =>
+    sharp({ create: { width: 1000, height: 1000, channels: 4, background: { r: 26, g: 5, b: 51, alpha: 1 } } })
+      .png().toBuffer();
+
+  if (!variant || !attrsRaw) {
+    res.status(400).json({ error: "variant and attrs are required" });
+    return;
+  }
+
+  // Normalize on-chain trait_type names to DB category names
+  const CATEGORY_ALIASES: Record<string, string> = {
+    "Skin": "Body",
+    "Head & Hair": "Headgear",
+    "HeadGear": "Headgear",
+  };
+
+  // Parse "Category:Value|..." pairs (split only on first colon per segment)
+  const pairs = attrsRaw.split("|").map((s) => {
+    const idx = s.indexOf(":");
+    if (idx === -1) return null;
+    const rawCat = s.slice(0, idx).trim();
+    return {
+      category: CATEGORY_ALIASES[rawCat] ?? rawCat,
+      name: s.slice(idx + 1).trim(),
+    };
+  }).filter((p): p is { category: string; name: string } => p !== null && p.category !== "" && p.name !== "");
+
+  if (pairs.length === 0) {
+    res.setHeader("Content-Type", "image/png");
+    res.send(await makePlaceholder());
+    return;
+  }
+
+  try {
+    // Find traits matching the on-chain attribute (category, name) pairs
+    const names = pairs.map((p) => p.name);
+    const candidates = await db
+      .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name })
+      .from(traitsTable)
+      .where(and(eq(traitsTable.nftCollection, nftCollection), inArray(traitsTable.name, names)));
+
+    const pairSet = new Set(pairs.map((p) => `${p.category}:::${p.name}`));
+    const matched = candidates.filter((t) => pairSet.has(`${t.category}:::${t.name}`));
+
+    if (matched.length === 0) {
+      res.setHeader("Content-Type", "image/png");
+      res.send(await makePlaceholder());
+      return;
+    }
+
+    // Get variant images for the matched trait IDs
+    const traitIds = matched.map((t) => t.id);
+    const variants = await db
+      .select({
+        traitId: traitVariantsTable.traitId,
+        imageUrl: traitVariantsTable.imageUrl,
+        category: traitsTable.category,
+      })
+      .from(traitVariantsTable)
+      .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
+      .where(
+        and(
+          eq(traitVariantsTable.name, variant),
+          inArray(traitVariantsTable.traitId, traitIds),
+          eq(traitVariantsTable.isEnabled, true),
+        ),
+      );
+
+    // Get layer order from store settings
+    const settings = await db.query.storeSettingsTable.findFirst({
+      where: eq(storeSettingsTable.nftCollection, nftCollection),
+    });
+    const layerOrder: string[] = (() => {
+      try { return settings?.layerOrder ? (JSON.parse(settings.layerOrder) as string[]) : []; }
+      catch { return []; }
+    })();
+    const defaultOrder = ["Background", "Body", "Clothes", "Mouth", "Eyes", "Headgear"];
+    const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
+
+    // category → variant imageUrl map
+    const variantByCategory = new Map<string, string>();
+    for (const v of variants) {
+      if (v.imageUrl) variantByCategory.set(v.category, v.imageUrl);
+    }
+
+    // Sort matched traits by layer order and resolve URLs
+    const proto = req.headers["x-forwarded-proto"] ?? req.protocol;
+    const host = req.headers["x-forwarded-host"] ?? req.get("host");
+    const baseUrl = `${proto}://${host}`;
+
+    const sorted = [...matched].sort((a, b) => {
+      const ai = order.indexOf(a.category);
+      const bi = order.indexOf(b.category);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+
+    const layerUrls: string[] = [];
+    for (const item of sorted) {
+      const rawUrl = variantByCategory.get(item.category) ?? null;
+      if (!rawUrl) continue;
+      layerUrls.push(rawUrl.startsWith("http") ? rawUrl : `${baseUrl}${rawUrl}`);
+    }
+
+    if (layerUrls.length === 0) {
+      res.setHeader("Content-Type", "image/png");
+      res.send(await makePlaceholder());
+      return;
+    }
+
+    // Fetch image buffers in parallel
+    const fetchBuf = async (url: string): Promise<Buffer | null> => {
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) return null;
+        return Buffer.from(await r.arrayBuffer());
+      } catch { return null; }
+    };
+
+    const buffers = (await Promise.all(layerUrls.map(fetchBuf))).filter((b): b is Buffer => b !== null);
+
+    if (buffers.length === 0) {
+      res.setHeader("Content-Type", "image/png");
+      res.send(await makePlaceholder());
+      return;
+    }
+
+    const resized = await Promise.all(
+      buffers.map((b) =>
+        sharp(b).resize(1000, 1000, { fit: "cover", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .ensureAlpha().png().toBuffer(),
+      ),
+    );
+
+    const [base, ...rest] = resized;
+    const composited = await sharp(base)
+      .composite(rest.map((buf) => ({ input: buf, blend: "over" as const })))
+      .png().toBuffer();
+
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(composited);
+  } catch (err) {
+    req.log?.error({ err }, "Failed to composite variant preview image");
+    res.status(500).send("Failed to generate image");
+  }
 });
 
 // ── GET /traits/variants/by-collection — static; must come before /:traitId ──

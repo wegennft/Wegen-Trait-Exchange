@@ -134,11 +134,15 @@ function NftsContent() {
   const previewVariantMap: Record<string, { imageUrl: string | null }> =
     (previewVariantData?.variantMap ?? {}) as Record<string, { imageUrl: string | null }>;
 
-  // For the card's main image: when a variant is selected and the NFT has equipped traits,
-  // use the metadata composite endpoint with ?variant= so the server renders the variant layers.
-  const getCardImageUrl = (nft: { tokenId: number; imageUrl?: string | null; equippedTraits: { trait: { id: number } }[] }) => {
-    if (!previewVariant || nft.equippedTraits.length === 0) return nft.imageUrl ?? null;
-    return `/api/metadata/${collection}/${nft.tokenId}/image?variant=${encodeURIComponent(previewVariant)}`;
+  // For the card's main image: when a variant is selected, composite the variant versions of
+  // the NFT's on-chain trait layers via the server-side preview endpoint. Falls back to the
+  // original imageUrl if no on-chain attributes are available.
+  const getCardImageUrl = (nft: { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] }) => {
+    if (!previewVariant) return nft.imageUrl ?? null;
+    const attrs = (nft.onChainAttributes ?? []).filter((a) => a.trait_type.toLowerCase() !== "origin");
+    if (attrs.length === 0) return nft.imageUrl ?? null;
+    const attrsParam = attrs.map((a) => `${a.trait_type}:${a.value}`).join("|");
+    return `/api/traits/variant-preview-image?variant=${encodeURIComponent(previewVariant)}&nftCollection=${encodeURIComponent(collection)}&attrs=${encodeURIComponent(attrsParam)}`;
   };
 
   const applyTrait = useApplyTrait({

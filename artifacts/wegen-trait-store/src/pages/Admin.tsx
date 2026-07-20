@@ -6598,6 +6598,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
   const [editLegend, setEditLegend] = useState<LegendItem | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const [formName, setFormName] = useState("");
   const [formDesc, setFormDesc] = useState("");
@@ -6645,6 +6646,25 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
     },
   });
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/admin/legends/sync-golden-tickets", { method: "POST" });
+      const data = await res.json() as { added?: number; walletsScanned?: number };
+      invalidate();
+      toast({
+        title: data.added === 0
+          ? "Already up to date"
+          : `Added ${data.added} Golden Ticket legend${data.added === 1 ? "" : "s"}`,
+        description: `Scanned ${data.walletsScanned ?? 0} wallet${(data.walletsScanned ?? 0) === 1 ? "" : "s"}`,
+      });
+    } catch {
+      toast({ title: "Sync failed", variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const resetForm = () => {
     setFormName(""); setFormDesc(""); setFormImageUrl(""); setFormActive(true); setFormSortOrder(0); setFormTokenId(null);
   };
@@ -6675,9 +6695,16 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
           </h2>
           <p className="text-sm text-muted-foreground mt-1">1-of-1 NFTs for the <span className="capitalize">{collection}</span> collection</p>
         </div>
-        <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> Add Legend
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
+            onClick={handleSync} disabled={syncing}>
+            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
+            Sync Golden Tickets
+          </Button>
+          <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> Add Legend
+          </Button>
+        </div>
       </div>
 
       {/* Info banner */}
@@ -6695,85 +6722,73 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+          {[1,2,3,4,5].map(i => <Skeleton key={i} className="aspect-square rounded-xl" />)}
+        </div>
       ) : legends.length === 0 ? (
         <div className="text-center py-20 border border-dashed border-border/30 rounded-xl">
           <Crown className="w-14 h-14 mx-auto mb-4 text-yellow-400/20" />
           <p className="text-muted-foreground text-sm">No Legends yet — add your first 1-of-1!</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-border/30 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-14"></TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-24">Token ID</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-16">Order</TableHead>
-                <TableHead className="text-right w-48">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {legends.map((legend) => (
-                <>
-                  <TableRow key={legend.id}>
-                    <TableCell>
-                      {legend.imageUrl ? (
-                        <img src={legend.imageUrl} alt={legend.name} className="w-10 h-10 rounded object-cover border border-border/30" />
-                      ) : (
-                        <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
-                          <Crown className="w-5 h-5 text-yellow-400/30" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-semibold">{legend.name}</TableCell>
-                    <TableCell className="text-xs font-mono">
-                      {legend.tokenId != null ? (
-                        <Badge variant="outline" className="text-[10px] border-yellow-500/30 text-yellow-400 gap-1">
-                          #{legend.tokenId}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground/40">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm max-w-xs truncate">{legend.description ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={legend.isActive ? "default" : "secondary"}
-                        className={legend.isActive ? "bg-green-600/20 text-green-400 border-green-600/30" : "opacity-50"}>
-                        {legend.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{legend.sortOrder ?? 0}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1"
-                          onClick={() => setExpandedId(expandedId === legend.id ? null : legend.id)}>
-                          <Layers className="w-3 h-3" />
-                          {expandedId === legend.id ? "Hide" : "Variants"}
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(legend)}>
-                          <Edit className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={() => setDeletingId(legend.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  {expandedId === legend.id && (
-                    <TableRow key={`variants-${legend.id}`}>
-                      <TableCell colSpan={6} className="p-0 bg-secondary/5">
-                        <LegendVariantsManager legendId={legend.id} />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+          {legends.map((legend) => (
+            <div key={legend.id} className="group relative flex flex-col rounded-xl border border-border/30 bg-secondary/10 overflow-hidden hover:border-yellow-500/40 transition-colors">
+              {/* NFT Image */}
+              <div className="relative aspect-square bg-secondary/30">
+                {legend.imageUrl ? (
+                  <img src={legend.imageUrl} alt={legend.name}
+                    className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Crown className="w-12 h-12 text-yellow-400/20" />
+                  </div>
+                )}
+                {/* Token # badge */}
+                {legend.tokenId != null && (
+                  <div className="absolute top-2 left-2">
+                    <Badge className="text-[10px] font-mono bg-black/70 text-yellow-400 border-yellow-500/40 backdrop-blur-sm px-1.5 py-0.5">
+                      #{legend.tokenId}
+                    </Badge>
+                  </div>
+                )}
+                {/* Status pill */}
+                {!legend.isActive && (
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="secondary" className="text-[10px] opacity-70">Inactive</Badge>
+                  </div>
+                )}
+                {/* Hover action overlay */}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                  <Button size="sm" variant="secondary" className="h-7 text-xs gap-1 shadow-lg"
+                    onClick={() => setExpandedId(expandedId === legend.id ? null : legend.id)}>
+                    <Layers className="w-3 h-3" />
+                    Variants
+                  </Button>
+                  <Button size="sm" variant="secondary" className="h-7 w-7 p-0 shadow-lg" onClick={() => openEdit(legend)}>
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="secondary" className="h-7 w-7 p-0 shadow-lg text-destructive hover:text-destructive"
+                    onClick={() => setDeletingId(legend.id)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+              {/* Name */}
+              <div className="px-2.5 py-2">
+                <p className="text-xs font-semibold truncate leading-tight">{legend.name}</p>
+                {legend.description && (
+                  <p className="text-[10px] text-muted-foreground truncate mt-0.5">{legend.description}</p>
+                )}
+              </div>
+              {/* Expanded variants panel */}
+              {expandedId === legend.id && (
+                <div className="border-t border-border/30 bg-secondary/5">
+                  <LegendVariantsManager legendId={legend.id} />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { db, legendsTable, legendVariantsTable, wegenNftsTable } from "@workspace/db";
 import { requireAdmin } from "../middleware/requireAuth";
+import { fetchOnChainWegens, getOriginAttribute, bestImageUrl, hasGoldenTicketAttr } from "../utils/onchain";
 
 const router: IRouter = Router();
 
@@ -115,6 +116,62 @@ router.get("/legends/:id/variants", async (req, res): Promise<void> => {
     .where(eq(legendVariantsTable.legendId, id))
     .orderBy(asc(legendVariantsTable.sortOrder), asc(legendVariantsTable.name));
   res.json({ variants });
+});
+
+// POST /admin/legends/sync-golden-tickets — scan all known wallets for Golden Ticket NFTs and auto-add to legends
+router.post("/admin/legends/sync-golden-tickets", async (req, res): Promise<void> => {
+  // Get all unique wallet addresses from the wegen_nfts table
+  const walletRows = await db
+    .selectDistinct({ wallet: wegenNftsTable.walletAddress })
+    .from(wegenNftsTable);
+
+  let added = 0;
+  const walletsScanned = walletRows.length;
+
+  for (const { wallet } of walletRows) {
+    try {
+      const onChain = await fetchOnChainWegens(wallet);
+      const goldenTickets = onChain.filter(hasGoldenTicketAttr);
+      if (goldenTickets.length === 0) continue;
+
+      // Check which are already in the legends table
+      const tokenIds = goldenTickets.map((n) => parseInt(n.tokenId, 10)).filter((id) => !isNaN(id));
+      const existing = await db
+        .select({ tokenId: legendsTable.tokenId })
+        .from(legendsTable)
+        .where(inArray(legendsTable.tokenId, tokenIds));
+      const existingIds = new Set(
+        existing.map((r) => r.tokenId).filter((id): id is number => id !== null),
+      );
+
+      const toInsert = goldenTickets.filter((nft) => {
+        const id = parseInt(nft.tokenId, 10);
+        return !isNaN(id) && !existingIds.has(id);
+      });
+
+      if (toInsert.length > 0) {
+        await db.insert(legendsTable).values(
+          toInsert.map((nft) => {
+            const tokenId = parseInt(nft.tokenId, 10);
+            const isWegenette = getOriginAttribute(nft) === "wegenette";
+            return {
+              name: nft.name ?? `${isWegenette ? "Wegenette" : "Wegen"} #${tokenId}`,
+              nftCollection: (isWegenette ? "wegenettes" : "wegens") as "wegenettes" | "wegens",
+              tokenId,
+              imageUrl: bestImageUrl(nft) ?? null,
+              isActive: true,
+              sortOrder: 0,
+            };
+          }),
+        );
+        added += toInsert.length;
+      }
+    } catch {
+      // Skip wallets that fail on-chain lookup — don't abort the whole sync
+    }
+  }
+
+  res.json({ added, walletsScanned });
 });
 
 // POST /admin/legends

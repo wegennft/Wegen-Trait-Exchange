@@ -16,59 +16,14 @@ import {
   ConfirmTraitsResponse,
 } from "@workspace/api-zod";
 import { requireWalletOwnership } from "../middleware/requireAuth";
+import {
+  fetchOnChainWegens,
+  getOriginAttribute,
+  bestImageUrl,
+  hasGoldenTicketAttr,
+} from "../utils/onchain";
 
 const router: IRouter = Router();
-
-// ── On-chain NFT lookup via Alchemy (demo endpoint — no key required) ─────────
-
-const WEGEN_CONTRACT = "0x31a53ce49c99b0c05085dd76d17669871dacd6c0";
-const ALCHEMY_BASE = "https://eth-mainnet.g.alchemy.com/nft/v3/demo";
-
-interface AlchemyNft {
-  tokenId: string;
-  name: string;
-  image?: { cachedUrl?: string; thumbnailUrl?: string; originalUrl?: string };
-  raw?: { metadata?: { attributes?: Array<{ trait_type: string; value: unknown }> } };
-}
-
-function getOriginAttribute(nft: AlchemyNft): string | null {
-  const attrs = nft.raw?.metadata?.attributes ?? [];
-  const origin = attrs.find((a) => a.trait_type === "Origin");
-  return typeof origin?.value === "string" ? origin.value.toLowerCase() : null;
-}
-
-/**
- * Returns all Wegens owned by walletAddress from the Ethereum contract.
- * Pages through Alchemy results automatically (100 per page).
- * Returns [] on network failure so the rest of the route degrades gracefully.
- */
-async function fetchOnChainWegens(walletAddress: string): Promise<AlchemyNft[]> {
-  const results: AlchemyNft[] = [];
-  let pageKey: string | undefined;
-  try {
-    do {
-      const url = new URL(`${ALCHEMY_BASE}/getNFTsForOwner`);
-      url.searchParams.set("owner", walletAddress);
-      url.searchParams.append("contractAddresses[]", WEGEN_CONTRACT);
-      url.searchParams.set("limit", "100");
-      url.searchParams.set("includeRawMetadata", "true");
-      if (pageKey) url.searchParams.set("pageKey", pageKey);
-
-      const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) break;
-      const data = await resp.json() as { ownedNfts?: AlchemyNft[]; pageKey?: string };
-      if (data.ownedNfts) results.push(...data.ownedNfts);
-      pageKey = data.pageKey;
-    } while (pageKey);
-  } catch {
-    // Network/timeout — return whatever we collected
-  }
-  return results;
-}
-
-function bestImageUrl(nft: AlchemyNft): string | null {
-  return nft.image?.cachedUrl ?? nft.image?.thumbnailUrl ?? nft.image?.originalUrl ?? null;
-}
 
 async function getNftWithTraits(tokenId: number) {
   const [nft] = await db
@@ -181,7 +136,7 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
   // Also include any DB-only NFTs that aren't on-chain yet (edge case / seeded data)
   for (const local of localNfts) {
     if (!merged.find((m) => m.tokenId === local.tokenId)) {
-      merged.push({ ...local, isWegenette: false });
+      merged.push({ ...local, isWegenette: false, onChainAttributes: [] });
     }
   }
 
@@ -254,6 +209,42 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
           a.value.toLowerCase() === "golden ticket",
       ),
   }));
+
+  // Auto-persist Golden Ticket NFTs into the legends table so they show up in admin.
+  // Only runs if any on-chain Golden Tickets were detected.
+  const goldenTicketNfts = merged.filter((nft) =>
+    nft.onChainAttributes && hasGoldenTicketAttr({
+      tokenId: String(nft.tokenId),
+      name: nft.name ?? "",
+      raw: { metadata: { attributes: nft.onChainAttributes } },
+    }),
+  );
+  if (goldenTicketNfts.length > 0) {
+    try {
+      const alreadyListed = await db
+        .select({ tokenId: legendsTable.tokenId })
+        .from(legendsTable)
+        .where(inArray(legendsTable.tokenId, goldenTicketNfts.map((n) => n.tokenId)));
+      const alreadyIds = new Set(
+        alreadyListed.map((r) => r.tokenId).filter((id): id is number => id !== null),
+      );
+      const toInsert = goldenTicketNfts.filter((nft) => !alreadyIds.has(nft.tokenId));
+      if (toInsert.length > 0) {
+        await db.insert(legendsTable).values(
+          toInsert.map((nft) => ({
+            name: nft.name ?? `${nft.isWegenette ? "Wegenette" : "Wegen"} #${nft.tokenId}`,
+            nftCollection: (nft.isWegenette ? "wegenettes" : "wegens") as "wegenettes" | "wegens",
+            tokenId: nft.tokenId,
+            imageUrl: nft.imageUrl ?? null,
+            isActive: true,
+            sortOrder: 0,
+          })),
+        );
+      }
+    } catch {
+      // Non-fatal — log suppressed intentionally; legend display degrades gracefully
+    }
+  }
 
   res.json(GetUserNftsResponse.parse({ nfts: nftsWithLegendFlag, total: nftsWithLegendFlag.length }));
 });

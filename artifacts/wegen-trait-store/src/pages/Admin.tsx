@@ -6620,10 +6620,24 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
     }
   };
 
-  const { data, isLoading } = useListAllLegends({ nftCollection: collection });
-  const legends = data?.legends ?? [];
+  const [legendFilter, setLegendFilter] = useState<"all" | "wegens" | "wegenettes">("all");
 
-  const invalidate = () => void queryClient.invalidateQueries({ queryKey: getListAllLegendsQueryKey() });
+  const { data: wegensData, isLoading: isLoadingWegens } = useListAllLegends({ nftCollection: "wegens" });
+  const { data: wegenettesData, isLoading: isLoadingWegenettes } = useListAllLegends({ nftCollection: "wegenettes" });
+  const isLoading = isLoadingWegens || isLoadingWegenettes;
+  const legends = legendFilter === "wegens"
+    ? (wegensData?.legends ?? [])
+    : legendFilter === "wegenettes"
+    ? (wegenettesData?.legends ?? [])
+    : [...(wegensData?.legends ?? []), ...(wegenettesData?.legends ?? [])];
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: getListAllLegendsQueryKey({ nftCollection: "wegens" }) });
+    void queryClient.invalidateQueries({ queryKey: getListAllLegendsQueryKey({ nftCollection: "wegenettes" }) });
+  };
+
+  // Which collection to use when creating a new legend
+  const createCollection: NftCollection = legendFilter === "wegenettes" ? "wegenettes" : "wegens";
 
   const createMutation = useCreateLegend({
     mutation: {
@@ -6698,9 +6712,21 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
           <h2 className="text-2xl font-black tracking-tight flex items-center gap-2" style={{ fontFamily: "'Bungee', Impact, sans-serif" }}>
             <Crown className="w-6 h-6 text-yellow-400" /> LEGENDS
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">1-of-1 NFTs for the <span className="capitalize">{collection}</span> collection</p>
+          <p className="text-sm text-muted-foreground mt-1">1-of-1 NFTs across all collections</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Collection filter pills */}
+          <div className="flex items-center rounded-lg border border-border/30 p-0.5 gap-0.5 bg-secondary/20">
+            {(["all", "wegens", "wegenettes"] as const).map((f) => (
+              <button key={f} onClick={() => setLegendFilter(f)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${legendFilter === f ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                {f === "all" ? "All" : f === "wegens" ? "Wegens" : "Wegenettes"}
+                <span className="ml-1 text-[10px] opacity-60">
+                  {f === "all" ? ((wegensData?.legends?.length ?? 0) + (wegenettesData?.legends?.length ?? 0)) : f === "wegens" ? (wegensData?.legends?.length ?? 0) : (wegenettesData?.legends?.length ?? 0)}
+                </span>
+              </button>
+            ))}
+          </div>
           <Button variant="outline" className="gap-2 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
             onClick={handleSync} disabled={syncing}>
             {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
@@ -6757,6 +6783,14 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
                     </Badge>
                   </div>
                 )}
+                {/* Collection badge */}
+                {legendFilter === "all" && (
+                  <div className="absolute bottom-2 left-2">
+                    <Badge className={`text-[9px] px-1.5 py-0 backdrop-blur-sm ${legend.nftCollection === "wegenettes" ? "bg-purple-900/70 text-purple-300 border-purple-500/40" : "bg-blue-900/70 text-blue-300 border-blue-500/40"}`}>
+                      {legend.nftCollection === "wegenettes" ? "Wegenette" : "Wegen"}
+                    </Badge>
+                  </div>
+                )}
                 {/* Status pill */}
                 {!legend.isActive && (
                   <div className="absolute top-2 right-2">
@@ -6805,11 +6839,11 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
               <Crown className="w-4 h-4 text-yellow-400" /> Add Legend
             </DialogTitle>
             <DialogDescription>
-              Enter a {collection === "wegenettes" ? "Wegenette" : "Wegen"} # to register it as a Legend in the {collection} collection.
+              Enter a {createCollection === "wegenettes" ? "Wegenette" : "Wegen"} # to register it as a Legend in the {createCollection} collection.
             </DialogDescription>
           </DialogHeader>
           <LegendForm
-            collection={collection}
+            collection={createCollection}
             name={formName} setName={setFormName}
             desc={formDesc} setDesc={setFormDesc}
             imageUrl={formImageUrl} setImageUrl={setFormImageUrl}
@@ -6818,7 +6852,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
             tokenId={formTokenId} setTokenId={handleTokenIdChange}
             uploading={formUploading} onUpload={handleUpload}
             onSubmit={() => createMutation.mutate({ data: {
-              name: formName, nftCollection: collection,
+              name: formName, nftCollection: createCollection,
               tokenId: formTokenId,
               imageUrl: formImageUrl || undefined,
               description: formDesc || undefined,
@@ -6841,7 +6875,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
           </DialogHeader>
           {editLegend && (
             <LegendForm
-              collection={collection}
+              collection={(editLegend.nftCollection as "wegens" | "wegenettes") ?? collection}
               name={formName} setName={setFormName}
               desc={formDesc} setDesc={setFormDesc}
               imageUrl={formImageUrl} setImageUrl={setFormImageUrl}

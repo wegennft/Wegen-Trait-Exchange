@@ -134,26 +134,37 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     const idx = s.indexOf(":");
     if (idx === -1) return null;
     const rawCat = s.slice(0, idx).trim();
+    const name = s.slice(idx + 1).trim();
     return {
       category: CATEGORY_ALIASES[rawCat] ?? rawCat,
-      name: s.slice(idx + 1).trim(),
+      name,
     };
-  }).filter((p): p is { category: string; name: string } => p !== null && p.category !== "" && p.name !== "");
+  }).filter((p): p is { category: string; name: string } =>
+    // Discard empty pairs and very long strings (collection-description bleedthrough)
+    p !== null && p.category !== "" && p.name !== "" && p.name.length <= 120
+  );
 
   try {
-    // Find traits matching the on-chain attribute (category, name) pairs
-    // Search without nft_collection filter so wegens NFTs whose traits happen to
-    // be stored under "wegenettes" (or other) still get matched.
-    const names = pairs.map((p) => p.name);
-    const candidates = names.length > 0
+    // Find traits matching the on-chain attribute (category, name) pairs.
+    // Use case-insensitive matching so on-chain capitalisation variants
+    // (e.g. "Varsity with J's" vs DB "Varsity With J'S") still resolve.
+    // Search without nft_collection filter so wegens NFTs whose traits happen
+    // to be stored under "wegenettes" (or other) still get matched.
+    const lowerNames = pairs.map((p) => p.name.toLowerCase());
+    const candidates = lowerNames.length > 0
       ? await db
           .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name })
           .from(traitsTable)
-          .where(inArray(traitsTable.name, names))
+          .where(inArray(sql`lower(${traitsTable.name})`, lowerNames))
       : [];
 
-    const pairSet = new Set(pairs.map((p) => `${p.category}:::${p.name}`));
-    const allMatched = candidates.filter((t) => pairSet.has(`${t.category}:::${t.name}`));
+    // Match case-insensitively on both category and name
+    const pairSetLower = new Set(
+      pairs.map((p) => `${p.category.toLowerCase()}:::${p.name.toLowerCase()}`)
+    );
+    const allMatched = candidates.filter((t) =>
+      pairSetLower.has(`${t.category.toLowerCase()}:::${t.name.toLowerCase()}`)
+    );
 
     // Deduplicate: keep only the first match per category (avoid double-compositing Body:Ice x2)
     const seenCategories = new Set<string>();

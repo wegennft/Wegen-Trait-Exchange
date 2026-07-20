@@ -124,19 +124,28 @@ function NftsContent() {
       const res = await fetch(
         `/api/traits/variants-by-collection?pack=${encodeURIComponent(previewVariant!)}&nftCollection=${encodeURIComponent(collection)}`,
       );
-      if (!res.ok) return { variantMap: {} as Record<string, string>, nameMap: {} as Record<string, string> };
-      return res.json() as Promise<{ variantMap: Record<string, string>; nameMap: Record<string, string> }>;
+      type NameMapEntry = { imageUrl: string | null; mediaType: string; category: string };
+      type VariantData = { variantMap: Record<string, { imageUrl: string | null; mediaType: string }>; nameMap: Record<string, NameMapEntry> };
+      if (!res.ok) return { variantMap: {}, nameMap: {} } as VariantData;
+      return res.json() as Promise<VariantData>;
     },
   });
-  const previewNameMap: Record<string, string> = previewVariantData?.nameMap ?? {};
+  type NameMapEntry = { imageUrl: string | null; mediaType: string; category: string };
+  const previewNameMap: Record<string, NameMapEntry> =
+    (previewVariantData?.nameMap ?? {}) as Record<string, NameMapEntry>;
 
-  // Return variant image URL for a card based on its on-chain attributes + the current previewNameMap
+  // Return variant image URL for a card based on its on-chain attributes + the current previewNameMap.
+  // Tries multiple key patterns because on-chain attribute values (e.g. "Psychedelic") are the short
+  // form of the full trait name (e.g. "Psychedelic Background") stored in the nameMap.
   const getCardImageUrl = (nft: { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] }) => {
     if (!previewVariant || isLoadingPreview) return nft.imageUrl ?? null;
     const attrs = nft.onChainAttributes ?? [];
     for (const attr of attrs) {
-      const url = previewNameMap[attr.value.toLowerCase()];
-      if (url) return url;
+      const val = attr.value.toLowerCase();
+      const type = attr.trait_type.toLowerCase();
+      // Try: "psychedelic background", "psychedelic", "background psychedelic"
+      const entry = previewNameMap[`${val} ${type}`] ?? previewNameMap[val] ?? previewNameMap[`${type} ${val}`];
+      if (entry?.imageUrl) return entry.imageUrl;
     }
     return nft.imageUrl ?? null;
   };

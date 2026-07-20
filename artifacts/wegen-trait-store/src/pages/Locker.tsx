@@ -251,9 +251,11 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     if (!demo) {
       setSelectedVariantPack((activeNft as { variantPack?: string | null } | null)?.variantPack ?? null);
     }
-  // activeNft identity changes when selectedTokenId changes or nftsData refreshes
+  // Only reset when the user switches to a different NFT — NOT on every background refetch.
+  // savedPack (the "saved" badge) derives from activeNft.variantPack which re-reads live data,
+  // so the badge updates automatically without resetting the user's preview selection.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeNft?.tokenId, nftsData]);
+  }, [activeNft?.tokenId]);
 
   const allLayers   = useMemo(() => Array.from(new Set(lockerItems.map(i => i.trait.category))).sort(), [lockerItems]);
   const allRarities = ["legendary", "rare", "uncommon", "common"];

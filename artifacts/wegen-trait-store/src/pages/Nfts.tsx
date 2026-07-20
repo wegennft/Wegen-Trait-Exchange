@@ -433,7 +433,33 @@ function NftsContent() {
                     </div>
                   )}
 
-                  {/* Equipped traits list */}
+                  {/* On-chain attributes (native NFT traits) */}
+                  {(() => {
+                    const attrs = ((nft as { onChainAttributes?: { trait_type: string; value: string }[] }).onChainAttributes ?? [])
+                      .filter(a => a.trait_type.toLowerCase() !== 'origin');
+                    if (attrs.length === 0) return null;
+                    return (
+                      <div className="mt-4">
+                        <p className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest mb-2">Traits</p>
+                        <div className="grid grid-cols-2 gap-1">
+                          {attrs.map(attr => (
+                            <div key={attr.trait_type}
+                              className="rounded px-2 py-1 flex flex-col min-w-0"
+                              style={{ background: 'rgba(157,0,255,0.07)', border: '1px solid rgba(157,0,255,0.15)' }}>
+                              <span className="text-[9px] font-mono text-muted-foreground/50 uppercase tracking-wider truncate leading-tight">
+                                {attr.trait_type}
+                              </span>
+                              <span className="text-[11px] font-semibold text-foreground/90 truncate leading-snug">
+                                {attr.value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Equipped locker traits */}
                   {nft.equippedTraits.length > 0 && (
                     <div className="mt-4 space-y-1.5">
                       <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">

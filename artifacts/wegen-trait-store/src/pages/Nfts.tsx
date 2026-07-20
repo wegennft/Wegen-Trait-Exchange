@@ -139,10 +139,12 @@ function NftsContent() {
   // original imageUrl if no on-chain attributes are available.
   const getCardImageUrl = (nft: { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] }) => {
     if (!previewVariant) return nft.imageUrl ?? null;
-    const attrs = (nft.onChainAttributes ?? []).filter((a) => a.trait_type.toLowerCase() !== "origin");
-    if (attrs.length === 0) return nft.imageUrl ?? null;
+    const attrs = (nft.onChainAttributes ?? []).filter((a) => a.trait_type.toLowerCase() !== "origin" && a.trait_type.toLowerCase() !== "seasoned wegen" && a.trait_type.toLowerCase() !== "legend" && a.trait_type.toLowerCase() !== "ultra rare");
     const attrsParam = attrs.map((a) => `${a.trait_type}:${a.value}`).join("|");
-    return `/api/traits/variant-preview-image?variant=${encodeURIComponent(previewVariant)}&nftCollection=${encodeURIComponent(collection)}&attrs=${encodeURIComponent(attrsParam)}`;
+    const base = nft.imageUrl ? `&baseImageUrl=${encodeURIComponent(nft.imageUrl)}` : "";
+    // Always call the endpoint even with no attrs so the base image is returned resized
+    if (attrs.length === 0 && !nft.imageUrl) return null;
+    return `/api/traits/variant-preview-image?variant=${encodeURIComponent(previewVariant)}&nftCollection=${encodeURIComponent(collection)}&attrs=${encodeURIComponent(attrsParam || "_")}${base}`;
   };
 
   const applyTrait = useApplyTrait({

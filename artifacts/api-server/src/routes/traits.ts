@@ -105,15 +105,22 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   const variant = typeof req.query.variant === "string" ? req.query.variant : "";
   const attrsRaw = typeof req.query.attrs === "string" ? req.query.attrs : "";
-
-  const makePlaceholder = () =>
-    sharp({ create: { width: 1000, height: 1000, channels: 4, background: { r: 26, g: 5, b: 51, alpha: 1 } } })
-      .png().toBuffer();
+  // Optional: original NFT image used as the bottom layer so partial matches still look complete
+  const baseImageUrl = typeof req.query.baseImageUrl === "string" ? req.query.baseImageUrl : "";
 
   if (!variant || !attrsRaw) {
     res.status(400).json({ error: "variant and attrs are required" });
     return;
   }
+
+  // Fetch a remote image into a Buffer (with timeout)
+  const fetchBuf = async (url: string): Promise<Buffer | null> => {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return null;
+      return Buffer.from(await r.arrayBuffer());
+    } catch { return null; }
+  };
 
   // Normalize on-chain trait_type names to DB category names
   const CATEGORY_ALIASES: Record<string, string> = {
@@ -133,46 +140,28 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     };
   }).filter((p): p is { category: string; name: string } => p !== null && p.category !== "" && p.name !== "");
 
-  if (pairs.length === 0) {
-    res.setHeader("Content-Type", "image/png");
-    res.send(await makePlaceholder());
-    return;
-  }
-
   try {
     // Find traits matching the on-chain attribute (category, name) pairs
+    // Search without nft_collection filter so wegens NFTs whose traits happen to
+    // be stored under "wegenettes" (or other) still get matched.
     const names = pairs.map((p) => p.name);
-    const candidates = await db
-      .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name })
-      .from(traitsTable)
-      .where(and(eq(traitsTable.nftCollection, nftCollection), inArray(traitsTable.name, names)));
+    const candidates = names.length > 0
+      ? await db
+          .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name })
+          .from(traitsTable)
+          .where(inArray(traitsTable.name, names))
+      : [];
 
     const pairSet = new Set(pairs.map((p) => `${p.category}:::${p.name}`));
-    const matched = candidates.filter((t) => pairSet.has(`${t.category}:::${t.name}`));
+    const allMatched = candidates.filter((t) => pairSet.has(`${t.category}:::${t.name}`));
 
-    if (matched.length === 0) {
-      res.setHeader("Content-Type", "image/png");
-      res.send(await makePlaceholder());
-      return;
-    }
-
-    // Get variant images for the matched trait IDs
-    const traitIds = matched.map((t) => t.id);
-    const variants = await db
-      .select({
-        traitId: traitVariantsTable.traitId,
-        imageUrl: traitVariantsTable.imageUrl,
-        category: traitsTable.category,
-      })
-      .from(traitVariantsTable)
-      .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
-      .where(
-        and(
-          eq(traitVariantsTable.name, variant),
-          inArray(traitVariantsTable.traitId, traitIds),
-          eq(traitVariantsTable.isEnabled, true),
-        ),
-      );
+    // Deduplicate: keep only the first match per category (avoid double-compositing Body:Ice x2)
+    const seenCategories = new Set<string>();
+    const matched = allMatched.filter((t) => {
+      if (seenCategories.has(t.category)) return false;
+      seenCategories.add(t.category);
+      return true;
+    });
 
     // Get layer order from store settings
     const settings = await db.query.storeSettingsTable.findFirst({
@@ -185,50 +174,86 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     const defaultOrder = ["Background", "Body", "Clothes", "Mouth", "Eyes", "Headgear"];
     const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
 
-    // category → variant imageUrl map
-    const variantByCategory = new Map<string, string>();
-    for (const v of variants) {
-      if (v.imageUrl) variantByCategory.set(v.category, v.imageUrl);
-    }
-
-    // Sort matched traits by layer order and resolve URLs
+    // Get variant images for the matched trait IDs
     const proto = req.headers["x-forwarded-proto"] ?? req.protocol;
     const host = req.headers["x-forwarded-host"] ?? req.get("host");
-    const baseUrl = `${proto}://${host}`;
+    const serverBase = `${proto}://${host}`;
 
-    const sorted = [...matched].sort((a, b) => {
-      const ai = order.indexOf(a.category);
-      const bi = order.indexOf(b.category);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
+    let layerUrls: string[] = [];
 
-    const layerUrls: string[] = [];
-    for (const item of sorted) {
-      const rawUrl = variantByCategory.get(item.category) ?? null;
-      if (!rawUrl) continue;
-      layerUrls.push(rawUrl.startsWith("http") ? rawUrl : `${baseUrl}${rawUrl}`);
+    if (matched.length > 0) {
+      const traitIds = matched.map((t) => t.id);
+      const variants = await db
+        .select({
+          traitId: traitVariantsTable.traitId,
+          imageUrl: traitVariantsTable.imageUrl,
+          category: traitsTable.category,
+        })
+        .from(traitVariantsTable)
+        .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
+        .where(
+          and(
+            eq(traitVariantsTable.name, variant),
+            inArray(traitVariantsTable.traitId, traitIds),
+            eq(traitVariantsTable.isEnabled, true),
+          ),
+        );
+
+      // category → variant imageUrl map (first found wins per category)
+      const variantByCategory = new Map<string, string>();
+      for (const v of variants) {
+        if (v.imageUrl && !variantByCategory.has(v.category)) {
+          variantByCategory.set(v.category, v.imageUrl);
+        }
+      }
+
+      // Sort matched traits by layer order and resolve URLs
+      const sorted = [...matched].sort((a, b) => {
+        const ai = order.indexOf(a.category);
+        const bi = order.indexOf(b.category);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+
+      for (const item of sorted) {
+        const rawUrl = variantByCategory.get(item.category) ?? null;
+        if (!rawUrl) continue;
+        layerUrls.push(rawUrl.startsWith("http") ? rawUrl : `${serverBase}${rawUrl}`);
+      }
     }
 
-    if (layerUrls.length === 0) {
+    // If the original NFT image URL was provided, use it as the bottom-most layer.
+    // This ensures partial-match NFTs (where only some trait layers have variant art)
+    // still show recognisable content instead of a floating silhouette or dark box.
+    // Full-match NFTs (where Background is found and is 100% opaque) effectively hide
+    // the base image anyway, so there's no visual cost for including it.
+    const resolvedBaseImageUrl = baseImageUrl
+      ? (baseImageUrl.startsWith("http") ? baseImageUrl : `${serverBase}${baseImageUrl}`)
+      : null;
+
+    if (layerUrls.length === 0 && !resolvedBaseImageUrl) {
+      // Nothing to show at all
+      const placeholder = await sharp({
+        create: { width: 1000, height: 1000, channels: 4, background: { r: 26, g: 5, b: 51, alpha: 1 } },
+      }).png().toBuffer();
       res.setHeader("Content-Type", "image/png");
-      res.send(await makePlaceholder());
+      res.send(placeholder);
       return;
     }
 
-    // Fetch image buffers in parallel
-    const fetchBuf = async (url: string): Promise<Buffer | null> => {
-      try {
-        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-        if (!r.ok) return null;
-        return Buffer.from(await r.arrayBuffer());
-      } catch { return null; }
-    };
+    // Build the full ordered URL list: base NFT image first (if provided), then variant layers
+    const allUrls: string[] = [
+      ...(resolvedBaseImageUrl ? [resolvedBaseImageUrl] : []),
+      ...layerUrls,
+    ];
 
-    const buffers = (await Promise.all(layerUrls.map(fetchBuf))).filter((b): b is Buffer => b !== null);
+    const buffers = (await Promise.all(allUrls.map(fetchBuf))).filter((b): b is Buffer => b !== null);
 
     if (buffers.length === 0) {
+      const placeholder = await sharp({
+        create: { width: 1000, height: 1000, channels: 4, background: { r: 26, g: 5, b: 51, alpha: 1 } },
+      }).png().toBuffer();
       res.setHeader("Content-Type", "image/png");
-      res.send(await makePlaceholder());
+      res.send(placeholder);
       return;
     }
 
@@ -240,9 +265,11 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     );
 
     const [base, ...rest] = resized;
-    const composited = await sharp(base)
-      .composite(rest.map((buf) => ({ input: buf, blend: "over" as const })))
-      .png().toBuffer();
+    const composited = rest.length > 0
+      ? await sharp(base)
+          .composite(rest.map((buf) => ({ input: buf, blend: "over" as const })))
+          .png().toBuffer()
+      : base;
 
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "public, max-age=300");

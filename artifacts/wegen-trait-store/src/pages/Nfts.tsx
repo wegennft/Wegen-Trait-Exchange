@@ -116,38 +116,29 @@ function NftsContent() {
   });
   const variantPacks: string[] = variantCollectionsData?.collections ?? [];
 
-  // Fetch nameMap for the currently previewed variant so we can show variant images on cards
+  // Fetch variantMap (traitId → variant imageUrl) for equipped trait thumbnail swaps
   const { data: previewVariantData, isLoading: isLoadingPreview } = useQuery({
     queryKey: ["trait-variants-preview", previewVariant, collection],
     enabled: !!previewVariant,
     queryFn: async () => {
       const res = await fetch(
-        `/api/traits/variants-by-collection?pack=${encodeURIComponent(previewVariant!)}&nftCollection=${encodeURIComponent(collection)}`,
+        `/api/traits/variants/by-collection?name=${encodeURIComponent(previewVariant!)}&nftCollection=${encodeURIComponent(collection)}`,
       );
-      type NameMapEntry = { imageUrl: string | null; mediaType: string; category: string };
-      type VariantData = { variantMap: Record<string, { imageUrl: string | null; mediaType: string }>; nameMap: Record<string, NameMapEntry> };
+      type VariantEntry = { imageUrl: string | null; mediaType: string };
+      type VariantData = { variantMap: Record<string, VariantEntry>; nameMap: Record<string, unknown> };
       if (!res.ok) return { variantMap: {}, nameMap: {} } as VariantData;
       return res.json() as Promise<VariantData>;
     },
   });
-  type NameMapEntry = { imageUrl: string | null; mediaType: string; category: string };
-  const previewNameMap: Record<string, NameMapEntry> =
-    (previewVariantData?.nameMap ?? {}) as Record<string, NameMapEntry>;
+  // variantMap keyed by traitId string → variant imageUrl for equipped trait thumbnails
+  const previewVariantMap: Record<string, { imageUrl: string | null }> =
+    (previewVariantData?.variantMap ?? {}) as Record<string, { imageUrl: string | null }>;
 
-  // Return variant image URL for a card based on its on-chain attributes + the current previewNameMap.
-  // Tries multiple key patterns because on-chain attribute values (e.g. "Psychedelic") are the short
-  // form of the full trait name (e.g. "Psychedelic Background") stored in the nameMap.
-  const getCardImageUrl = (nft: { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] }) => {
-    if (!previewVariant || isLoadingPreview) return nft.imageUrl ?? null;
-    const attrs = nft.onChainAttributes ?? [];
-    for (const attr of attrs) {
-      const val = attr.value.toLowerCase();
-      const type = attr.trait_type.toLowerCase();
-      // Try: "psychedelic background", "psychedelic", "background psychedelic"
-      const entry = previewNameMap[`${val} ${type}`] ?? previewNameMap[val] ?? previewNameMap[`${type} ${val}`];
-      if (entry?.imageUrl) return entry.imageUrl;
-    }
-    return nft.imageUrl ?? null;
+  // For the card's main image: when a variant is selected and the NFT has equipped traits,
+  // use the metadata composite endpoint with ?variant= so the server renders the variant layers.
+  const getCardImageUrl = (nft: { tokenId: number; imageUrl?: string | null; equippedTraits: { trait: { id: number } }[] }) => {
+    if (!previewVariant || nft.equippedTraits.length === 0) return nft.imageUrl ?? null;
+    return `/api/metadata/${collection}/${nft.tokenId}/image?variant=${encodeURIComponent(previewVariant)}`;
   };
 
   const applyTrait = useApplyTrait({
@@ -401,7 +392,7 @@ function NftsContent() {
                     </div>
                   )}
                   {(() => {
-                    const cardImg = getCardImageUrl(nft as { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] });
+                    const cardImg = getCardImageUrl(nft);
                     return cardImg ? (
                       <img
                         src={cardImg}
@@ -479,17 +470,23 @@ function NftsContent() {
                           key={et.category}
                           className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 bg-secondary/40 border border-border/40"
                         >
-                          {et.trait.imageUrl ? (
-                            <img
-                              src={et.trait.imageUrl}
-                              alt={et.trait.name}
-                              className="w-7 h-7 object-contain rounded shrink-0"
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded bg-secondary flex items-center justify-center text-xs font-bold uppercase shrink-0">
-                              {et.category[0]}
-                            </div>
-                          )}
+                          {(() => {
+                            const variantImg = previewVariant
+                              ? (previewVariantMap[String(et.trait.id)]?.imageUrl ?? null)
+                              : null;
+                            const src = variantImg ?? et.trait.imageUrl;
+                            return src ? (
+                              <img
+                                src={src}
+                                alt={et.trait.name}
+                                className="w-7 h-7 object-contain rounded shrink-0"
+                              />
+                            ) : (
+                              <div className="w-7 h-7 rounded bg-secondary flex items-center justify-center text-xs font-bold uppercase shrink-0">
+                                {et.category[0]}
+                              </div>
+                            );
+                          })()}
                           <div className="flex-1 min-w-0">
                             <div className={`text-xs font-semibold truncate ${getRarityColor(et.trait.rarity)}`}>
                               {et.trait.name}

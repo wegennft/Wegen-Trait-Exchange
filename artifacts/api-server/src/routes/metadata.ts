@@ -125,7 +125,11 @@ router.get(
       ]);
 
       const layerOrder = await getLayerOrder(collection);
-      const variantPack = nft?.variantPack ?? null;
+      // ?variant= allows preview mode (e.g. from My Wegens page) before SOC
+      const variantPack =
+        (typeof req.query.variant === "string" && req.query.variant)
+          ? req.query.variant
+          : (nft?.variantPack ?? null);
 
       // Build variant image map if a variant pack is selected
       const variantImageMap = new Map<number, string>();

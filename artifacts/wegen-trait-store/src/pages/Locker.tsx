@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { TraitMedia } from "@/components/TraitMedia";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCollection } from "@/contexts/CollectionContext";
@@ -239,12 +239,21 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
       return;
     }
     if (!walletAddress || !activeNft) return;
-    confirmTraits.mutate({ tokenId: activeNft.tokenId, data: { walletAddress, variantPack: selectedVariantPack ?? undefined } });
+    confirmTraits.mutate({ tokenId: activeNft.tokenId, data: { walletAddress, variantPack: selectedVariantPack } });
   };
 
   const nfts        = demo ? demoNfts  : (nftsData?.nfts ?? []);
   const lockerItems = demo ? demoItems : (lockerData?.items ?? []);
   const activeNft   = (selectedTokenId != null ? nfts.find(n => n.tokenId === selectedTokenId) : nfts[0]) ?? null;
+
+  // Sync the variant picker to whatever is saved on-chain for each NFT
+  useEffect(() => {
+    if (!demo) {
+      setSelectedVariantPack((activeNft as { variantPack?: string | null } | null)?.variantPack ?? null);
+    }
+  // activeNft identity changes when selectedTokenId changes or nftsData refreshes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNft?.tokenId, nftsData]);
 
   const allLayers   = useMemo(() => Array.from(new Set(lockerItems.map(i => i.trait.category))).sort(), [lockerItems]);
   const allRarities = ["legendary", "rare", "uncommon", "common"];
@@ -590,7 +599,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {activeNft.equippedTraits.map(et => (
+                    {(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null } }[]).map(et => (
                       <div
                         key={et.category}
                         className="group/et flex items-center gap-2 px-2.5 py-1.5 transition-all rounded"
@@ -681,105 +690,139 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
         )}
       </div>
 
-      {/* ── Variant Tabs Band ── */}
-      {activeNft && (
-        <div
-          className="flex-shrink-0 border-b"
-          style={{
-            background: 'linear-gradient(90deg,rgba(26,16,40,0.99),rgba(16,11,24,0.99))',
-            borderColor: 'rgba(157,0,255,0.15)',
-          }}
-        >
-          <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
+      {/* ── Version Toggle Band ── */}
+      {activeNft && (() => {
+        const savedPack  = (activeNft as { variantPack?: string | null }).variantPack ?? null;
+        const isDirty    = selectedVariantPack !== savedPack;
+        const canSave    = isDirty || activeNft.equippedTraits.length > 0;
+        return (
+          <div
+            className="flex-shrink-0 border-b"
+            style={{
+              background: 'linear-gradient(90deg,rgba(26,16,40,0.99),rgba(16,11,24,0.99))',
+              borderColor: 'rgba(157,0,255,0.15)',
+            }}
+          >
+            <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
 
-            {/* Section label */}
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <Layers className="w-3 h-3 text-muted-foreground/50" />
-              <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
-                Variant Style
-              </span>
-            </div>
+              {/* Label */}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <Layers className="w-3 h-3 text-muted-foreground/50" />
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
+                  Display Version
+                </span>
+              </div>
 
-            {/* BASE tab */}
-            <button
-              onClick={() => setSelectedVariantPack(null)}
-              className="flex-shrink-0 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-all"
-              style={{
-                ...BANGERS,
-                background: selectedVariantPack === null ? 'rgba(157,0,255,0.2)' : 'rgba(157,0,255,0.05)',
-                border: selectedVariantPack === null ? '1px solid rgba(157,0,255,0.7)' : '1px solid rgba(157,0,255,0.2)',
-                color: selectedVariantPack === null ? 'hsl(272 100% 78%)' : 'hsl(272 30% 60%)',
-                boxShadow: selectedVariantPack === null ? '0 0 10px rgba(157,0,255,0.3)' : 'none',
-              }}
-            >
-              BASE
-            </button>
+              {/* ORIGINAL button */}
+              {(() => {
+                const isSelected = selectedVariantPack === null;
+                const isSaved    = savedPack === null;
+                return (
+                  <button
+                    onClick={() => setSelectedVariantPack(null)}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-all"
+                    style={{
+                      ...BANGERS,
+                      background: isSelected ? 'rgba(157,0,255,0.2)' : 'rgba(157,0,255,0.05)',
+                      border: isSelected ? '1px solid rgba(157,0,255,0.7)' : '1px solid rgba(157,0,255,0.2)',
+                      color: isSelected ? 'hsl(272 100% 78%)' : 'hsl(272 30% 60%)',
+                      boxShadow: isSelected ? '0 0 10px rgba(157,0,255,0.3)' : 'none',
+                    }}
+                  >
+                    Original
+                    {isSaved && (
+                      <span className="text-[8px] px-1 py-0.5 rounded font-mono normal-case"
+                        style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgba(34,197,94,0.4)', color: 'hsl(142 60% 55%)' }}>
+                        saved
+                      </span>
+                    )}
+                  </button>
+                );
+              })()}
 
-            {/* Variant pack tabs */}
-            {variantPacks.map(pack => (
-              <button
-                key={pack}
-                onClick={() => setSelectedVariantPack(selectedVariantPack === pack ? null : pack)}
-                className="flex-shrink-0 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-all"
-                style={{
-                  ...BANGERS,
-                  background: selectedVariantPack === pack ? 'rgba(255,200,0,0.15)' : 'rgba(157,0,255,0.05)',
-                  border: selectedVariantPack === pack ? '1px solid rgba(255,200,0,0.6)' : '1px solid rgba(157,0,255,0.2)',
-                  color: selectedVariantPack === pack ? 'hsl(43 100% 65%)' : 'hsl(272 30% 60%)',
-                  boxShadow: selectedVariantPack === pack ? '0 0 10px rgba(255,200,0,0.15)' : 'none',
-                }}
-              >
-                {pack}
-              </button>
-            ))}
+              {/* Variant pack buttons */}
+              {variantPacks.map(pack => {
+                const isSelected = selectedVariantPack === pack;
+                const isSaved    = savedPack === pack;
+                return (
+                  <button
+                    key={pack}
+                    onClick={() => setSelectedVariantPack(isSelected ? null : pack)}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-all"
+                    style={{
+                      ...BANGERS,
+                      background: isSelected ? 'rgba(255,200,0,0.15)' : 'rgba(157,0,255,0.05)',
+                      border: isSelected ? '1px solid rgba(255,200,0,0.6)' : '1px solid rgba(157,0,255,0.2)',
+                      color: isSelected ? 'hsl(43 100% 65%)' : 'hsl(272 30% 60%)',
+                      boxShadow: isSelected ? '0 0 10px rgba(255,200,0,0.15)' : 'none',
+                    }}
+                  >
+                    {pack}
+                    {isSaved && (
+                      <span className="text-[8px] px-1 py-0.5 rounded font-mono normal-case"
+                        style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgba(34,197,94,0.4)', color: 'hsl(142 60% 55%)' }}>
+                        saved
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
 
-            {/* Loading spinner while fetching variant images */}
-            {isLoadingVariant && (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/40 flex-shrink-0" />
-            )}
+              {isLoadingVariant && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/40 flex-shrink-0" />}
 
-            {/* Empty state hint when no variant packs exist */}
-            {variantPacks.length === 0 && !isLoadingVariant && (
-              <span className="text-[10px] font-mono text-muted-foreground/30 italic">
-                No variant packs configured
-              </span>
-            )}
+              {variantPacks.length === 0 && !isLoadingVariant && (
+                <span className="text-[10px] font-mono text-muted-foreground/30 italic">No variant packs configured</span>
+              )}
 
-            {/* Spacer */}
-            <div className="flex-1" />
+              <div className="flex-1" />
 
-            {/* SOC button */}
-            {activeNft.equippedTraits.length > 0 && (
-              <button
-                onClick={() => setConfirmOpen(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase transition-all"
-                style={{
-                  ...BANGERS,
-                  background: 'linear-gradient(90deg,rgba(255,200,0,0.18),rgba(157,0,255,0.18))',
-                  border: '1px solid rgba(255,200,0,0.55)',
-                  color: 'hsl(43 100% 65%)',
-                  boxShadow: '0 0 12px rgba(255,200,0,0.1)',
-                }}
-              >
-                <Database className="w-3.5 h-3.5" />
-                SOC
-                {selectedVariantPack && (
-                  <span className="text-[9px] ml-0.5 opacity-70 normal-case" style={{ fontFamily: 'monospace' }}>
-                    · {selectedVariantPack}
+              {/* SOC — visible when style changed OR traits equipped */}
+              {canSave && (
+                <button
+                  onClick={() => setConfirmOpen(true)}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase transition-all"
+                  style={{
+                    ...BANGERS,
+                    background: isDirty
+                      ? 'linear-gradient(90deg,rgba(34,197,94,0.15),rgba(157,0,255,0.15))'
+                      : 'linear-gradient(90deg,rgba(255,200,0,0.18),rgba(157,0,255,0.18))',
+                    border: isDirty ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(255,200,0,0.55)',
+                    color: isDirty ? 'hsl(142 60% 65%)' : 'hsl(43 100% 65%)',
+                    boxShadow: isDirty ? '0 0 10px rgba(34,197,94,0.12)' : '0 0 12px rgba(255,200,0,0.1)',
+                  }}
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  {isDirty ? 'Save Version' : 'SOC'}
+                  <span className="text-[9px] ml-0.5 opacity-70 normal-case font-mono">
+                    · {selectedVariantPack ?? 'original'}
                   </span>
-                )}
-              </button>
-            )}
-          </div>
-
-          {/* Variant active hint */}
-          {selectedVariantPack && (
-            <div className="px-4 pb-2 text-[10px] font-mono" style={{ color: 'hsl(43 100% 55%)' }}>
-              ◈ Previewing <span className="font-bold">{selectedVariantPack}</span> variant above — click SOC to save this style on-chain
+                </button>
+              )}
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Status line */}
+            <div className="px-4 pb-2 flex items-center gap-3 flex-wrap">
+              {isDirty ? (
+                <span className="text-[10px] font-mono" style={{ color: 'hsl(142 60% 55%)' }}>
+                  ◈ Previewing <span className="font-bold">{selectedVariantPack ?? 'original'}</span>
+                  <span className="opacity-60 ml-1">
+                    — on-chain: <span className="font-bold">{savedPack ?? 'original'}</span>
+                    {' '}· click "Save Version" to update
+                  </span>
+                </span>
+              ) : savedPack ? (
+                <span className="text-[10px] font-mono" style={{ color: 'hsl(43 60% 55%)' }}>
+                  ◈ Showing <span className="font-bold">{savedPack}</span> — saved on-chain
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono" style={{ color: 'hsl(272 30% 45%)' }}>
+                  ◈ Showing original version
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Traits Grid Section ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -946,7 +989,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 {activeNft && activeNft.equippedTraits.length > 0 && (
                   <div className="mt-2 space-y-1.5">
                     <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest mb-2">Traits being applied:</p>
-                    {activeNft.equippedTraits.map(et => (
+                    {(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null } }[]).map(et => (
                       <div key={et.category} className="flex items-center gap-2 px-2.5 py-1.5 rounded"
                         style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.2)' }}>
                         <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(272 100% 65%)' }} />

@@ -478,7 +478,16 @@ router.post("/nfts/:tokenId/confirm-traits", requireWalletOwnership(), async (re
     .innerJoin(traitsTable, eq(lockerItemsTable.traitId, traitsTable.id))
     .where(eq(lockerItemsTable.equippedToTokenId, tokenId));
 
-  if (equippedRows.length === 0 && !nftIsLegend) {
+  // Parse variant pack first — saving a style (even with no equipped traits) is valid
+  const variantPack =
+    typeof req.body.variantPack === "string" && req.body.variantPack.length > 0
+      ? req.body.variantPack
+      : null;
+
+  // "variantPack" key present in body means the user is explicitly choosing a display style
+  const isSavingStyle = "variantPack" in req.body;
+
+  if (equippedRows.length === 0 && !nftIsLegend && !isSavingStyle) {
     res.status(400).json({ error: "No traits equipped to this NFT" });
     return;
   }
@@ -490,19 +499,13 @@ router.post("/nfts/:tokenId/confirm-traits", requireWalletOwnership(), async (re
       Math.floor(Math.random() * 16).toString(16),
     ).join("");
 
-  // Optional variant pack from body (not in Zod schema — read directly)
-  const variantPack =
-    typeof req.body.variantPack === "string" && req.body.variantPack.length > 0
-      ? req.body.variantPack
-      : null;
-
-  // Record the metadata confirmation on the NFT row
+  // Record the metadata confirmation on the NFT row; always update variantPack when style intent present
   await db
     .update(wegenNftsTable)
     .set({
       metadataTxHash: txHash,
       metadataUpdatedAt: new Date(),
-      ...(variantPack !== undefined ? { variantPack } : {}),
+      variantPack,
     })
     .where(eq(wegenNftsTable.tokenId, tokenId));
 

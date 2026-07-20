@@ -53,6 +53,8 @@ export function Nfts() {
 function NftsContent() {
   const [selectedNft, setSelectedNft] = useState<WegenNft | null>(null);
   const [activeCategoryTab, setActiveCategoryTab] = useState<string>("all");
+  // Page-level variant preview — controls which version is shown on all cards
+  const [previewVariant, setPreviewVariant] = useState<string | null>(null);
 
   const [saveDialogNft, setSaveDialogNft] = useState<WegenNft | null>(null);
   const [saveVariantPack, setSaveVariantPack] = useState<string | null>(null);
@@ -113,6 +115,31 @@ function NftsContent() {
     },
   });
   const variantPacks: string[] = variantCollectionsData?.collections ?? [];
+
+  // Fetch nameMap for the currently previewed variant so we can show variant images on cards
+  const { data: previewVariantData, isLoading: isLoadingPreview } = useQuery({
+    queryKey: ["trait-variants-preview", previewVariant, collection],
+    enabled: !!previewVariant,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/traits/variants-by-collection?pack=${encodeURIComponent(previewVariant!)}&nftCollection=${encodeURIComponent(collection)}`,
+      );
+      if (!res.ok) return { variantMap: {} as Record<string, string>, nameMap: {} as Record<string, string> };
+      return res.json() as Promise<{ variantMap: Record<string, string>; nameMap: Record<string, string> }>;
+    },
+  });
+  const previewNameMap: Record<string, string> = previewVariantData?.nameMap ?? {};
+
+  // Return variant image URL for a card based on its on-chain attributes + the current previewNameMap
+  const getCardImageUrl = (nft: { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] }) => {
+    if (!previewVariant || isLoadingPreview) return nft.imageUrl ?? null;
+    const attrs = nft.onChainAttributes ?? [];
+    for (const attr of attrs) {
+      const url = previewNameMap[attr.value.toLowerCase()];
+      if (url) return url;
+    }
+    return nft.imageUrl ?? null;
+  };
 
   const applyTrait = useApplyTrait({
     mutation: {
@@ -190,7 +217,8 @@ function NftsContent() {
 
   const openSaveDialog = (nft: WegenNft & { variantPack?: string | null }) => {
     setSaveDialogNft(nft);
-    setSaveVariantPack(nft.variantPack ?? null);
+    // Pre-populate from the page-level preview selection, falling back to the NFT's saved pack
+    setSaveVariantPack(previewVariant ?? nft.variantPack ?? null);
     setSaveTxResult(null);
   };
 
@@ -358,15 +386,30 @@ function NftsContent() {
                 </div>
 
                 <div className="relative aspect-square bg-secondary/30 overflow-hidden">
-                  {nft.imageUrl ? (
-                    <img
-                      src={nft.imageUrl}
-                      alt={nft.name}
-                      className="absolute inset-0 w-full h-full object-contain z-0"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-secondary to-background z-0 flex items-center justify-center">
-                      <Gem className="w-24 h-24 text-muted-foreground/20" />
+                  {isLoadingPreview && previewVariant && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
+                      <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+                    </div>
+                  )}
+                  {(() => {
+                    const cardImg = getCardImageUrl(nft as { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] });
+                    return cardImg ? (
+                      <img
+                        src={cardImg}
+                        alt={nft.name}
+                        className="absolute inset-0 w-full h-full object-contain z-0"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-secondary to-background z-0 flex items-center justify-center">
+                        <Gem className="w-24 h-24 text-muted-foreground/20" />
+                      </div>
+                    );
+                  })()}
+                  {/* Variant badge overlay */}
+                  {previewVariant && (
+                    <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded"
+                      style={{ background: 'rgba(255,200,0,0.85)', color: '#000', fontFamily: "'Bungee', Impact, sans-serif" }}>
+                      {previewVariant}
                     </div>
                   )}
                 </div>
@@ -462,10 +505,10 @@ function NftsContent() {
 
                     {/* SOC — Save On Chain button, always visible */}
                     {(() => {
-                      const canSoc = isLegend || hasEquipped;
+                      const canSoc = true; // variant-only saves now supported
                       return (
                         <button
-                          onClick={() => canSoc && openSaveDialog(nftExt)}
+                          onClick={() => openSaveDialog(nftExt)}
                           disabled={!canSoc}
                           title={
                             isLegend
@@ -505,6 +548,67 @@ function NftsContent() {
         );
 
         return (
+          <>
+          {/* ── Variant Toggle Band ── */}
+          {variantPacks.length > 0 && (
+            <div
+              className="mb-6 flex items-center gap-3 flex-wrap px-4 py-3 rounded-xl border"
+              style={{
+                background: 'linear-gradient(90deg,rgba(26,16,40,0.95),rgba(16,11,24,0.95))',
+                borderColor: 'rgba(157,0,255,0.2)',
+              }}
+            >
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <Layers className="w-3.5 h-3.5 text-muted-foreground/50" />
+                <span className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest">
+                  Display Version
+                </span>
+              </div>
+
+              {/* Original button */}
+              <button
+                onClick={() => setPreviewVariant(null)}
+                className="flex-shrink-0 px-3 py-1.5 text-[12px] font-bold uppercase tracking-wide transition-all rounded"
+                style={{
+                  background: previewVariant === null ? 'rgba(157,0,255,0.2)' : 'rgba(157,0,255,0.05)',
+                  border: previewVariant === null ? '1px solid rgba(157,0,255,0.7)' : '1px solid rgba(157,0,255,0.2)',
+                  color: previewVariant === null ? 'hsl(272 100% 78%)' : 'hsl(272 30% 60%)',
+                  boxShadow: previewVariant === null ? '0 0 10px rgba(157,0,255,0.3)' : 'none',
+                  fontFamily: "'Bungee', Impact, sans-serif",
+                }}
+              >
+                Original
+              </button>
+
+              {/* Variant pack buttons */}
+              {variantPacks.map(pack => (
+                <button
+                  key={pack}
+                  onClick={() => setPreviewVariant(previewVariant === pack ? null : pack)}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold uppercase tracking-wide transition-all rounded"
+                  style={{
+                    background: previewVariant === pack ? 'rgba(255,200,0,0.15)' : 'rgba(157,0,255,0.05)',
+                    border: previewVariant === pack ? '1px solid rgba(255,200,0,0.6)' : '1px solid rgba(157,0,255,0.2)',
+                    color: previewVariant === pack ? 'hsl(43 100% 65%)' : 'hsl(272 30% 60%)',
+                    boxShadow: previewVariant === pack ? '0 0 10px rgba(255,200,0,0.15)' : 'none',
+                    fontFamily: "'Bungee', Impact, sans-serif",
+                  }}
+                >
+                  {pack}
+                  {isLoadingPreview && previewVariant === pack && (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  )}
+                </button>
+              ))}
+
+              <span className="text-[10px] font-mono text-muted-foreground/40 ml-auto">
+                {previewVariant
+                  ? `Previewing ${previewVariant} — SOC a card to save this version on-chain`
+                  : 'Switch version to preview · SOC to save on-chain'}
+              </span>
+            </div>
+          )}
+
           <Tabs defaultValue={wegens.length > 0 ? "wegens" : "wegenettes"} className="w-full">
             <TabsList className="mb-6 h-auto p-1 gap-1 bg-card/60 border border-border/40">
               {wegens.length > 0 && (
@@ -531,6 +635,7 @@ function NftsContent() {
               </TabsContent>
             )}
           </Tabs>
+          </>
         );
       })()}
 
@@ -896,7 +1001,7 @@ function NftsContent() {
                 {/* SOC button */}
                 <button
                   onClick={handleSaveToChain}
-                  disabled={isSaving || (!saveDialogNft?.isLegend && !saveDialogNft?.equippedTraits.length)}
+                  disabled={isSaving || (!saveDialogNft?.isLegend && !saveDialogNft?.equippedTraits.length && saveVariantPack === null)}
                   className="w-full flex items-center justify-center gap-3 rounded-xl py-3.5 text-base font-black uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                   style={{
                     background: isSaving

@@ -133,10 +133,16 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
     };
   });
 
-  // Also include any DB-only NFTs that aren't on-chain yet (edge case / seeded data)
+  // Also include any DB-only NFTs that aren't on-chain yet (edge case / seeded data).
+  // Infer isWegenette from the stored name so seeded Wegenette records still get
+  // the right collection flag even when on-chain data isn't available.
   for (const local of localNfts) {
     if (!merged.find((m) => m.tokenId === local.tokenId)) {
-      merged.push({ ...local, isWegenette: false, onChainAttributes: [] });
+      merged.push({
+        ...local,
+        isWegenette: local.name.toLowerCase().startsWith("wegenette"),
+        onChainAttributes: [],
+      });
     }
   }
 

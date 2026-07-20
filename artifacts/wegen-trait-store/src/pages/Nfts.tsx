@@ -81,12 +81,18 @@ function NftsContent() {
     },
   });
 
+  // Derive the locker collection from the currently selected NFT so the
+  // Equip Traits dialog always shows traits that match the NFT's own collection.
+  const lockerCollection = selectedNft
+    ? (selectedNft.isWegenette ? "wegenettes" : "wegens")
+    : collection;
+
   const { data: lockerData, isLoading: isLoadingLocker } = useQuery({
-    queryKey: [...getGetLockerQueryKey(walletAddress || ""), collection],
+    queryKey: [...getGetLockerQueryKey(walletAddress || ""), lockerCollection],
     enabled: !!walletAddress,
     queryFn: async () => {
       const res = await fetch(
-        `/api/locker/${walletAddress}?nftCollection=${encodeURIComponent(collection)}`,
+        `/api/locker/${walletAddress}?nftCollection=${encodeURIComponent(lockerCollection)}`,
       );
       if (!res.ok) throw new Error("Failed to fetch locker");
       return res.json() as Promise<{ items: LockerItem[] }>;

@@ -105,6 +105,8 @@ function NftPreviewBanner({
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
+  const { collection, collectionLabel } = useCollection();
+
   const isNftIneligible = (nft: WegenNft) =>
     ineligibleNfts.includes(String(nft.tokenId).toLowerCase()) ||
     ineligibleNfts.includes((nft.name ?? "").toLowerCase());
@@ -118,10 +120,17 @@ function NftPreviewBanner({
     },
   });
 
-  const nfts = nftsData?.nfts ?? [];
+  const allNfts = nftsData?.nfts ?? [];
+  // Only show NFTs that belong to the currently active collection
+  const nfts = allNfts.filter((n) =>
+    collection === "wegenettes" ? n.isWegenette : !n.isWegenette,
+  );
 
   useEffect(() => {
-    if (nfts.length > 0 && !previewNft) {
+    // Auto-select the first NFT that belongs to the current collection, or clear
+    // the selection if the current previewNft is from the wrong collection.
+    const inList = nfts.some((n) => n.tokenId === previewNft?.tokenId);
+    if (nfts.length > 0 && !inList) {
       setPreviewNft(nfts[0]);
     }
   }, [nfts]);
@@ -146,7 +155,7 @@ function NftPreviewBanner({
           NFT PREVIEW
         </span>
         <span className="text-xs text-muted-foreground/60 ml-1 font-mono hidden sm:inline">
-          — hover any trait to preview on your Wegen
+          — hover any trait to preview on your {collectionLabel}
         </span>
         <span className="ml-auto text-muted-foreground/50">
           {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -205,27 +214,35 @@ function NftPreviewBanner({
                     </div>
                   )}
 
-                  {/* Currently equipped trait overlays (shown when nothing is being previewed) */}
-                  {previewNft && !effectivePreviewTrait && !previewNftBlocked &&
-                    previewNft.equippedTraits.map(et =>
-                      et.trait.imageUrl ? (
-                        <img
-                          key={et.category}
-                          src={et.trait.imageUrl}
-                          alt={et.trait.name}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : null,
-                    )}
-
-                  {/* Previewed trait overlay */}
-                  {effectivePreviewTrait?.imageUrl && (
-                    <img
-                      src={effectivePreviewTrait.imageUrl}
-                      alt={effectivePreviewTrait.name}
-                      className="absolute inset-0 w-full h-full object-cover animate-in fade-in duration-150"
-                    />
-                  )}
+                  {/* Trait layers in correct z-order (equipped + preview merged and sorted back→front) */}
+                  {previewNft && !previewNftBlocked && (() => {
+                    // Layer render order: index 0 = back (rendered first), last = front (rendered last/on top)
+                    const LAYER_ORDER = collection === "wegenettes"
+                      ? ["Background", "Body", "Clothes", "Headgear", "Mouth", "Eyes"]
+                      : ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
+                    const getZ = (cat: string) => {
+                      const i = LAYER_ORDER.indexOf(cat);
+                      return i === -1 ? 3 : i;
+                    };
+                    const layers: { category: string; imageUrl: string; isNew: boolean }[] = [
+                      // Equipped locker traits, excluding the category being previewed (it's replaced)
+                      ...previewNft.equippedTraits
+                        .filter(et => et.trait.imageUrl && (!effectivePreviewTrait || et.category !== effectivePreviewTrait.category))
+                        .map(et => ({ category: et.category, imageUrl: et.trait.imageUrl!, isNew: false })),
+                      // The trait being previewed slots in at its own layer position
+                      ...(effectivePreviewTrait?.imageUrl
+                        ? [{ category: effectivePreviewTrait.category, imageUrl: effectivePreviewTrait.imageUrl, isNew: true }]
+                        : []),
+                    ].sort((a, b) => getZ(a.category) - getZ(b.category));
+                    return layers.map(layer => (
+                      <img
+                        key={layer.category}
+                        src={layer.imageUrl}
+                        alt={layer.category}
+                        className={`absolute inset-0 w-full h-full object-cover ${layer.isNew ? "animate-in fade-in duration-150" : ""}`}
+                      />
+                    ));
+                  })()}
 
                   {/* Token ID */}
                   {previewNft && (
@@ -309,7 +326,7 @@ function NftPreviewBanner({
                     Selected NFT
                   </div>
                   <div style={BANGERS} className={`text-2xl leading-tight ${previewNftBlocked ? "text-red-400/80" : "text-foreground"}`}>
-                    {previewNft?.name ?? "Select a Wegen"}
+                    {previewNft?.name ?? `Select a ${collectionLabel}`}
                   </div>
                 </div>
 

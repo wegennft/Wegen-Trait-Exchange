@@ -94,6 +94,7 @@ function NftPreviewBanner({
   previewTrait,
   ineligibleNfts = [],
   ethUsd,
+  onPreviewNftChange,
 }: {
   walletAddress: string | null;
   isConnected: boolean;
@@ -101,6 +102,7 @@ function NftPreviewBanner({
   previewTrait: Trait | null;
   ineligibleNfts?: string[];
   ethUsd: number | null;
+  onPreviewNftChange?: (nft: WegenNft | null) => void;
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -111,7 +113,12 @@ function NftPreviewBanner({
     ineligibleNfts.includes(String(nft.tokenId).toLowerCase()) ||
     ineligibleNfts.includes((nft.name ?? "").toLowerCase());
   const previewNftBlocked = previewNft ? isNftIneligible(previewNft) : false;
-  const effectivePreviewTrait = previewNftBlocked ? null : previewTrait;
+  const previewNftIsLegend = previewNft?.isLegend === true;
+  const effectivePreviewTrait = (previewNftBlocked || previewNftIsLegend) ? null : previewTrait;
+
+  useEffect(() => {
+    onPreviewNftChange?.(previewNft);
+  }, [previewNft, onPreviewNftChange]);
 
   const { data: nftsData, isLoading } = useGetUserNfts(walletAddress ?? "", {
     query: {
@@ -264,6 +271,15 @@ function NftPreviewBanner({
                     </div>
                   )}
 
+                  {previewNftIsLegend && !previewNftBlocked && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 backdrop-blur-[2px]">
+                      <div className="w-12 h-12 rounded-full bg-yellow-500/20 border border-yellow-500/50 flex items-center justify-center">
+                        <Crown className="w-6 h-6 text-yellow-400" />
+                      </div>
+                      <span className="text-xs text-yellow-300 font-semibold text-center px-2 leading-tight">Legend NFT</span>
+                    </div>
+                  )}
+
                   {/* Preview label */}
                   {effectivePreviewTrait && !previewNftBlocked && (
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 py-2.5">
@@ -340,6 +356,19 @@ function NftPreviewBanner({
                       <div className="text-xs font-semibold text-red-300 mb-0.5">Ineligible NFT</div>
                       <p className="text-[11px] text-red-300/70 leading-relaxed">
                         This NFT is not eligible for trait preview or upgrade in this store. Select a different Wegen to continue.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Legend NFT — variant swaps only */}
+                {previewNftIsLegend && !previewNftBlocked && (
+                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                    <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs font-semibold text-yellow-300 mb-0.5">Legend NFT — Variant Swaps Only</div>
+                      <p className="text-[11px] text-yellow-300/70 leading-relaxed">
+                        Legend NFTs cannot purchase traits. Visit the Legends &amp; 1/1's page to swap your variant style.
                       </p>
                     </div>
                   </div>
@@ -431,7 +460,7 @@ function NftPreviewBanner({
                       <p className="text-xs text-muted-foreground/80 line-clamp-2 italic">{effectivePreviewTrait.description}</p>
                     )}
                   </div>
-                ) : !previewNftBlocked ? (
+                ) : !previewNftBlocked && !previewNftIsLegend ? (
                   <div className="flex-1 flex flex-col items-center justify-center py-5 gap-2 text-muted-foreground/35 border border-dashed border-border/25 rounded-lg">
                     <Eye className="w-8 h-8" />
                     <p className="text-xs text-center leading-relaxed">
@@ -460,6 +489,7 @@ export function Store() {
   const [checkoutProgress, setCheckoutProgress] = useState<{ done: number; total: number } | null>(null);
   const [storeMode, setStoreMode] = useState<"traits" | "legends">("traits");
   const [legendPack, setLegendPack] = useState<string | undefined>();
+  const [previewNftIsLegend, setPreviewNftIsLegend] = useState(false);
 
   const { walletAddress, isConnected, connect } = useWallet();
   const { collection, theme } = useCollection();
@@ -897,6 +927,7 @@ export function Store() {
         previewTrait={previewTrait}
         ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
         ethUsd={ethUsd}
+        onPreviewNftChange={(nft) => setPreviewNftIsLegend(nft?.isLegend === true)}
       />
       )}
 
@@ -1261,6 +1292,15 @@ export function Store() {
                     <Check className="w-3.5 h-3.5" />
                     IN CART — REMOVE
                   </button>
+                ) : previewNftIsLegend ? (
+                  <div
+                    className="w-full h-11 flex items-center justify-center gap-1.5 text-sm font-bold text-yellow-500/50 cursor-not-allowed select-none"
+                    style={BANGERS}
+                    title="Legend NFTs can only use Variant Swaps"
+                  >
+                    <Crown className="w-3.5 h-3.5" />
+                    LEGEND — VARIANT SWAPS ONLY
+                  </div>
                 ) : (
                   <button
                     onClick={() => toggleCart(trait)}

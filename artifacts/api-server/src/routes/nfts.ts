@@ -244,7 +244,15 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
       category: r.category,
       trait: r.trait,
     })),
-    isLegend: legendTokenIds.has(nft.tokenId),
+    // Recognized as a legend if: (a) token ID is listed in the legends table, OR
+    // (b) the NFT has a "Golden Ticket" attribute (trait_type or value, case-insensitive)
+    isLegend:
+      legendTokenIds.has(nft.tokenId) ||
+      (nft.onChainAttributes ?? []).some(
+        (a) =>
+          a.trait_type.toLowerCase() === "golden ticket" ||
+          a.value.toLowerCase() === "golden ticket",
+      ),
   }));
 
   res.json(GetUserNftsResponse.parse({ nfts: nftsWithLegendFlag, total: nftsWithLegendFlag.length }));

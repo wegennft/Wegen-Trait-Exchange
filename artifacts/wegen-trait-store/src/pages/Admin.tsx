@@ -6607,6 +6607,18 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
   const [formTokenId, setFormTokenId] = useState<number | null>(null);
   const [formUploading, setFormUploading] = useState(false);
 
+  // Auto-fill the name when a token ID is entered and the name is empty/auto-generated
+  const autoNameFor = (id: number | null) =>
+    id != null ? `${collection === "wegenettes" ? "Wegenette" : "Wegen"} #${id}` : "";
+
+  const handleTokenIdChange = (newId: number | null) => {
+    const prevAuto = autoNameFor(formTokenId);
+    setFormTokenId(newId);
+    if (formName === "" || formName === prevAuto) {
+      setFormName(autoNameFor(newId));
+    }
+  };
+
   const { data, isLoading } = useListAllLegends({ nftCollection: collection });
   const legends = data?.legends ?? [];
 
@@ -6666,6 +6678,20 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
         <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Add Legend
         </Button>
+      </div>
+
+      {/* Info banner */}
+      <div className="flex items-start gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm">
+        <Crown className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+        <div className="space-y-0.5">
+          <p className="text-yellow-200/80 font-medium">Two ways an NFT becomes a Legend</p>
+          <p className="text-muted-foreground text-xs">
+            <span className="text-foreground/60">Manually</span> — enter its Wegen or Wegenette # below and it&apos;s recognized immediately.
+          </p>
+          <p className="text-muted-foreground text-xs">
+            <span className="text-foreground/60">Automatically</span> — any NFT with a <span className="font-mono text-yellow-400/80">Golden Ticket</span> trait is flagged as a Legend without a manual entry.
+          </p>
+        </div>
       </div>
 
       {isLoading ? (
@@ -6758,15 +6784,18 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
             <DialogTitle className="flex items-center gap-2">
               <Crown className="w-4 h-4 text-yellow-400" /> Add Legend
             </DialogTitle>
-            <DialogDescription>Create a new 1-of-1 Legend NFT for the {collection} collection.</DialogDescription>
+            <DialogDescription>
+              Enter a {collection === "wegenettes" ? "Wegenette" : "Wegen"} # to register it as a Legend in the {collection} collection.
+            </DialogDescription>
           </DialogHeader>
           <LegendForm
+            collection={collection}
             name={formName} setName={setFormName}
             desc={formDesc} setDesc={setFormDesc}
             imageUrl={formImageUrl} setImageUrl={setFormImageUrl}
             active={formActive} setActive={setFormActive}
             sortOrder={formSortOrder} setSortOrder={setFormSortOrder}
-            tokenId={formTokenId} setTokenId={setFormTokenId}
+            tokenId={formTokenId} setTokenId={handleTokenIdChange}
             uploading={formUploading} onUpload={handleUpload}
             onSubmit={() => createMutation.mutate({ data: {
               name: formName, nftCollection: collection,
@@ -6792,6 +6821,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
           </DialogHeader>
           {editLegend && (
             <LegendForm
+              collection={collection}
               name={formName} setName={setFormName}
               desc={formDesc} setDesc={setFormDesc}
               imageUrl={formImageUrl} setImageUrl={setFormImageUrl}
@@ -6836,11 +6866,13 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
 // ── Legend Form ────────────────────────────────────────────────────────────────
 
 function LegendForm({
+  collection,
   name, setName, desc, setDesc, imageUrl, setImageUrl,
   active, setActive, sortOrder, setSortOrder,
   tokenId, setTokenId,
   uploading, onUpload, onSubmit, isPending, submitLabel,
 }: {
+  collection?: NftCollection;
   name: string; setName: (v: string) => void;
   desc: string; setDesc: (v: string) => void;
   imageUrl: string; setImageUrl: (v: string) => void;
@@ -6851,33 +6883,43 @@ function LegendForm({
   onSubmit: () => void; isPending: boolean; submitLabel: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const collLabel = collection === "wegenettes" ? "Wegenette" : "Wegen";
   return (
     <div className="space-y-4 mt-2">
+      {/* Token # — primary field */}
       <div className="space-y-1.5">
-        <Label>Name *</Label>
-        <Input value={name} onChange={e => setName(e.target.value)} placeholder="Legend name" />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="flex items-center gap-1.5">
-          Token ID
-          <span className="text-[10px] text-muted-foreground font-normal">(Ethereum NFT token ID for wallet recognition)</span>
+        <Label className="flex items-center gap-1.5 text-base font-semibold">
+          <span className="text-yellow-400">#</span> {collLabel} Number
         </Label>
-        <Input
-          type="number"
-          value={tokenId ?? ""}
-          onChange={e => {
-            const v = e.target.value;
-            setTokenId(v === "" ? null : parseInt(v) || null);
-          }}
-          placeholder="e.g. 42"
-          className="w-40"
-          min={0}
-        />
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-mono text-muted-foreground">#</span>
+          <Input
+            type="number"
+            value={tokenId ?? ""}
+            onChange={e => {
+              const v = e.target.value;
+              setTokenId(v === "" ? null : parseInt(v) || null);
+            }}
+            placeholder="e.g. 42"
+            className="w-36 text-lg font-mono"
+            min={0}
+            autoFocus
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">The NFT token ID. Any wallet holding this # will see it flagged as a Legend.</p>
       </div>
+
+      <div className="space-y-1.5">
+        <Label>Display Name *</Label>
+        <Input value={name} onChange={e => setName(e.target.value)} placeholder={`e.g. ${collLabel} #42`} />
+        <p className="text-xs text-muted-foreground">Auto-filled from the # above — edit freely.</p>
+      </div>
+
       <div className="space-y-1.5">
         <Label>Description</Label>
-        <Textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional description" rows={2} />
+        <Textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional backstory or notes" rows={2} />
       </div>
+
       <div className="space-y-1.5">
         <Label>Image</Label>
         <div className="flex gap-2">
@@ -6893,6 +6935,7 @@ function LegendForm({
           <img src={imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded border border-border/30 mt-1" />
         )}
       </div>
+
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
           <Switch checked={active} onCheckedChange={setActive} id="lf-active" />
@@ -6903,6 +6946,7 @@ function LegendForm({
           <Input type="number" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value) || 0)} className="w-20" />
         </div>
       </div>
+
       <div className="flex justify-end pt-2">
         <Button onClick={onSubmit} disabled={!name.trim() || isPending}>
           {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}

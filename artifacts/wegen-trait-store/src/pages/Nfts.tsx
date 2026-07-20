@@ -134,17 +134,26 @@ function NftsContent() {
   const previewVariantMap: Record<string, { imageUrl: string | null }> =
     (previewVariantData?.variantMap ?? {}) as Record<string, { imageUrl: string | null }>;
 
+  // Non-visual trait_type names to exclude from compositing
+  const NON_VISUAL_TYPES = new Set([
+    "origin", "seasoned wegen", "legend", "ultra rare",
+    "migration #", "original name", "original mint", "original id",
+  ]);
+
   // For the card's main image: when a variant is selected, composite the variant versions of
-  // the NFT's on-chain trait layers via the server-side preview endpoint. Falls back to the
-  // original imageUrl if no on-chain attributes are available.
-  const getCardImageUrl = (nft: { imageUrl?: string | null; onChainAttributes?: { trait_type: string; value: string }[] }) => {
+  // the NFT's on-chain trait layers via the server-side preview endpoint. Each NFT uses its
+  // own collection (wegens vs wegenettes) so the correct layer order is applied.
+  const getCardImageUrl = (nft: { imageUrl?: string | null; isWegenette?: boolean; onChainAttributes?: { trait_type: string; value: string }[] }) => {
     if (!previewVariant) return nft.imageUrl ?? null;
-    const attrs = (nft.onChainAttributes ?? []).filter((a) => a.trait_type.toLowerCase() !== "origin" && a.trait_type.toLowerCase() !== "seasoned wegen" && a.trait_type.toLowerCase() !== "legend" && a.trait_type.toLowerCase() !== "ultra rare");
+    // Use per-NFT collection so Wegenettes get their own layer order from admin
+    const nftColl = nft.isWegenette ? "wegenettes" : "wegens";
+    const attrs = (nft.onChainAttributes ?? []).filter(
+      (a) => !NON_VISUAL_TYPES.has(a.trait_type.toLowerCase())
+    );
     const attrsParam = attrs.map((a) => `${a.trait_type}:${a.value}`).join("|");
     const base = nft.imageUrl ? `&baseImageUrl=${encodeURIComponent(nft.imageUrl)}` : "";
-    // Always call the endpoint even with no attrs so the base image is returned resized
     if (attrs.length === 0 && !nft.imageUrl) return null;
-    return `/api/traits/variant-preview-image?variant=${encodeURIComponent(previewVariant)}&nftCollection=${encodeURIComponent(collection)}&attrs=${encodeURIComponent(attrsParam || "_")}${base}`;
+    return `/api/traits/variant-preview-image?variant=${encodeURIComponent(previewVariant)}&nftCollection=${encodeURIComponent(nftColl)}&attrs=${encodeURIComponent(attrsParam || "_")}${base}`;
   };
 
   const applyTrait = useApplyTrait({

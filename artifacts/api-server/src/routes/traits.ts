@@ -129,19 +129,27 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     "HeadGear": "Headgear",
   };
 
+  // Non-visual trait_type names that should never be composited as layers
+  const NON_VISUAL_CATEGORIES = new Set([
+    "origin", "seasoned wegen", "legend", "ultra rare",
+    "migration #", "original name", "original mint", "original id",
+  ]);
+
   // Parse "Category:Value|..." pairs (split only on first colon per segment)
   const pairs = attrsRaw.split("|").map((s) => {
     const idx = s.indexOf(":");
     if (idx === -1) return null;
     const rawCat = s.slice(0, idx).trim();
     const name = s.slice(idx + 1).trim();
-    return {
-      category: CATEGORY_ALIASES[rawCat] ?? rawCat,
-      name,
-    };
+    const category = CATEGORY_ALIASES[rawCat] ?? rawCat;
+    return { category, name };
   }).filter((p): p is { category: string; name: string } =>
-    // Discard empty pairs and very long strings (collection-description bleedthrough)
-    p !== null && p.category !== "" && p.name !== "" && p.name.length <= 120
+    // Discard empty pairs, non-visual categories, and very long values
+    p !== null &&
+    p.category !== "" &&
+    p.name !== "" &&
+    p.name.length <= 120 &&
+    !NON_VISUAL_CATEGORIES.has(p.category.toLowerCase())
   );
 
   try {

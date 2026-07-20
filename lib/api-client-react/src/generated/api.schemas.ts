@@ -94,6 +94,11 @@ export interface NftTrait {
   trait: Trait;
 }
 
+export type WegenNftOnChainAttributesItem = {
+  trait_type: string;
+  value: string;
+};
+
 export interface WegenNft {
   tokenId: number;
   walletAddress: string;
@@ -106,6 +111,8 @@ export interface WegenNft {
   isLegend?: boolean;
   /** True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette'). */
   isWegenette: boolean;
+  /** On-chain metadata attributes from Alchemy (excludes Origin/Original Mint/Original ID). */
+  onChainAttributes?: WegenNftOnChainAttributesItem[] | null;
   equippedTraits: NftTrait[];
 }
 
@@ -187,6 +194,9 @@ export interface VariantCollectionsResponse {
   collections: string[];
 }
 
+/**
+ * Keyed by DB trait ID (string). Maps purchased store-trait IDs to variant images.
+ */
 export type VariantsByCollectionResponseVariantMap = {
   [key: string]: {
     imageUrl?: string | null;
@@ -194,8 +204,22 @@ export type VariantsByCollectionResponseVariantMap = {
   };
 };
 
+/**
+ * Keyed by lowercase trait name. Maps on-chain attribute values to variant images.
+ */
+export type VariantsByCollectionResponseNameMap = {
+  [key: string]: {
+    imageUrl?: string | null;
+    mediaType: string;
+    category: string;
+  };
+};
+
 export interface VariantsByCollectionResponse {
+  /** Keyed by DB trait ID (string). Maps purchased store-trait IDs to variant images. */
   variantMap: VariantsByCollectionResponseVariantMap;
+  /** Keyed by lowercase trait name. Maps on-chain attribute values to variant images. */
+  nameMap: VariantsByCollectionResponseNameMap;
 }
 
 export interface TraitVariantsResponse {

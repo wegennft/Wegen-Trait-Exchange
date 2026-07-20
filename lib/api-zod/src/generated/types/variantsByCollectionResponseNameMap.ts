@@ -7,11 +7,12 @@
  */
 
 /**
- * Keyed by DB trait ID (string). Maps purchased store-trait IDs to variant images.
+ * Keyed by lowercase trait name. Maps on-chain attribute values to variant images.
  */
-export type VariantsByCollectionResponseVariantMap = {
+export type VariantsByCollectionResponseNameMap = {
   [key: string]: {
     imageUrl?: string | null;
     mediaType: string;
+    category: string;
   };
 };

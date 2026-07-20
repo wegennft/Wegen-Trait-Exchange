@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { NftTrait } from "./nftTrait";
+import type { WegenNftOnChainAttributesItem } from "./wegenNftOnChainAttributesItem";
 
 export interface WegenNft {
   tokenId: number;
@@ -19,5 +20,7 @@ export interface WegenNft {
   isLegend?: boolean;
   /** True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette'). */
   isWegenette: boolean;
+  /** On-chain metadata attributes from Alchemy (excludes Origin/Original Mint/Original ID). */
+  onChainAttributes?: WegenNftOnChainAttributesItem[] | null;
   equippedTraits: NftTrait[];
 }

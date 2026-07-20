@@ -147,13 +147,29 @@ export const GetVariantsByCollectionQueryParams = zod.object({
 });
 
 export const GetVariantsByCollectionResponse = zod.object({
-  variantMap: zod.record(
-    zod.string(),
-    zod.object({
-      imageUrl: zod.string().nullish(),
-      mediaType: zod.string(),
-    }),
-  ),
+  variantMap: zod
+    .record(
+      zod.string(),
+      zod.object({
+        imageUrl: zod.string().nullish(),
+        mediaType: zod.string(),
+      }),
+    )
+    .describe(
+      "Keyed by DB trait ID (string). Maps purchased store-trait IDs to variant images.",
+    ),
+  nameMap: zod
+    .record(
+      zod.string(),
+      zod.object({
+        imageUrl: zod.string().nullish(),
+        mediaType: zod.string(),
+        category: zod.string(),
+      }),
+    )
+    .describe(
+      "Keyed by lowercase trait name. Maps on-chain attribute values to variant images.",
+    ),
 });
 
 /**
@@ -411,6 +427,17 @@ export const GetUserNftsResponse = zod.object({
         .describe(
           "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette').",
         ),
+      onChainAttributes: zod
+        .array(
+          zod.object({
+            trait_type: zod.string(),
+            value: zod.string(),
+          }),
+        )
+        .nullish()
+        .describe(
+          "On-chain metadata attributes from Alchemy (excludes Origin\/Original Mint\/Original ID).",
+        ),
       equippedTraits: zod.array(
         zod.object({
           category: zod.string(),
@@ -511,6 +538,17 @@ export const ApplyTraitResponse = zod.object({
       .boolean()
       .describe(
         "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette').",
+      ),
+    onChainAttributes: zod
+      .array(
+        zod.object({
+          trait_type: zod.string(),
+          value: zod.string(),
+        }),
+      )
+      .nullish()
+      .describe(
+        "On-chain metadata attributes from Alchemy (excludes Origin\/Original Mint\/Original ID).",
       ),
     equippedTraits: zod.array(
       zod.object({
@@ -670,6 +708,17 @@ export const RemoveTraitResponse = zod.object({
       .boolean()
       .describe(
         "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette').",
+      ),
+    onChainAttributes: zod
+      .array(
+        zod.object({
+          trait_type: zod.string(),
+          value: zod.string(),
+        }),
+      )
+      .nullish()
+      .describe(
+        "On-chain metadata attributes from Alchemy (excludes Origin\/Original Mint\/Original ID).",
       ),
     equippedTraits: zod.array(
       zod.object({
@@ -941,13 +990,29 @@ export const GetLegendVariantsByCollectionQueryParams = zod.object({
 });
 
 export const GetLegendVariantsByCollectionResponse = zod.object({
-  variantMap: zod.record(
-    zod.string(),
-    zod.object({
-      imageUrl: zod.string().nullish(),
-      mediaType: zod.string(),
-    }),
-  ),
+  variantMap: zod
+    .record(
+      zod.string(),
+      zod.object({
+        imageUrl: zod.string().nullish(),
+        mediaType: zod.string(),
+      }),
+    )
+    .describe(
+      "Keyed by DB trait ID (string). Maps purchased store-trait IDs to variant images.",
+    ),
+  nameMap: zod
+    .record(
+      zod.string(),
+      zod.object({
+        imageUrl: zod.string().nullish(),
+        mediaType: zod.string(),
+        category: zod.string(),
+      }),
+    )
+    .describe(
+      "Keyed by lowercase trait name. Maps on-chain attribute values to variant images.",
+    ),
 });
 
 /**

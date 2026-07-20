@@ -5,8 +5,12 @@
  * Wegen NFT Trait Store API
  * OpenAPI spec version: 0.1.0
  */
+import type { VariantsByCollectionResponseNameMap } from "./variantsByCollectionResponseNameMap";
 import type { VariantsByCollectionResponseVariantMap } from "./variantsByCollectionResponseVariantMap";
 
 export interface VariantsByCollectionResponse {
+  /** Keyed by DB trait ID (string). Maps purchased store-trait IDs to variant images. */
   variantMap: VariantsByCollectionResponseVariantMap;
+  /** Keyed by lowercase trait name. Maps on-chain attribute values to variant images. */
+  nameMap: VariantsByCollectionResponseNameMap;
 }

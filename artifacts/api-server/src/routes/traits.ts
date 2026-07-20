@@ -102,10 +102,12 @@ router.get("/traits/variant-collections", async (req, res): Promise<void> => {
 router.get("/traits/variants/by-collection", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   const name = typeof req.query.name === "string" ? req.query.name : "";
-  if (!name) { res.json({ variantMap: {} }); return; }
+  if (!name) { res.json({ variantMap: {}, nameMap: {} }); return; }
   const rows = await db
     .select({
       traitId: traitVariantsTable.traitId,
+      traitName: traitsTable.name,
+      traitCategory: traitsTable.category,
       imageUrl: traitVariantsTable.imageUrl,
       mediaType: traitVariantsTable.mediaType,
     })
@@ -118,11 +120,13 @@ router.get("/traits/variants/by-collection", async (req, res): Promise<void> => 
         eq(traitVariantsTable.isEnabled, true),
       ),
     );
-  const variantMap: Record<number, { imageUrl: string | null; mediaType: string }> = {};
+  const variantMap: Record<string, { imageUrl: string | null; mediaType: string }> = {};
+  const nameMap: Record<string, { imageUrl: string | null; mediaType: string; category: string }> = {};
   for (const r of rows) {
-    variantMap[r.traitId] = { imageUrl: r.imageUrl, mediaType: r.mediaType };
+    variantMap[String(r.traitId)] = { imageUrl: r.imageUrl, mediaType: r.mediaType };
+    nameMap[r.traitName.toLowerCase()] = { imageUrl: r.imageUrl, mediaType: r.mediaType, category: r.traitCategory };
   }
-  res.json({ variantMap });
+  res.json({ variantMap, nameMap });
 });
 
 router.get("/traits/:traitId", async (req, res): Promise<void> => {

@@ -40,10 +40,12 @@ const RARITY_ORDER: Record<string, number> = { legendary: 4, rare: 3, uncommon: 
 const CATEGORY_LAYER_ORDER: Record<string, number> = {
   background: 0, bg: 0,
   base: 1, skin: 1, body: 2,
-  clothing: 3, outfit: 3, shirt: 3, pants: 3, jacket: 3, top: 3, bottom: 3,
+  // Wegen on-chain attribute types
+  clothes: 3, clothing: 3, outfit: 3, shirt: 3, pants: 3, jacket: 3, top: 3, bottom: 3,
   accessory: 4, accessories: 4, jewelry: 4, necklace: 4, earring: 4,
-  hat: 5, headwear: 5, head: 5,
-  glasses: 5, eyewear: 5, mask: 5, face: 5,
+  // Head / face layers (Wegen on-chain: "Head & Hair", "Mouth", "Eyes")
+  "head & hair": 5, hat: 5, headwear: 5, head: 5,
+  mouth: 5, eyes: 5, glasses: 5, eyewear: 5, mask: 5, face: 5,
   overlay: 6, effect: 7, special: 8,
 };
 function getLayerZ(category: string): number {
@@ -135,7 +137,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
 
   const [isOpen, setIsOpen] = useState(demo);
   const [selectedTokenId, setSelectedTokenId] = useState<number | null>(demo ? 420 : null);
-  const [hoverTrait, setHoverTrait] = useState<{ imageUrl: string; name: string; category: string } | null>(null);
+  const [hoverTrait, setHoverTrait] = useState<{ imageUrl: string; name: string; category: string; traitId: number } | null>(null);
   const [filterLayer, setFilterLayer]   = useState("all");
   const [filterRarity, setFilterRarity] = useState("all");
   const [sortBy, setSortBy]             = useState<"rarity-desc" | "rarity-asc" | "name" | "date">("rarity-desc");
@@ -186,6 +188,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     { query: { enabled: !!selectedVariantPack } },
   );
   const variantMap = variantMapData?.variantMap ?? {};
+  const nameMap   = variantMapData?.nameMap   ?? {};
 
   const applyTrait = useApplyTrait({
     mutation: {
@@ -472,7 +475,21 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 <img src={activeNft.imageUrl} alt={activeNft.name} className="absolute inset-0 w-full h-full object-cover" />
               )}
 
-              {/* Equipped trait layers — sorted by canonical z-order so categories render correctly */}
+              {/* On-chain base trait variant layers (shown when variant pack active + nameMap has matches) */}
+              {selectedVariantPack && !isLoadingVariant && (activeNft as { onChainAttributes?: { trait_type: string; value: string }[] }).onChainAttributes?.map(attr => {
+                const entry = nameMap[attr.value.toLowerCase()];
+                return entry?.imageUrl ? (
+                  <img
+                    key={`oc-${attr.trait_type}`}
+                    src={entry.imageUrl}
+                    alt={attr.value}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ zIndex: getLayerZ(attr.trait_type) + 1 }}
+                  />
+                ) : null;
+              })}
+
+              {/* Equipped store-trait layers — sorted by canonical z-order */}
               {[...activeNft.equippedTraits]
                 .sort((a, b) => getLayerZ(a.category) - getLayerZ(b.category))
                 .filter(et => !hoverTrait || et.category !== hoverTrait.category)
@@ -485,12 +502,15 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   ) : null;
                 })}
 
-              {/* Hover preview layer */}
-              {hoverTrait?.imageUrl && (
-                <img src={hoverTrait.imageUrl} alt={hoverTrait.name}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ outline: '2px solid rgba(157,0,255,0.6)' }} />
-              )}
+              {/* Hover preview layer — correct z-index + uses variant image when pack active */}
+              {hoverTrait && (() => {
+                const url = getVariantImageUrl(hoverTrait.traitId, hoverTrait.imageUrl);
+                return url ? (
+                  <img src={url} alt={hoverTrait.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ zIndex: getLayerZ(hoverTrait.category) + 1, outline: '2px solid rgba(157,0,255,0.6)' }} />
+                ) : null;
+              })()}
 
               {/* Empty state */}
               {!activeNft.imageUrl && activeNft.equippedTraits.length === 0 && !hoverTrait && !dragOverPreview && (
@@ -877,7 +897,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   index={idx}
                   activeNft={activeNft}
                   onEquip={() => handleEquip(item.id)}
-                  onHover={() => item.trait.imageUrl && setHoverTrait({ imageUrl: item.trait.imageUrl, name: item.trait.name, category: item.trait.category })}
+                  onHover={() => item.trait.imageUrl && setHoverTrait({ imageUrl: item.trait.imageUrl, name: item.trait.name, category: item.trait.category, traitId: item.trait.id })}
                   onHoverEnd={() => setHoverTrait(null)}
                   isEquipping={demo ? demoEquipping === item.id : (applyTrait.isPending && (applyTrait.variables?.data as { lockerItemId?: number })?.lockerItemId === item.id)}
                   isHovered={hoverTrait?.name === item.trait.name && hoverTrait?.category === item.trait.category}

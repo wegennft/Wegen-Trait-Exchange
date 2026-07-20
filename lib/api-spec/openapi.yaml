@@ -1334,6 +1334,20 @@ components:
         isWegenette:
           type: boolean
           description: "True if this NFT originated from the Wegenettes sub-collection (on-chain Origin attribute = 'wegenette')."
+        onChainAttributes:
+          type: array
+          nullable: true
+          description: "On-chain metadata attributes from Alchemy (excludes Origin/Original Mint/Original ID)."
+          items:
+            type: object
+            properties:
+              trait_type:
+                type: string
+              value:
+                type: string
+            required:
+              - trait_type
+              - value
         equippedTraits:
           type: array
           items:
@@ -1533,6 +1547,7 @@ components:
       properties:
         variantMap:
           type: object
+          description: "Keyed by DB trait ID (string). Maps purchased store-trait IDs to variant images."
           additionalProperties:
             type: object
             properties:
@@ -1543,8 +1558,25 @@ components:
                 type: string
             required:
               - mediaType
+        nameMap:
+          type: object
+          description: "Keyed by lowercase trait name. Maps on-chain attribute values to variant images."
+          additionalProperties:
+            type: object
+            properties:
+              imageUrl:
+                type: string
+                nullable: true
+              mediaType:
+                type: string
+              category:
+                type: string
+            required:
+              - mediaType
+              - category
       required:
         - variantMap
+        - nameMap
 
     TraitVariantsResponse:
       type: object

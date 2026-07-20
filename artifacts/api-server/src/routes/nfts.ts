@@ -155,9 +155,15 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
 
   // Merge: on-chain is the source of truth for ownership + image.
   // Local DB fills in equipped-trait state, SOC metadata, etc.
+  const EXCLUDED_ATTRS = new Set(["Origin", "Original Mint", "Original ID"]);
+
   const merged = onChain.map((oc) => {
     const tokenId = parseInt(oc.tokenId, 10);
     const local = localByTokenId.get(tokenId);
+    const rawAttrs = oc.raw?.metadata?.attributes ?? [];
+    const onChainAttributes = rawAttrs
+      .filter((a) => !EXCLUDED_ATTRS.has(String(a.trait_type)))
+      .map((a) => ({ trait_type: String(a.trait_type), value: String(a.value) }));
     return {
       tokenId,
       walletAddress: wallet,
@@ -168,6 +174,7 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
       variantPack: local?.variantPack ?? null,
       createdAt: local?.createdAt ?? new Date(),
       isWegenette: getOriginAttribute(oc) === "wegenette",
+      onChainAttributes,
     };
   });
 

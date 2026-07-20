@@ -84,5 +84,7 @@ export * from "./uploadUrlRequest";
 export * from "./uploadUrlResponse";
 export * from "./variantCollectionsResponse";
 export * from "./variantsByCollectionResponse";
+export * from "./variantsByCollectionResponseNameMap";
 export * from "./variantsByCollectionResponseVariantMap";
 export * from "./wegenNft";
+export * from "./wegenNftOnChainAttributesItem";

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, asc, inArray } from "drizzle-orm";
-import { db, legendsTable, legendVariantsTable, wegenNftsTable } from "@workspace/db";
+import { eq, and, asc, inArray, isNotNull } from "drizzle-orm";
+import { db, legendsTable, legendVariantsTable, wegenNftsTable, traitsTable } from "@workspace/db";
 import { requireAdmin } from "../middleware/requireAuth";
 import {
   fetchAllCollectionNfts,
@@ -173,7 +173,8 @@ router.post("/admin/legends/sync-golden-tickets", async (req, res): Promise<void
       else if (hasLegendAttr(nft)) legends++;
 
       return {
-        name: nft.name ?? `${isWegenette ? "Wegenette" : "Wegen"} #${tokenId}`,
+        // Always generate a clean name for Wegenettes — on-chain token name reads "Wegens #X" for migrated Wegenettes
+        name: isWegenette ? `Wegenette #${tokenId}` : (nft.name ?? `Wegen #${tokenId}`),
         nftCollection: (isWegenette ? "wegenettes" : "wegens") as "wegenettes" | "wegens",
         tokenId,
         imageUrl: bestImageUrl(nft) ?? null,
@@ -192,6 +193,36 @@ router.post("/admin/legends/sync-golden-tickets", async (req, res): Promise<void
     team,
     legends,
   });
+});
+
+// GET /admin/storage/gallery — returns all uploaded image URLs for the image picker
+router.get("/admin/storage/gallery", async (req, res): Promise<void> => {
+  const [traitImages, legendImages, variantImages] = await Promise.all([
+    db.select({ url: traitsTable.imageUrl, label: traitsTable.name })
+      .from(traitsTable)
+      .where(isNotNull(traitsTable.imageUrl)),
+    db.select({ url: legendsTable.imageUrl, label: legendsTable.name })
+      .from(legendsTable)
+      .where(isNotNull(legendsTable.imageUrl)),
+    db.select({ url: legendVariantsTable.imageUrl, label: legendVariantsTable.name })
+      .from(legendVariantsTable)
+      .where(isNotNull(legendVariantsTable.imageUrl)),
+  ]);
+
+  const seen = new Set<string>();
+  const images: { url: string; label: string; source: string }[] = [];
+
+  for (const { url, label } of legendImages) {
+    if (url && !seen.has(url)) { seen.add(url); images.push({ url, label: label ?? "", source: "legend" }); }
+  }
+  for (const { url, label } of traitImages) {
+    if (url && !seen.has(url)) { seen.add(url); images.push({ url, label: label ?? "", source: "trait" }); }
+  }
+  for (const { url, label } of variantImages) {
+    if (url && !seen.has(url)) { seen.add(url); images.push({ url, label: label ?? "", source: "variant" }); }
+  }
+
+  res.json({ images });
 });
 
 // POST /admin/legends

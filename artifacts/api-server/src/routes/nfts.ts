@@ -232,7 +232,7 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
       if (toInsert.length > 0) {
         await db.insert(legendsTable).values(
           toInsert.map((nft) => ({
-            name: nft.name ?? `${nft.isWegenette ? "Wegenette" : "Wegen"} #${nft.tokenId}`,
+            name: nft.isWegenette ? `Wegenette #${nft.tokenId}` : (nft.name ?? `Wegen #${nft.tokenId}`),
             nftCollection: (nft.isWegenette ? "wegenettes" : "wegens") as "wegenettes" | "wegens",
             tokenId: nft.tokenId,
             imageUrl: nft.imageUrl ?? null,

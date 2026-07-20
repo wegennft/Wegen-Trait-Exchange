@@ -6883,6 +6883,63 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
   );
 }
 
+// ── Image Picker Modal ─────────────────────────────────────────────────────────
+
+interface GalleryImage { url: string; label: string; source: string; }
+
+function ImagePickerModal({ open, onOpenChange, onPick }: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onPick: (url: string) => void;
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-storage-gallery"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/storage/gallery");
+      return res.json() as Promise<{ images: GalleryImage[] }>;
+    },
+    enabled: open,
+    staleTime: 30_000,
+  });
+  const images = data?.images ?? [];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col gap-4">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ImageIcon className="w-4 h-4" /> Choose from Library
+          </DialogTitle>
+          <DialogDescription>Click any image to select it.</DialogDescription>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 overflow-y-auto">
+            {[...Array(10)].map((_, i) => <Skeleton key={i} className="aspect-square rounded-lg" />)}
+          </div>
+        ) : images.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <ImageIcon className="w-10 h-10 mb-3 opacity-20" />
+            <p className="text-sm">No images in library yet — upload one first.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 overflow-y-auto pr-1">
+            {images.map((img, i) => (
+              <button key={i}
+                className="group relative aspect-square rounded-lg overflow-hidden border border-border/30 hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                onClick={() => { onPick(img.url); onOpenChange(false); }}>
+                <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-1.5 gap-0.5">
+                  <span className="text-[9px] text-white/90 truncate leading-tight">{img.label}</span>
+                  <span className="text-[8px] text-white/50 capitalize">{img.source}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Legend Form ────────────────────────────────────────────────────────────────
 
 function LegendForm({
@@ -6903,6 +6960,7 @@ function LegendForm({
   onSubmit: () => void; isPending: boolean; submitLabel: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const collLabel = collection === "wegenettes" ? "Wegenette" : "Wegen";
   return (
     <div className="space-y-4 mt-2">
@@ -6945,6 +7003,10 @@ function LegendForm({
         <div className="flex gap-2">
           <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="Paste URL or upload" className="flex-1" />
           <Button type="button" variant="outline" size="sm" className="shrink-0"
+            onClick={() => setPickerOpen(true)} title="Choose from library">
+            <ImageIcon className="w-3.5 h-3.5" />
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="shrink-0"
             onClick={() => fileRef.current?.click()} disabled={uploading}>
             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
           </Button>
@@ -6955,6 +7017,7 @@ function LegendForm({
           <img src={imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded border border-border/30 mt-1" />
         )}
       </div>
+      <ImagePickerModal open={pickerOpen} onOpenChange={setPickerOpen} onPick={setImageUrl} />
 
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
@@ -6987,6 +7050,7 @@ function LegendVariantsManager({ legendId }: { legendId: number }) {
   const [packName, setPackName] = useState("");
   const [variantUrl, setVariantUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const qKey = ["admin-legend-variants", legendId];
@@ -7069,6 +7133,10 @@ function LegendVariantsManager({ legendId }: { legendId: number }) {
           <div className="flex gap-1">
             <Input value={variantUrl} onChange={e => setVariantUrl(e.target.value)} placeholder="URL" className="h-8 text-sm" />
             <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setPickerOpen(true)} title="Choose from library">
+              <ImageIcon className="w-3 h-3" />
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"
               onClick={() => fileRef.current?.click()} disabled={uploading}>
               {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
             </Button>
@@ -7082,6 +7150,7 @@ function LegendVariantsManager({ legendId }: { legendId: number }) {
           {addVariant.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Add
         </Button>
       </div>
+      <ImagePickerModal open={pickerOpen} onOpenChange={setPickerOpen} onPick={setVariantUrl} />
     </div>
   );
 }

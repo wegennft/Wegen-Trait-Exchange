@@ -6592,7 +6592,7 @@ type LegendVariantRow = {
 function LegendsAdminTab({ collection }: { collection: NftCollection }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const upload = useUpload();
+  const { uploadFile: uploadFn } = useUpload();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editLegend, setEditLegend] = useState<LegendItem | null>(null);
@@ -6700,7 +6700,11 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
 
   const handleUpload = async (file: File) => {
     setFormUploading(true);
-    try { const url = await upload(file); setFormImageUrl(url); }
+    try {
+      const res = await uploadFn(file);
+      if (!res) throw new Error("Upload failed");
+      setFormImageUrl(`/api/storage${res.objectPath}`);
+    }
     catch { toast({ title: "Upload failed", variant: "destructive" }); }
     finally { setFormUploading(false); }
   };
@@ -7079,7 +7083,7 @@ function LegendForm({
 function LegendVariantsManager({ legendId }: { legendId: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const upload = useUpload();
+  const { uploadFile } = useUpload();
 
   const [packName, setPackName] = useState("");
   const [variantUrl, setVariantUrl] = useState("");
@@ -7118,7 +7122,11 @@ function LegendVariantsManager({ legendId }: { legendId: number }) {
 
   const handleUpload = async (file: File) => {
     setUploading(true);
-    try { const url = await upload(file); setVariantUrl(url); }
+    try {
+      const res = await uploadFile(file);
+      if (!res) throw new Error("Upload failed");
+      setVariantUrl(`/api/storage${res.objectPath}`);
+    }
     catch { toast({ title: "Upload failed", variant: "destructive" }); }
     finally { setUploading(false); }
   };
@@ -7208,7 +7216,7 @@ interface BountyTrait {
 function BountiesAdminTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const upload = useUpload();
+  const { uploadFile } = useUpload();
 
   const [form, setForm] = useState<{
     name: string; description: string; imageUrl: string; pointCost: number; totalSupply: number; sourceTraitIds: number[];
@@ -7638,8 +7646,9 @@ function BountiesAdminTab() {
                     if (!file) return;
                     setFormUploading(true);
                     try {
-                      const url = await upload(file);
-                      setForm(f => ({ ...f, imageUrl: url }));
+                      const res = await uploadFile(file);
+                      if (!res) throw new Error("Upload failed");
+                      setForm(f => ({ ...f, imageUrl: `/api/storage${res.objectPath}` }));
                     } catch {
                       toast({ title: "Upload failed", variant: "destructive" });
                     } finally {
@@ -7715,8 +7724,9 @@ function BountiesAdminTab() {
                                 if (!file) return;
                                 setEditImageUploading(true);
                                 try {
-                                  const url = await upload(file);
-                                  setEditForm(f => ({ ...f, imageUrl: url }));
+                                  const res = await uploadFile(file);
+                                  if (!res) throw new Error("Upload failed");
+                                  setEditForm(f => ({ ...f, imageUrl: `/api/storage${res.objectPath}` }));
                                 } catch {
                                   toast({ title: "Upload failed", variant: "destructive" });
                                 } finally {
@@ -7824,8 +7834,9 @@ function BountiesAdminTab() {
                       if (!file) return;
                       setBundleFormUploading(true);
                       try {
-                        const url = await upload(file);
-                        setBundleForm((f) => ({ ...f, imageUrl: url }));
+                        const res = await uploadFile(file);
+                        if (!res) throw new Error("Upload failed");
+                        setBundleForm((f) => ({ ...f, imageUrl: `/api/storage${res.objectPath}` }));
                       } catch {
                         toast({ title: "Upload failed", variant: "destructive" });
                       } finally {

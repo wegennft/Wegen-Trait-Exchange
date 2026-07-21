@@ -311,6 +311,24 @@ router.delete("/admin/legend-variants/:variantId", async (req, res): Promise<voi
   res.json({ success: true });
 });
 
+// GET /admin/all-legend-variants?nftCollection= — all variants grouped by legendId
+router.get("/admin/all-legend-variants", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const ids = await legendIdsForCollection(nftCollection);
+  if (ids.length === 0) { res.json({ variantsByLegendId: {} }); return; }
+  const variants = await db
+    .select()
+    .from(legendVariantsTable)
+    .where(inArray(legendVariantsTable.legendId, ids))
+    .orderBy(asc(legendVariantsTable.sortOrder), asc(legendVariantsTable.name));
+  const map: Record<number, { id: number; name: string; imageUrl: string | null; mediaType: string; isEnabled: boolean }[]> = {};
+  for (const v of variants) {
+    if (!map[v.legendId]) map[v.legendId] = [];
+    map[v.legendId].push({ id: v.id, name: v.name, imageUrl: v.imageUrl, mediaType: v.mediaType, isEnabled: v.isEnabled });
+  }
+  res.json({ variantsByLegendId: map });
+});
+
 // GET /admin/legend-variant-packs?nftCollection= — pack summary
 router.get("/admin/legend-variant-packs", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);

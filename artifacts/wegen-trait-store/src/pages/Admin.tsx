@@ -6631,9 +6631,32 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
     ? (wegenettesData?.legends ?? [])
     : [...(wegensData?.legends ?? []), ...(wegenettesData?.legends ?? [])];
 
+  type LegendVariantEntry = { id: number; name: string; imageUrl: string | null; mediaType: string; isEnabled: boolean };
+  const { data: wegensVariantsData } = useQuery<{ variantsByLegendId: Record<string, LegendVariantEntry[]> }>({
+    queryKey: ["admin-all-legend-variants", "wegens"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/all-legend-variants?nftCollection=wegens");
+      if (!res.ok) return { variantsByLegendId: {} };
+      return res.json() as Promise<{ variantsByLegendId: Record<string, LegendVariantEntry[]> }>;
+    },
+  });
+  const { data: wegenettesVariantsData } = useQuery<{ variantsByLegendId: Record<string, LegendVariantEntry[]> }>({
+    queryKey: ["admin-all-legend-variants", "wegenettes"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/all-legend-variants?nftCollection=wegenettes");
+      if (!res.ok) return { variantsByLegendId: {} };
+      return res.json() as Promise<{ variantsByLegendId: Record<string, LegendVariantEntry[]> }>;
+    },
+  });
+  const variantsByLegendId: Record<string, LegendVariantEntry[]> = {
+    ...(wegensVariantsData?.variantsByLegendId ?? {}),
+    ...(wegenettesVariantsData?.variantsByLegendId ?? {}),
+  };
+
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getListAllLegendsQueryKey({ nftCollection: "wegens" }) });
     void queryClient.invalidateQueries({ queryKey: getListAllLegendsQueryKey({ nftCollection: "wegenettes" }) });
+    void queryClient.invalidateQueries({ queryKey: ["admin-all-legend-variants"] });
   };
 
   // Which collection to use when creating a new legend
@@ -6818,13 +6841,34 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
                 </div>
               </div>
               {/* Name */}
-              <div className="px-2.5 py-2">
+              <div className="px-2.5 pt-2 pb-1.5">
                 <p className="text-xs font-semibold truncate leading-tight">{legend.name}</p>
                 {legend.description && (
                   <p className="text-[10px] text-muted-foreground truncate mt-0.5">{legend.description}</p>
                 )}
               </div>
-              {/* Expanded variants panel */}
+              {/* Variant thumbnails — always visible below card */}
+              {(variantsByLegendId[legend.id] ?? []).length > 0 && (
+                <div className="px-2.5 pb-2.5 border-t border-border/20 pt-2 mt-0.5">
+                  <p className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold mb-1.5">Variants</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(variantsByLegendId[legend.id] ?? []).map((v) => (
+                      <div key={v.id} className="flex flex-col items-center gap-0.5" title={v.name}>
+                        {v.imageUrl ? (
+                          <img src={v.imageUrl} alt={v.name}
+                            className={`w-10 h-10 object-cover rounded border ${v.isEnabled ? "border-yellow-500/40" : "border-border/20 opacity-50"}`} />
+                        ) : (
+                          <div className={`w-10 h-10 rounded bg-secondary/50 flex items-center justify-center border ${v.isEnabled ? "border-yellow-500/30" : "border-border/20 opacity-50"}`}>
+                            <ImageIcon className="w-3 h-3 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        <span className="text-[8px] text-muted-foreground/60 truncate max-w-[40px] leading-tight text-center">{v.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Expanded variants manager panel */}
               {expandedId === legend.id && (
                 <div className="border-t border-border/30 bg-secondary/5">
                   <LegendVariantsManager legendId={legend.id} collection={collection} />

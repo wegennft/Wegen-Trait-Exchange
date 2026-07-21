@@ -488,7 +488,7 @@ export function Store() {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutProgress, setCheckoutProgress] = useState<{ done: number; total: number } | null>(null);
   const [storeMode, setStoreMode] = useState<"traits" | "legends">("traits");
-  const [legendPack, setLegendPack] = useState<string | undefined>();
+  const [activePack, setActivePack] = useState<string | undefined>();
   const [previewNftIsLegend, setPreviewNftIsLegend] = useState(false);
 
   const { walletAddress, isConnected, connect } = useWallet();
@@ -544,18 +544,41 @@ export function Store() {
       return res.json() as Promise<{ collections: string[] }>;
     },
   });
-  const legendPacks = legendPacksData?.collections ?? [];
+  const { data: traitPacksData } = useQuery({
+    queryKey: ["trait-variant-collections", collection],
+    queryFn: async () => {
+      const res = await fetch(`/api/traits/variant-collections?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) return { collections: [] as string[] };
+      return res.json() as Promise<{ collections: string[] }>;
+    },
+  });
+  // Merged, deduped list of all pack names across traits + legends
+  const allPacks = Array.from(new Set([
+    ...(traitPacksData?.collections ?? []),
+    ...(legendPacksData?.collections ?? []),
+  ])).sort();
 
   const { data: legendVariantMapData } = useQuery({
-    queryKey: ["legend-variants-by-collection", collection, legendPack],
+    queryKey: ["legend-variants-by-collection", collection, activePack],
     queryFn: async () => {
-      if (!legendPack) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
-      const res = await fetch(`/api/legends/variants/by-collection?nftCollection=${encodeURIComponent(collection)}&name=${encodeURIComponent(legendPack)}`);
+      if (!activePack) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
+      const res = await fetch(`/api/legends/variants/by-collection?nftCollection=${encodeURIComponent(collection)}&name=${encodeURIComponent(activePack)}`);
       if (!res.ok) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
       return res.json() as Promise<{ variantMap: Record<number, { imageUrl: string | null; mediaType: string }> }>;
     },
   });
   const legendVariantMap = legendVariantMapData?.variantMap ?? {};
+
+  const { data: traitVariantMapData } = useQuery({
+    queryKey: ["trait-variants-by-collection", collection, activePack],
+    queryFn: async () => {
+      if (!activePack) return { variantMap: {} as Record<string, { imageUrl: string | null; mediaType: string }> };
+      const res = await fetch(`/api/traits/variants/by-collection?nftCollection=${encodeURIComponent(collection)}&name=${encodeURIComponent(activePack)}`);
+      if (!res.ok) return { variantMap: {} as Record<string, { imageUrl: string | null; mediaType: string }> };
+      return res.json() as Promise<{ variantMap: Record<string, { imageUrl: string | null; mediaType: string }> }>;
+    },
+  });
+  const traitVariantMap = traitVariantMapData?.variantMap ?? {};
 
   const { data: traitsData, isLoading: isLoadingTraits } = useListTraits(
     { category: selectedCategory, theme: selectedTheme, limit: 9999, nftCollection: collection },
@@ -918,6 +941,40 @@ export function Store() {
         ))}
       </div>
 
+      {/* ── Global Variant Pack Selector ── */}
+      {allPacks.length > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border/30" style={{ background: 'rgba(0,0,0,0.25)' }}>
+          <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-mono shrink-0">Style Pack:</span>
+          <div className="flex gap-1.5 flex-wrap">
+            <button
+              onClick={() => setActivePack(undefined)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
+              style={{
+                background: !activePack ? `${accent}20` : 'transparent',
+                border: !activePack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
+                color: !activePack ? accent : 'rgba(255,255,255,0.4)',
+              }}
+            >
+              Original
+            </button>
+            {allPacks.map((pack) => (
+              <button
+                key={pack}
+                onClick={() => setActivePack(pack)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                style={{
+                  background: activePack === pack ? `${accent}20` : 'transparent',
+                  border: activePack === pack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
+                  color: activePack === pack ? accent : 'rgba(255,255,255,0.4)',
+                }}
+              >
+                {pack}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── NFT Preview Banner (traits mode only) ── */}
       {storeMode === "traits" && (
       <NftPreviewBanner
@@ -944,38 +1001,6 @@ export function Store() {
                 // One-of-one NFTs — not made of traits //
               </p>
             </div>
-            {legendPacks.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-mono">Style:</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  <button
-                    onClick={() => setLegendPack(undefined)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
-                    style={{
-                      background: !legendPack ? `${accent}20` : 'transparent',
-                      border: !legendPack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
-                      color: !legendPack ? accent : 'rgba(255,255,255,0.4)',
-                    }}
-                  >
-                    Original
-                  </button>
-                  {legendPacks.map((pack) => (
-                    <button
-                      key={pack}
-                      onClick={() => setLegendPack(pack)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                      style={{
-                        background: legendPack === pack ? `${accent}20` : 'transparent',
-                        border: legendPack === pack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
-                        color: legendPack === pack ? accent : 'rgba(255,255,255,0.4)',
-                      }}
-                    >
-                      {pack}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Legends grid */}
@@ -998,18 +1023,18 @@ export function Store() {
             </div>
           ) : (
             <>
-              {legendPack && (
+              {activePack && (
                 <p className="text-xs text-muted-foreground/40 font-mono mb-4">
-                  {Object.keys(legendVariantMap).length} of {legends.length} legends have a <span className="text-muted-foreground/70">{legendPack}</span> variant
+                  {Object.keys(legendVariantMap).length} of {legends.length} legends have a <span className="text-muted-foreground/70">{activePack}</span> variant
                 </p>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {legends.map((legend, index) => {
-                  const variantEntry = legendPack ? (legendVariantMap[legend.id] ?? legendVariantMap[String(legend.id)]) : undefined;
-                  const hasVariant = !!legendPack && !!variantEntry?.imageUrl;
+                  const variantEntry = activePack ? (legendVariantMap[legend.id] ?? legendVariantMap[String(legend.id)]) : undefined;
+                  const hasVariant = !!activePack && !!variantEntry?.imageUrl;
                   const imageUrl = hasVariant ? variantEntry!.imageUrl : legend.imageUrl;
                   const mediaType = hasVariant ? (variantEntry!.mediaType ?? "image") : (legend.mediaType ?? "image");
-                  const missingVariant = !!legendPack && !hasVariant;
+                  const missingVariant = !!activePack && !hasVariant;
                   return (
                     <Card
                       key={legend.id}
@@ -1050,7 +1075,7 @@ export function Store() {
                         {hasVariant && (
                           <div className="absolute bottom-3 left-3">
                             <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-bold" style={{ background: `${accent}30`, color: accent, border: `1px solid ${accent}50` }}>
-                              {legendPack}
+                              {activePack}
                             </Badge>
                           </div>
                         )}
@@ -1214,21 +1239,26 @@ export function Store() {
               onMouseLeave={() => setPreviewTrait(null)}
             >
               <div className="relative aspect-square overflow-hidden bg-secondary flex items-center justify-center p-6">
-                {trait.imageUrl ? (
-                  <TraitImageZoom url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
-                    <TraitMedia
-                      url={trait.imageUrl}
-                      mediaType={(trait as unknown as Record<string, unknown>).mediaType as string}
-                      alt={trait.name}
-                      className="w-full h-full group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl"
-                      showBadge
-                    />
-                  </TraitImageZoom>
-                ) : (
-                  <div className="text-6xl font-black text-muted-foreground/20 uppercase tracking-tighter mix-blend-overlay">
-                    {trait.category.slice(0, 3)}
-                  </div>
-                )}
+                {(() => {
+                  const traitVariantEntry = activePack ? (traitVariantMap[String(trait.id)] ?? traitVariantMap[trait.id as unknown as string]) : undefined;
+                  const traitDisplayUrl = traitVariantEntry?.imageUrl ?? trait.imageUrl;
+                  const traitDisplayMediaType = traitVariantEntry?.mediaType ?? (trait as unknown as Record<string, unknown>).mediaType as string;
+                  return traitDisplayUrl ? (
+                    <TraitImageZoom url={traitDisplayUrl} mediaType={traitDisplayMediaType} alt={trait.name} className="w-full h-full">
+                      <TraitMedia
+                        url={traitDisplayUrl}
+                        mediaType={traitDisplayMediaType}
+                        alt={trait.name}
+                        className="w-full h-full group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl"
+                        showBadge
+                      />
+                    </TraitImageZoom>
+                  ) : (
+                    <div className="text-6xl font-black text-muted-foreground/20 uppercase tracking-tighter mix-blend-overlay">
+                      {trait.category.slice(0, 3)}
+                    </div>
+                  );
+                })()}
 
                 {/* Preview indicator */}
                 {previewTrait?.id === trait.id && (

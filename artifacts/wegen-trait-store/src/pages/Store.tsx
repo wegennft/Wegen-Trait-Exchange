@@ -95,6 +95,7 @@ function NftPreviewBanner({
   ineligibleNfts = [],
   ethUsd,
   onPreviewNftChange,
+  panel = false,
 }: {
   walletAddress: string | null;
   isConnected: boolean;
@@ -103,6 +104,7 @@ function NftPreviewBanner({
   ineligibleNfts?: string[];
   ethUsd: number | null;
   onPreviewNftChange?: (nft: WegenNft | null) => void;
+  panel?: boolean;
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -152,26 +154,34 @@ function NftPreviewBanner({
       style={{ boxShadow: "0 0 0 1px hsl(var(--primary) / 0.15) inset" }}
     >
       {/* ── Header ── */}
-      <button
-        type="button"
-        onClick={() => setCollapsed(v => !v)}
-        className="w-full flex items-center gap-3 px-5 py-3 bg-primary/5 hover:bg-primary/10 transition-colors border-b border-primary/20"
-      >
-        <Eye className="w-4 h-4 text-primary flex-shrink-0" />
-        <span style={BANGERS} className="text-lg text-primary tracking-widest">
-          NFT PREVIEW
-        </span>
-        <span className="text-xs text-muted-foreground/60 ml-1 font-mono hidden sm:inline">
-          — hover any trait to preview on your {collectionLabel}
-        </span>
-        <span className="ml-auto text-muted-foreground/50">
-          {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-        </span>
-      </button>
+      {panel ? (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border-b border-primary/20">
+          <Eye className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+          <span style={BANGERS} className="text-sm text-primary tracking-widest">NFT PREVIEW</span>
+          <span className="text-[10px] text-muted-foreground/40 font-mono ml-auto hidden sm:inline">click a trait</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setCollapsed(v => !v)}
+          className="w-full flex items-center gap-3 px-5 py-3 bg-primary/5 hover:bg-primary/10 transition-colors border-b border-primary/20"
+        >
+          <Eye className="w-4 h-4 text-primary flex-shrink-0" />
+          <span style={BANGERS} className="text-lg text-primary tracking-widest">
+            NFT PREVIEW
+          </span>
+          <span className="text-xs text-muted-foreground/60 ml-1 font-mono hidden sm:inline">
+            — click any trait to preview on your {collectionLabel}
+          </span>
+          <span className="ml-auto text-muted-foreground/50">
+            {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </span>
+        </button>
+      )}
 
       {/* ── Body ── */}
-      {!collapsed && (
-        <div className="p-5">
+      {(panel || !collapsed) && (
+        <div className={panel ? "p-3" : "p-5"}>
           {/* Not connected */}
           {!isConnected ? (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 py-6 text-center">
@@ -195,12 +205,12 @@ function NftPreviewBanner({
               <p className="text-sm">No Wegen NFTs found in your wallet.</p>
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row gap-6">
-              {/* ── Left: preview canvas ── */}
-              <div className="flex flex-col items-center gap-3 flex-shrink-0">
+            <div className={panel ? "flex flex-col gap-3" : "flex flex-col sm:flex-row gap-6"}>
+              {/* ── NFT canvas (left in banner mode, top in panel mode) ── */}
+              <div className={panel ? "flex flex-col gap-2" : "flex flex-col items-center gap-3 flex-shrink-0"}>
                 {/* Main preview */}
                 <div
-                  className={`relative w-52 h-52 sm:w-60 sm:h-60 rounded-xl overflow-hidden bg-secondary/40 border-2 transition-all duration-300 ${
+                  className={`relative ${panel ? "w-full aspect-square" : "w-52 h-52 sm:w-60 sm:h-60"} rounded-xl overflow-hidden bg-secondary/40 border-2 transition-all duration-300 ${
                     previewNftBlocked
                       ? "border-red-500/50 shadow-[0_0_18px_rgba(239,68,68,0.2)]"
                       : effectivePreviewTrait
@@ -293,7 +303,7 @@ function NftPreviewBanner({
 
                 {/* NFT selector (multiple NFTs) */}
                 {nfts.length > 1 && (
-                  <div className="flex gap-1.5 flex-wrap justify-center max-w-[240px]">
+                  <div className={`flex gap-1.5 flex-wrap justify-center ${panel ? "" : "max-w-[240px]"}`}>
                     {nfts.map(nft => {
                       const blocked = isNftIneligible(nft);
                       return (
@@ -464,7 +474,7 @@ function NftPreviewBanner({
                   <div className="flex-1 flex flex-col items-center justify-center py-5 gap-2 text-muted-foreground/35 border border-dashed border-border/25 rounded-lg">
                     <Eye className="w-8 h-8" />
                     <p className="text-xs text-center leading-relaxed">
-                      Hover any trait below<br />to see it on your Wegen
+                      Click any trait below<br />to see it on your {collectionLabel}
                     </p>
                   </div>
                 ) : null}
@@ -976,18 +986,6 @@ export function Store() {
         </div>
       )}
 
-      {/* ── NFT Preview Banner (traits mode only) ── */}
-      {storeMode === "traits" && (
-      <NftPreviewBanner
-        walletAddress={walletAddress}
-        isConnected={isConnected}
-        connect={connect}
-        previewTrait={previewTrait}
-        ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
-        ethUsd={ethUsd}
-        onPreviewNftChange={(nft) => setPreviewNftIsLegend(nft?.isLegend === true)}
-      />
-      )}
 
       {/* ── LEGENDS MODE ── */}
       {storeMode === "legends" && (
@@ -1107,7 +1105,24 @@ export function Store() {
       )}
 
       {/* ── TRAITS MODE content ── */}
-      <div className={storeMode !== "traits" ? "hidden" : ""}>
+      <div className={storeMode !== "traits" ? "hidden" : "flex flex-col lg:flex-row gap-6 items-start"}>
+
+      {/* ── Left: sticky NFT preview panel ── */}
+      <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 lg:sticky lg:top-4 lg:self-start">
+        <NftPreviewBanner
+          panel
+          walletAddress={walletAddress}
+          isConnected={isConnected}
+          connect={connect}
+          previewTrait={previewTrait}
+          ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
+          ethUsd={ethUsd}
+          onPreviewNftChange={(nft) => setPreviewNftIsLegend(nft?.isLegend === true)}
+        />
+      </div>
+
+      {/* ── Right: filters + trait grid ── */}
+      <div className="flex-1 min-w-0 space-y-6">
 
       {/* ── Theme tabs ── */}
       {themes.length > 0 && (
@@ -1236,8 +1251,7 @@ export function Store() {
                 previewTrait?.id === trait.id ? "scale-[1.015]" : ""
               }`}
               style={{ animationDelay: `${index * 50}ms` }}
-              onMouseEnter={() => setPreviewTrait(trait)}
-              onMouseLeave={() => setPreviewTrait(null)}
+              onClick={() => setPreviewTrait(prev => prev?.id === trait.id ? null : trait)}
             >
               <div className="relative aspect-square overflow-hidden bg-secondary flex items-center justify-center p-6">
                 {(() => {
@@ -1265,7 +1279,7 @@ export function Store() {
                 {previewTrait?.id === trait.id && (
                   <div className="absolute top-2 left-2 flex items-center gap-1 bg-primary/90 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-in fade-in duration-100">
                     <Eye className="w-2.5 h-2.5" />
-                    PREVIEWING
+                    SELECTED
                   </div>
                 )}
 
@@ -1490,6 +1504,9 @@ export function Store() {
         </>
         );
       })()}
+
+      {/* end right column */}
+      </div>
 
       {/* end traits mode */}
       </div>

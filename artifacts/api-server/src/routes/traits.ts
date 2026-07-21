@@ -158,14 +158,20 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     // Find traits matching the on-chain attribute (category, name) pairs.
     // Use case-insensitive matching so on-chain capitalisation variants
     // (e.g. "Varsity with J's" vs DB "Varsity With J'S") still resolve.
-    // Search without nft_collection filter so wegens NFTs whose traits happen
-    // to be stored under "wegenettes" (or other) still get matched.
+    // Filter by nftCollection so wegens traits are never mixed into wegenettes
+    // cards (e.g. "Brown" body exists in both collections but with different
+    // variant artwork).
     const lowerNames = pairs.map((p) => p.name.toLowerCase());
     const candidates = lowerNames.length > 0
       ? await db
           .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name })
           .from(traitsTable)
-          .where(inArray(sql`lower(${traitsTable.name})`, lowerNames))
+          .where(
+            and(
+              eq(traitsTable.nftCollection, nftCollection),
+              inArray(sql`lower(${traitsTable.name})`, lowerNames),
+            )
+          )
       : [];
 
     // Match case-insensitively on both category and name

@@ -8,3 +8,4 @@
 - [Router-mounted middleware scoping](router-mounted-middleware-scoping.md) — unscoped `router.use(mw)` in a root-mounted sub-router blocks ALL requests app-wide, not just that router's routes; always path-scope it.
 - [Admin sends are pending, not missing](admin-sends-pending-not-missing.md) — "user didn't receive X" reports for admin airdrops are usually a claim/visibility gap, not a broken send; check pending state before assuming a delivery bug.
 - [Dev-only auto-admin bypass](dev-auto-admin-bypass.md) — gate any local-auth shortcut on NODE_ENV + an explicit opt-in flag, and resolve at the effective-wallet layer so it never touches real SIWE code.
+- [Legend detection is collection-aware + on-chain](legend-detection.md) — isLegend checks DB legends table filtered by nftCollection (wegens vs wegenettes) to avoid token ID collisions; also checks trait_type "Golden Ticket"/"Legend"/"Team" on-chain attributes.

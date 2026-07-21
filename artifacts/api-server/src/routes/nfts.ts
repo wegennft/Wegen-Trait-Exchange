@@ -21,6 +21,8 @@ import {
   getOriginAttribute,
   bestImageUrl,
   hasGoldenTicketAttr,
+  hasLegendAttr,
+  hasTeamAttr,
 } from "../utils/onchain";
 
 const router: IRouter = Router();
@@ -186,16 +188,29 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
     equippedByTokenId.set(row.equippedToTokenId, arr);
   }
 
-  // Fetch legend flags
-  const legendRows =
-    tokenIds.length > 0
-      ? await db
+  // Fetch legend flags — split by collection to avoid cross-collection token ID collisions.
+  // (e.g. Wegenette #508 in the legends table must NOT flag Wegen #508 as a legend.)
+  const wegenIds = merged.filter((n) => !n.isWegenette).map((n) => n.tokenId);
+  const wegenettesIds = merged.filter((n) => n.isWegenette).map((n) => n.tokenId);
+  const [wegenLegendRows, wegenetteLegendRows] = await Promise.all([
+    wegenIds.length > 0
+      ? db
           .select({ tokenId: legendsTable.tokenId })
           .from(legendsTable)
-          .where(and(eq(legendsTable.isActive, true), inArray(legendsTable.tokenId, tokenIds)))
-      : [];
-  const legendTokenIds = new Set(
-    legendRows.map((r) => r.tokenId).filter((id): id is number => id !== null),
+          .where(and(eq(legendsTable.isActive, true), eq(legendsTable.nftCollection, "wegens"), inArray(legendsTable.tokenId, wegenIds)))
+      : Promise.resolve([]),
+    wegenettesIds.length > 0
+      ? db
+          .select({ tokenId: legendsTable.tokenId })
+          .from(legendsTable)
+          .where(and(eq(legendsTable.isActive, true), eq(legendsTable.nftCollection, "wegenettes"), inArray(legendsTable.tokenId, wegenettesIds)))
+      : Promise.resolve([]),
+  ]);
+  const legendWegenIds = new Set(
+    wegenLegendRows.map((r) => r.tokenId).filter((id): id is number => id !== null),
+  );
+  const legendWegenettesIds = new Set(
+    wegenetteLegendRows.map((r) => r.tokenId).filter((id): id is number => id !== null),
   );
 
   const nftsWithLegendFlag = merged.map((nft) => ({
@@ -205,14 +220,17 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
       category: r.category,
       trait: r.trait,
     })),
-    // Recognized as a legend if: (a) token ID is listed in the legends table, OR
-    // (b) the NFT has a "Golden Ticket" attribute (trait_type or value, case-insensitive)
+    // Recognized as a legend if:
+    // (a) token ID is in the legends table for this NFT's collection, OR
+    // (b) the NFT has a "Golden Ticket", "Legend", or "Team" on-chain attribute
     isLegend:
-      legendTokenIds.has(nft.tokenId) ||
+      (nft.isWegenette ? legendWegenettesIds : legendWegenIds).has(nft.tokenId) ||
       (nft.onChainAttributes ?? []).some(
         (a) =>
           a.trait_type.toLowerCase() === "golden ticket" ||
-          a.value.toLowerCase() === "golden ticket",
+          a.value.toLowerCase() === "golden ticket" ||
+          a.trait_type.toLowerCase() === "legend" ||
+          a.trait_type.toLowerCase() === "team",
       ),
   }));
 
@@ -274,10 +292,20 @@ router.post("/nfts/:tokenId/apply-trait", requireWalletOwnership(), async (req, 
   const { lockerItemId, walletAddress } = body.data;
   const tokenId = pathParams.data.tokenId;
 
+  // Check if this token is a legend — must match both tokenId AND collection to avoid
+  // cross-collection token ID collisions (e.g. Wegen #508 vs Wegenette #508).
+  const [nftRecord] = await db
+    .select({ isWegenette: wegenNftsTable.name })
+    .from(wegenNftsTable)
+    .where(eq(wegenNftsTable.tokenId, tokenId))
+    .limit(1);
+  const nftCollection = nftRecord?.isWegenette?.toLowerCase().startsWith("wegenette")
+    ? "wegenettes"
+    : "wegens";
   const [legendCheck] = await db
     .select({ id: legendsTable.id })
     .from(legendsTable)
-    .where(and(eq(legendsTable.tokenId, tokenId), eq(legendsTable.isActive, true)))
+    .where(and(eq(legendsTable.tokenId, tokenId), eq(legendsTable.isActive, true), eq(legendsTable.nftCollection, nftCollection)))
     .limit(1);
   if (legendCheck) {
     res.status(403).json({ error: "Legends and 1/1s cannot have traits equipped" });

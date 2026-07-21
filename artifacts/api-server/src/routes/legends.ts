@@ -3,6 +3,7 @@ import { eq, and, asc, inArray, isNotNull } from "drizzle-orm";
 import { db, legendsTable, legendVariantsTable, wegenNftsTable, traitsTable } from "@workspace/db";
 import { requireAdmin } from "../middleware/requireAuth";
 import {
+  fetchOnChainWegens,
   fetchAllCollectionNfts,
   getOriginAttribute,
   bestImageUrl,
@@ -45,12 +46,22 @@ router.get("/legends/mine", async (req, res): Promise<void> => {
   const walletAddress = (req.query.walletAddress as string | undefined)?.toLowerCase().trim();
   if (!walletAddress) { res.status(400).json({ error: "walletAddress is required" }); return; }
 
-  // All NFT token IDs owned by this wallet
-  const ownedNfts = await db
-    .select({ tokenId: wegenNftsTable.tokenId })
-    .from(wegenNftsTable)
-    .where(eq(wegenNftsTable.walletAddress, walletAddress));
-  const ownedTokenIds = ownedNfts.map((n) => n.tokenId);
+  // Fetch on-chain NFTs (source of truth for ownership) + DB-only seeded records in parallel.
+  // The DB-only path covers demo/seeded wallets whose NFTs aren't on-chain yet.
+  const [onChain, dbNfts] = await Promise.all([
+    fetchOnChainWegens(walletAddress).catch(() => [] as Awaited<ReturnType<typeof fetchOnChainWegens>>),
+    db.select({ tokenId: wegenNftsTable.tokenId }).from(wegenNftsTable).where(eq(wegenNftsTable.walletAddress, walletAddress)),
+  ]);
+
+  // Filter on-chain NFTs by the requested collection
+  const onChainForCollection = onChain.filter((n) =>
+    nftCollection === "wegenettes"
+      ? getOriginAttribute(n) === "wegenette"
+      : getOriginAttribute(n) !== "wegenette",
+  );
+  const onChainTokenIds = onChainForCollection.map((n) => parseInt(n.tokenId, 10));
+  const dbTokenIds = dbNfts.map((n) => n.tokenId);
+  const ownedTokenIds = [...new Set([...onChainTokenIds, ...dbTokenIds])];
 
   if (ownedTokenIds.length === 0) { res.json({ legends: [] }); return; }
 

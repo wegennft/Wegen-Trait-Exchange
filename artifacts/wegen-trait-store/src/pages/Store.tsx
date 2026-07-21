@@ -997,67 +997,85 @@ export function Store() {
               <p className="text-sm text-muted-foreground/40 font-mono">// Legends will appear here when added //</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {legends.map((legend, index) => {
-                const variantEntry = legendPack ? legendVariantMap[legend.id] : undefined;
-                const imageUrl = variantEntry?.imageUrl ?? legend.imageUrl;
-                const mediaType = variantEntry?.mediaType ?? legend.mediaType ?? "image";
-                return (
-                  <Card
-                    key={legend.id}
-                    className="item-glow-gold bg-card/95 overflow-hidden group transition-all duration-200 flex flex-col"
-                    style={{
-                      animationDelay: `${index * 50}ms`,
-                    }}
-                  >
-                    <div className="relative aspect-square overflow-hidden bg-black flex items-center justify-center">
-                      {imageUrl ? (
-                        <TraitImageZoom url={imageUrl} mediaType={mediaType} alt={legend.name} className="w-full h-full">
-                          <TraitMedia
-                            url={imageUrl}
-                            mediaType={mediaType}
-                            alt={legend.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        </TraitImageZoom>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-card to-black">
-                          <Crown className="w-16 h-16" style={{ color: `${accent}40` }} />
-                          <span className="text-xs font-mono text-muted-foreground/30 uppercase tracking-widest">No Image</span>
-                        </div>
-                      )}
-                      {/* Legend badge */}
-                      <div className="absolute top-3 right-3">
-                        <Badge
-                          variant="outline"
-                          className="uppercase tracking-wider text-[10px] font-bold px-2 py-1 bg-yellow-500/20 text-yellow-400 border-yellow-500/50"
-                          style={{ boxShadow: '0 0 10px rgba(234,179,8,0.4)' }}
-                        >
-                          <Star className="w-2.5 h-2.5 mr-1 fill-current" />
-                          Legend
-                        </Badge>
-                      </div>
-                      {/* Active pack indicator */}
-                      {legendPack && variantEntry && (
-                        <div className="absolute bottom-3 left-3">
-                          <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-bold" style={{ background: `${accent}30`, color: accent, border: `1px solid ${accent}50` }}>
-                            {legendPack}
+            <>
+              {legendPack && (
+                <p className="text-xs text-muted-foreground/40 font-mono mb-4">
+                  {Object.keys(legendVariantMap).length} of {legends.length} legends have a <span className="text-muted-foreground/70">{legendPack}</span> variant
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {legends.map((legend, index) => {
+                  const variantEntry = legendPack ? (legendVariantMap[legend.id] ?? legendVariantMap[String(legend.id)]) : undefined;
+                  const hasVariant = !!legendPack && !!variantEntry?.imageUrl;
+                  const imageUrl = hasVariant ? variantEntry!.imageUrl : legend.imageUrl;
+                  const mediaType = hasVariant ? (variantEntry!.mediaType ?? "image") : (legend.mediaType ?? "image");
+                  const missingVariant = !!legendPack && !hasVariant;
+                  return (
+                    <Card
+                      key={legend.id}
+                      className="item-glow-gold bg-card/95 overflow-hidden group transition-all duration-200 flex flex-col"
+                      style={{
+                        animationDelay: `${index * 50}ms`,
+                        opacity: missingVariant ? 0.45 : 1,
+                      }}
+                    >
+                      <div className="relative aspect-square overflow-hidden bg-black flex items-center justify-center">
+                        {imageUrl ? (
+                          <TraitImageZoom url={imageUrl} mediaType={mediaType} alt={legend.name} className="w-full h-full">
+                            <TraitMedia
+                              url={imageUrl}
+                              mediaType={mediaType}
+                              alt={legend.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          </TraitImageZoom>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-card to-black">
+                            <Crown className="w-16 h-16" style={{ color: `${accent}40` }} />
+                            <span className="text-xs font-mono text-muted-foreground/30 uppercase tracking-widest">No Image</span>
+                          </div>
+                        )}
+                        {/* Legend badge */}
+                        <div className="absolute top-3 right-3">
+                          <Badge
+                            variant="outline"
+                            className="uppercase tracking-wider text-[10px] font-bold px-2 py-1 bg-yellow-500/20 text-yellow-400 border-yellow-500/50"
+                            style={{ boxShadow: '0 0 10px rgba(234,179,8,0.4)' }}
+                          >
+                            <Star className="w-2.5 h-2.5 mr-1 fill-current" />
+                            Legend
                           </Badge>
                         </div>
-                      )}
-                    </div>
-                    <CardContent className="p-4 flex-1 flex flex-col">
-                      <h3 className="text-base font-black tracking-tight leading-tight" style={{ fontFamily: "'Bungee', Impact, sans-serif" }}>
-                        {legend.name}
-                      </h3>
-                      {legend.description && (
-                        <p className="text-xs text-muted-foreground/60 line-clamp-2 mt-1">{legend.description}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                        {/* Active pack indicator */}
+                        {hasVariant && (
+                          <div className="absolute bottom-3 left-3">
+                            <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-bold" style={{ background: `${accent}30`, color: accent, border: `1px solid ${accent}50` }}>
+                              {legendPack}
+                            </Badge>
+                          </div>
+                        )}
+                        {/* No variant overlay */}
+                        {missingVariant && (
+                          <div className="absolute inset-0 flex items-end justify-center pb-3 pointer-events-none">
+                            <span className="text-[9px] font-mono uppercase tracking-widest text-white/30 bg-black/60 px-2 py-0.5 rounded">
+                              no variant
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-4 flex-1 flex flex-col">
+                        <h3 className="text-base font-black tracking-tight leading-tight" style={{ fontFamily: "'Bungee', Impact, sans-serif" }}>
+                          {legend.name}
+                        </h3>
+                        {legend.description && (
+                          <p className="text-xs text-muted-foreground/60 line-clamp-2 mt-1">{legend.description}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}

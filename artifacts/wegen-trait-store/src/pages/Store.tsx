@@ -502,6 +502,7 @@ export function Store() {
   useEffect(() => {
     setSelectedCategory(undefined);
     setSelectedTheme(undefined);
+    setActivePack(undefined);
   }, [collection]);
 
   // ── Maintenance mode gate ──

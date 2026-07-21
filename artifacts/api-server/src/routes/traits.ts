@@ -22,10 +22,12 @@ function getNftCollection(query: Record<string, unknown>): string {
 
 router.get("/traits/categories", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  // Only return categories that have at least one active (isActive=true) trait,
+  // so the filter pills never show categories with zero purchasable traits.
   const rows = await db
     .selectDistinct({ category: traitsTable.category })
     .from(traitsTable)
-    .where(eq(traitsTable.nftCollection, nftCollection))
+    .where(and(eq(traitsTable.nftCollection, nftCollection), eq(traitsTable.isActive, true)))
     .orderBy(traitsTable.category);
   const categories = rows.map((r) => r.category);
   res.json(ListTraitCategoriesResponse.parse({ categories }));

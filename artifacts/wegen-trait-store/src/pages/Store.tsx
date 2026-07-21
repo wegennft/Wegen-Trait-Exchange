@@ -96,6 +96,7 @@ function NftPreviewBanner({
   ethUsd,
   onPreviewNftChange,
   panel = false,
+  traitVariantMap = {},
 }: {
   walletAddress: string | null;
   isConnected: boolean;
@@ -105,6 +106,7 @@ function NftPreviewBanner({
   ethUsd: number | null;
   onPreviewNftChange?: (nft: WegenNft | null) => void;
   panel?: boolean;
+  traitVariantMap?: Record<string, { imageUrl: string | null; mediaType: string }>;
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -242,10 +244,15 @@ function NftPreviewBanner({
                       return i === -1 ? 3 : i;
                     };
                     const layers: { category: string; imageUrl: string; isNew: boolean }[] = [
-                      // Equipped locker traits, excluding the category being previewed (it's replaced)
+                      // Equipped locker traits, excluding the category being previewed (it's replaced).
+                      // Resolve variant image when a pack is active; fall back to base imageUrl.
                       ...previewNft.equippedTraits
                         .filter(et => et.trait.imageUrl && (!effectivePreviewTrait || et.category !== effectivePreviewTrait.category))
-                        .map(et => ({ category: et.category, imageUrl: et.trait.imageUrl!, isNew: false })),
+                        .map(et => {
+                          const variantEntry = traitVariantMap[String(et.trait.id)];
+                          const resolvedUrl = variantEntry?.imageUrl ?? et.trait.imageUrl!;
+                          return { category: et.category, imageUrl: resolvedUrl, isNew: false };
+                        }),
                       // The trait being previewed slots in at its own layer position
                       ...(effectivePreviewTrait?.imageUrl
                         ? [{ category: effectivePreviewTrait.category, imageUrl: effectivePreviewTrait.imageUrl, isNew: true }]
@@ -1124,6 +1131,7 @@ export function Store() {
           ineligibleNfts={storeConfig?.ineligibleNfts ?? []}
           ethUsd={ethUsd}
           onPreviewNftChange={(nft) => setPreviewNftIsLegend(nft?.isLegend === true)}
+          traitVariantMap={traitVariantMap}
         />
       </div>
 

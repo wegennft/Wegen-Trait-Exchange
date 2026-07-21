@@ -6827,7 +6827,7 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
               {/* Expanded variants panel */}
               {expandedId === legend.id && (
                 <div className="border-t border-border/30 bg-secondary/5">
-                  <LegendVariantsManager legendId={legend.id} />
+                  <LegendVariantsManager legendId={legend.id} collection={collection} />
                 </div>
               )}
             </div>
@@ -7080,7 +7080,7 @@ function LegendForm({
 
 // ── Legend Variants Manager ────────────────────────────────────────────────────
 
-function LegendVariantsManager({ legendId }: { legendId: number }) {
+function LegendVariantsManager({ legendId, collection }: { legendId: number; collection: NftCollection }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { uploadFile } = useUpload();
@@ -7090,6 +7090,35 @@ function LegendVariantsManager({ legendId }: { legendId: number }) {
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Fetch existing pack names from both collections and merge them
+  const { data: wegensPacks } = useQuery({
+    queryKey: ["legend-variant-collections-admin", "wegens"],
+    queryFn: async () => {
+      const [traitRes, legendRes] = await Promise.all([
+        fetch("/api/traits/variant-collections?nftCollection=wegens"),
+        fetch("/api/legends/variant-collections?nftCollection=wegens"),
+      ]);
+      const trait = traitRes.ok ? (await traitRes.json() as { collections: string[] }).collections : [];
+      const legend = legendRes.ok ? (await legendRes.json() as { collections: string[] }).collections : [];
+      return Array.from(new Set([...trait, ...legend]));
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+  const { data: wegenettePacks } = useQuery({
+    queryKey: ["legend-variant-collections-admin", "wegenettes"],
+    queryFn: async () => {
+      const [traitRes, legendRes] = await Promise.all([
+        fetch("/api/traits/variant-collections?nftCollection=wegenettes"),
+        fetch("/api/legends/variant-collections?nftCollection=wegenettes"),
+      ]);
+      const trait = traitRes.ok ? (await traitRes.json() as { collections: string[] }).collections : [];
+      const legend = legendRes.ok ? (await legendRes.json() as { collections: string[] }).collections : [];
+      return Array.from(new Set([...trait, ...legend]));
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+  const allPackOptions = Array.from(new Set([...(wegensPacks ?? []), ...(wegenettePacks ?? [])])).sort();
 
   const qKey = ["admin-legend-variants", legendId];
 
@@ -7168,7 +7197,20 @@ function LegendVariantsManager({ legendId }: { legendId: number }) {
       <div className="flex gap-2 items-end pt-3 border-t border-border/15">
         <div className="space-y-1 flex-1 min-w-0">
           <Label className="text-xs">Pack Name</Label>
-          <Input value={packName} onChange={e => setPackName(e.target.value)} placeholder="e.g. Chromatic" className="h-8 text-sm" />
+          {allPackOptions.length > 0 ? (
+            <Select value={packName} onValueChange={setPackName}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Choose a pack…" />
+              </SelectTrigger>
+              <SelectContent>
+                {allPackOptions.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input value={packName} onChange={e => setPackName(e.target.value)} placeholder="e.g. Cyber Punks" className="h-8 text-sm" />
+          )}
         </div>
         <div className="space-y-1 flex-1 min-w-0">
           <Label className="text-xs">Image</Label>

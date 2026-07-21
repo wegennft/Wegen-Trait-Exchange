@@ -508,12 +508,18 @@ export function Store() {
   const queryClient = useQueryClient();
   const { ethUsd, change24h, isLoading: priceLoading } = useEthPrice();
 
-  // Reset filters when collection changes
+  // Reset filters + preview when collection changes
   useEffect(() => {
     setSelectedCategory(undefined);
     setSelectedTheme(undefined);
     setActivePack(undefined);
+    setPreviewTrait(null);
   }, [collection]);
+
+  // Clear preview when pack changes (variant image URLs differ per pack)
+  useEffect(() => {
+    setPreviewTrait(null);
+  }, [activePack]);
 
   // ── Maintenance mode gate ──
   const [storeConfig, setStoreConfig] = useState<{
@@ -1251,7 +1257,15 @@ export function Store() {
                 previewTrait?.id === trait.id ? "scale-[1.015]" : ""
               }`}
               style={{ animationDelay: `${index * 50}ms` }}
-              onClick={() => setPreviewTrait(prev => prev?.id === trait.id ? null : trait)}
+              onClick={() => {
+                const variantEntry = activePack
+                  ? (traitVariantMap[String(trait.id)] ?? traitVariantMap[trait.id as unknown as string])
+                  : undefined;
+                const traitToPreview = variantEntry?.imageUrl
+                  ? { ...trait, imageUrl: variantEntry.imageUrl }
+                  : trait;
+                setPreviewTrait(prev => prev?.id === trait.id ? null : traitToPreview);
+              }}
             >
               <div className="relative aspect-square overflow-hidden bg-secondary flex items-center justify-center p-6">
                 {(() => {

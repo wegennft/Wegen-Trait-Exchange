@@ -39,6 +39,25 @@ import {
   Crown,
 } from "lucide-react";
 
+function VariantImage({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <>
+      {!loaded && (
+        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/50 pointer-events-none">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+        </div>
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className={`absolute inset-0 w-full h-full object-contain z-10 transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+        onLoad={() => setLoaded(true)}
+      />
+    </>
+  );
+}
+
 export function Nfts() {
   const { collection, collectionLabel } = useCollection();
   return (
@@ -407,24 +426,24 @@ function NftsContent() {
                 </div>
 
                 <div className="relative aspect-square bg-secondary/30 overflow-hidden">
-                  {isLoadingPreview && previewVariant && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
-                      <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+                  {/* Base layer: original NFT image — always visible while variant loads */}
+                  {nft.imageUrl ? (
+                    <img
+                      src={nft.imageUrl}
+                      alt={nft.name}
+                      className="absolute inset-0 w-full h-full object-contain z-0"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-secondary to-background z-0 flex items-center justify-center">
+                      <Gem className="w-24 h-24 text-muted-foreground/20" />
                     </div>
                   )}
-                  {(() => {
-                    const cardImg = getCardImageUrl(nft);
-                    return cardImg ? (
-                      <img
-                        src={cardImg}
-                        alt={nft.name}
-                        className="absolute inset-0 w-full h-full object-contain z-0"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-secondary to-background z-0 flex items-center justify-center">
-                        <Gem className="w-24 h-24 text-muted-foreground/20" />
-                      </div>
-                    );
+                  {/* Variant overlay: spinner + composited image, remounts on URL change */}
+                  {previewVariant && (() => {
+                    const variantUrl = getCardImageUrl(nft);
+                    return variantUrl ? (
+                      <VariantImage key={variantUrl} src={variantUrl} alt={nft.name} />
+                    ) : null;
                   })()}
                   {/* Variant badge overlay */}
                   {previewVariant && (

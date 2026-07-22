@@ -52,15 +52,22 @@ export function hasSeasonedWegenAttr(nft: AlchemyNft): boolean {
   return attrs.some((a) => String(a.trait_type).toLowerCase() === "seasoned wegen");
 }
 
+/** NFT has a "Collab Edition" trait_type — identifies collaboration edition wegens */
+export function hasCollabEditionAttr(nft: AlchemyNft): boolean {
+  const attrs = nft.raw?.metadata?.attributes ?? [];
+  return attrs.some((a) => String(a.trait_type).toLowerCase() === "collab edition");
+}
+
 /** Returns which special category this NFT belongs to (or null) */
 export function getNftLegendCategory(
   nft: AlchemyNft,
-): "golden_ticket" | "team" | "legend" | "ultra_rare" | "seasoned_wegen" | null {
+): "golden_ticket" | "team" | "legend" | "ultra_rare" | "seasoned_wegen" | "collab_edition" | null {
   if (hasGoldenTicketAttr(nft)) return "golden_ticket";
   if (hasTeamAttr(nft)) return "team";
   if (hasLegendAttr(nft)) return "legend";
   if (hasUltraRareAttr(nft)) return "ultra_rare";
   if (hasSeasonedWegenAttr(nft)) return "seasoned_wegen";
+  if (hasCollabEditionAttr(nft)) return "collab_edition";
   return null;
 }
 

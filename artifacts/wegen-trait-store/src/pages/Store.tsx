@@ -1165,7 +1165,7 @@ export function Store() {
       <div className={storeMode !== "traits" ? "hidden" : "flex flex-col lg:flex-row gap-6 items-start"}>
 
       {/* ── Left: sticky NFT preview panel ── */}
-      <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 lg:sticky lg:top-4 lg:self-start">
+      <div className="w-full lg:w-[36rem] xl:w-[40rem] flex-shrink-0 lg:sticky lg:top-4 lg:self-start">
         <NftPreviewBanner
           panel
           walletAddress={walletAddress}

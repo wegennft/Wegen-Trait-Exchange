@@ -164,7 +164,7 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     const lowerNames = pairs.map((p) => p.name.toLowerCase());
     const candidates = lowerNames.length > 0
       ? await db
-          .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name })
+          .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name, imageUrl: traitsTable.imageUrl })
           .from(traitsTable)
           .where(
             and(
@@ -244,7 +244,11 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
       });
 
       for (const item of sorted) {
-        const rawUrl = variantByCategory.get(item.category) ?? null;
+        // Prefer variant artwork; fall back to the trait's base DB imageUrl so that
+        // categories without variant art are still present as a layer in the correct
+        // z-order, preventing traits from the flat base image from bleeding through
+        // at the wrong depth (e.g. Clothes appearing above a Body variant).
+        const rawUrl = variantByCategory.get(item.category) ?? item.imageUrl ?? null;
         if (!rawUrl) continue;
         layerUrls.push(rawUrl.startsWith("http") ? rawUrl : `${serverBase}${rawUrl}`);
       }

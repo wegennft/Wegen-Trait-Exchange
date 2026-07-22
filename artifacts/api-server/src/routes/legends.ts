@@ -105,12 +105,24 @@ router.get("/legends/variant-collections", async (req, res): Promise<void> => {
 });
 
 // GET /legends/variants/by-collection?nftCollection=&name=
+// Returns variantMap (keyed by legendId) AND tokenMap (keyed by tokenId) so
+// callers that only know the NFT's tokenId can look up the variant without a
+// separate legends fetch.
 router.get("/legends/variants/by-collection", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   const name = (req.query.name as string | undefined)?.trim();
-  if (!name) { res.json({ variantMap: {} }); return; }
+  if (!name) { res.json({ variantMap: {}, tokenMap: {} }); return; }
   const ids = await legendIdsForCollection(nftCollection);
-  if (ids.length === 0) { res.json({ variantMap: {} }); return; }
+  if (ids.length === 0) { res.json({ variantMap: {}, tokenMap: {} }); return; }
+
+  // Fetch tokenId for each legend so we can build a tokenId-keyed map
+  const legendRows = await db
+    .select({ id: legendsTable.id, tokenId: legendsTable.tokenId })
+    .from(legendsTable)
+    .where(inArray(legendsTable.id, ids));
+  const legendIdToTokenId = new Map<number, number | null>();
+  for (const r of legendRows) legendIdToTokenId.set(r.id, r.tokenId);
+
   const variants = await db
     .select()
     .from(legendVariantsTable)
@@ -120,8 +132,15 @@ router.get("/legends/variants/by-collection", async (req, res): Promise<void> =>
       eq(legendVariantsTable.isEnabled, true),
     ));
   const map: Record<number, { imageUrl: string | null; mediaType: string }> = {};
-  for (const v of variants) map[v.legendId] = { imageUrl: v.imageUrl, mediaType: v.mediaType };
-  res.json({ variantMap: map });
+  const tokenMap: Record<number, { imageUrl: string | null; mediaType: string }> = {};
+  for (const v of variants) {
+    map[v.legendId] = { imageUrl: v.imageUrl, mediaType: v.mediaType };
+    const tokenId = legendIdToTokenId.get(v.legendId);
+    if (tokenId != null) {
+      tokenMap[tokenId] = { imageUrl: v.imageUrl, mediaType: v.mediaType };
+    }
+  }
+  res.json({ variantMap: map, tokenMap });
 });
 
 // GET /legends/:id/variants

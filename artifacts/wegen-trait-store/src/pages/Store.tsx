@@ -97,6 +97,8 @@ function NftPreviewBanner({
   onPreviewNftChange,
   panel = false,
   traitVariantMap = {},
+  activePack,
+  legendTokenVariantMap = {},
 }: {
   walletAddress: string | null;
   isConnected: boolean;
@@ -107,6 +109,8 @@ function NftPreviewBanner({
   onPreviewNftChange?: (nft: WegenNft | null) => void;
   panel?: boolean;
   traitVariantMap?: Record<string, { imageUrl: string | null; mediaType: string }>;
+  activePack?: string;
+  legendTokenVariantMap?: Record<number, { imageUrl: string | null; mediaType: string }>;
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -119,6 +123,14 @@ function NftPreviewBanner({
   const previewNftBlocked = previewNft ? isNftIneligible(previewNft) : false;
   const previewNftIsLegend = previewNft?.isLegend === true;
   const effectivePreviewTrait = (previewNftBlocked || previewNftIsLegend) ? null : previewTrait;
+
+  // When the previewed NFT is a Legend and a variant pack is active, swap in the
+  // legend's variant image directly (legend variants are not compositable via
+  // variant-preview-image — they're standalone images stored in legend_variants).
+  const legendVariantImageUrl =
+    previewNftIsLegend && activePack && previewNft?.tokenId != null
+      ? (legendTokenVariantMap[previewNft.tokenId]?.imageUrl ?? null)
+      : null;
 
   // When a store trait is being previewed AND the NFT has on-chain attributes,
   // use a server-composited image instead of overlaying the trait PNG on the flat
@@ -248,7 +260,7 @@ function NftPreviewBanner({
                       even when the body PNG has content in the head/hat area. */}
                   {previewNft?.imageUrl ? (
                     <img
-                      src={composePreviewUrl ?? previewNft.imageUrl}
+                      src={composePreviewUrl ?? legendVariantImageUrl ?? previewNft.imageUrl}
                       alt={previewNft.name}
                       className={`absolute inset-0 w-full h-full object-cover transition-all duration-200 ${previewNftBlocked ? "opacity-40 grayscale" : ""}`}
                     />
@@ -613,13 +625,17 @@ export function Store() {
   const { data: legendVariantMapData } = useQuery({
     queryKey: ["legend-variants-by-collection", collection, activePack],
     queryFn: async () => {
-      if (!activePack) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
+      type Entry = { imageUrl: string | null; mediaType: string };
+      if (!activePack) return { variantMap: {} as Record<number, Entry>, tokenMap: {} as Record<number, Entry> };
       const res = await fetch(`/api/legends/variants/by-collection?nftCollection=${encodeURIComponent(collection)}&name=${encodeURIComponent(activePack)}`);
-      if (!res.ok) return { variantMap: {} as Record<number, { imageUrl: string | null; mediaType: string }> };
-      return res.json() as Promise<{ variantMap: Record<number, { imageUrl: string | null; mediaType: string }> }>;
+      if (!res.ok) return { variantMap: {} as Record<number, Entry>, tokenMap: {} as Record<number, Entry> };
+      return res.json() as Promise<{ variantMap: Record<number, Entry>; tokenMap: Record<number, Entry> }>;
     },
   });
   const legendVariantMap = legendVariantMapData?.variantMap ?? {};
+  // tokenMap keyed by NFT tokenId — used by NftPreviewBanner to swap the legend base image
+  const legendTokenVariantMap: Record<number, { imageUrl: string | null; mediaType: string }> =
+    legendVariantMapData?.tokenMap ?? {};
 
   const { data: traitVariantMapData } = useQuery({
     queryKey: ["trait-variants-by-collection", collection, activePack],
@@ -1160,6 +1176,8 @@ export function Store() {
           ethUsd={ethUsd}
           onPreviewNftChange={(nft) => setPreviewNftIsLegend(nft?.isLegend === true)}
           traitVariantMap={traitVariantMap}
+          activePack={activePack}
+          legendTokenVariantMap={legendTokenVariantMap}
         />
       </div>
 

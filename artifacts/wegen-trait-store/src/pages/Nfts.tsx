@@ -159,6 +159,25 @@ function NftsContent() {
   const previewVariantMap: Record<string, { imageUrl: string | null }> =
     (previewVariantData?.variantMap ?? {}) as Record<string, { imageUrl: string | null }>;
 
+  // Fetch legend variant map (tokenId → variant imageUrl) for legend NFT card images.
+  // Legend variants live in legend_variants, not trait_variants, so the regular
+  // variant-preview-image endpoint returns nothing for them. We use the tokenMap
+  // returned by legends/variants/by-collection to swap legend card images directly.
+  const { data: legendVariantData } = useQuery({
+    queryKey: ["legend-variants-preview", previewVariant, collection],
+    enabled: !!previewVariant,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/legends/variants/by-collection?name=${encodeURIComponent(previewVariant!)}&nftCollection=${encodeURIComponent(collection)}`,
+      );
+      type Entry = { imageUrl: string | null; mediaType: string };
+      if (!res.ok) return { tokenMap: {} as Record<number, Entry> };
+      return res.json() as Promise<{ variantMap: Record<number, Entry>; tokenMap: Record<number, Entry> }>;
+    },
+  });
+  const legendTokenVariantMap: Record<number, { imageUrl: string | null }> =
+    legendVariantData?.tokenMap ?? {};
+
   // Non-visual trait_type names to exclude from compositing
   const NON_VISUAL_TYPES = new Set([
     "origin", "seasoned wegen", "legend", "ultra rare",
@@ -168,8 +187,15 @@ function NftsContent() {
   // For the card's main image: when a variant is selected, composite the variant versions of
   // the NFT's on-chain trait layers via the server-side preview endpoint. Each NFT uses its
   // own collection (wegens vs wegenettes) so the correct layer order is applied.
-  const getCardImageUrl = (nft: { imageUrl?: string | null; isWegenette?: boolean; onChainAttributes?: { trait_type: string; value: string }[] }) => {
+  // Legend NFTs are a special case: their variants live in legend_variants (not trait_variants),
+  // so variant-preview-image returns nothing for them. We use legendTokenVariantMap instead.
+  const getCardImageUrl = (nft: { imageUrl?: string | null; isWegenette?: boolean; isLegend?: boolean | null; tokenId?: number; onChainAttributes?: { trait_type: string; value: string }[] }) => {
     if (!previewVariant) return nft.imageUrl ?? null;
+    // Legend NFTs: use direct legend variant image (keyed by tokenId)
+    if (nft.isLegend && nft.tokenId != null) {
+      const entry = legendTokenVariantMap[nft.tokenId];
+      return entry?.imageUrl ?? nft.imageUrl ?? null;
+    }
     // Use per-NFT collection so Wegenettes get their own layer order from admin
     const nftColl = nft.isWegenette ? "wegenettes" : "wegens";
     const attrs = (nft.onChainAttributes ?? []).filter(

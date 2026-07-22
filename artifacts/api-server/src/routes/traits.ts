@@ -317,6 +317,195 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
   }
 });
 
+// ── GET /traits/compose-preview — server-composited NFT preview for the Store page ──
+// Takes on-chain attrs + a store preview trait ID. Fetches each on-chain trait's
+// base imageUrl from the DB, replaces the preview trait's category slot with the
+// preview trait's own imageUrl, then composites all layers in the admin-configured
+// order. This guarantees correct z-ordering (e.g. Headgear above Body) even when
+// the body PNG has opaque content in the headgear area.
+//
+// ?previewTraitId=1212&nftCollection=wegens&attrs=Background:Blaze|Skin:Brown|...&baseImageUrl=https://...
+router.get("/traits/compose-preview", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const previewTraitIdRaw = typeof req.query.previewTraitId === "string" ? req.query.previewTraitId : "";
+  const attrsRaw = typeof req.query.attrs === "string" ? req.query.attrs : "";
+  const baseImageUrl = typeof req.query.baseImageUrl === "string" ? req.query.baseImageUrl : "";
+
+  const previewTraitId = parseInt(previewTraitIdRaw, 10);
+  if (!previewTraitIdRaw || isNaN(previewTraitId)) {
+    res.status(400).json({ error: "previewTraitId is required" });
+    return;
+  }
+
+  const fetchBuf = async (url: string): Promise<Buffer | null> => {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return null;
+      return Buffer.from(await r.arrayBuffer());
+    } catch { return null; }
+  };
+
+  const CATEGORY_ALIASES: Record<string, string> = {
+    "Skin": "Body",
+    "Head & Hair": "Headgear",
+    "HeadGear": "Headgear",
+  };
+
+  const NON_VISUAL_CATEGORIES = new Set([
+    "origin", "seasoned wegen", "legend", "ultra rare",
+    "migration #", "original name", "original mint", "original id",
+  ]);
+
+  const pairs = attrsRaw.split("|").map((s) => {
+    const idx = s.indexOf(":");
+    if (idx === -1) return null;
+    const rawCat = s.slice(0, idx).trim();
+    const name = s.slice(idx + 1).trim();
+    const category = CATEGORY_ALIASES[rawCat] ?? rawCat;
+    return { category, name };
+  }).filter((p): p is { category: string; name: string } =>
+    p !== null &&
+    p.category !== "" &&
+    p.name !== "" &&
+    p.name.length <= 120 &&
+    !NON_VISUAL_CATEGORIES.has(p.category.toLowerCase())
+  );
+
+  try {
+    const [previewTrait] = await db
+      .select({ id: traitsTable.id, category: traitsTable.category, imageUrl: traitsTable.imageUrl })
+      .from(traitsTable)
+      .where(eq(traitsTable.id, previewTraitId));
+
+    if (!previewTrait) {
+      res.status(404).json({ error: "Preview trait not found" });
+      return;
+    }
+
+    const proto = req.headers["x-forwarded-proto"] ?? req.protocol;
+    const host = req.headers["x-forwarded-host"] ?? req.get("host");
+    const serverBase = `${proto}://${host}`;
+
+    // Find base imageUrls for all on-chain traits EXCEPT the preview trait's category
+    // (that slot will be filled by the preview trait's imageUrl instead)
+    const otherPairs = pairs.filter(
+      (p) => p.category.toLowerCase() !== previewTrait.category.toLowerCase()
+    );
+    const lowerNames = otherPairs.map((p) => p.name.toLowerCase());
+
+    const candidates = lowerNames.length > 0
+      ? await db
+          .select({
+            id: traitsTable.id,
+            category: traitsTable.category,
+            name: traitsTable.name,
+            imageUrl: traitsTable.imageUrl,
+          })
+          .from(traitsTable)
+          .where(
+            and(
+              eq(traitsTable.nftCollection, nftCollection),
+              inArray(sql`lower(${traitsTable.name})`, lowerNames),
+            )
+          )
+      : [];
+
+    const pairSetLower = new Set(
+      otherPairs.map((p) => `${p.category.toLowerCase()}:::${p.name.toLowerCase()}`)
+    );
+    const allMatched = candidates.filter((t) =>
+      pairSetLower.has(`${t.category.toLowerCase()}:::${t.name.toLowerCase()}`)
+    );
+
+    const seenCategories = new Set<string>();
+    const matched = allMatched.filter((t) => {
+      if (seenCategories.has(t.category)) return false;
+      seenCategories.add(t.category);
+      return true;
+    });
+
+    const settings = await db.query.storeSettingsTable.findFirst({
+      where: eq(storeSettingsTable.nftCollection, nftCollection),
+    });
+    const layerOrder: string[] = (() => {
+      try { return settings?.layerOrder ? (JSON.parse(settings.layerOrder) as string[]) : []; }
+      catch { return []; }
+    })();
+    const defaultOrder = ["Background", "Body", "Clothes", "Mouth", "Eyes", "Headgear"];
+    const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
+
+    // Build category → imageUrl map: on-chain traits + the preview trait override
+    const categoryImageMap = new Map<string, string>();
+    for (const t of matched) {
+      if (t.imageUrl) {
+        const url = t.imageUrl.startsWith("http") ? t.imageUrl : `${serverBase}${t.imageUrl}`;
+        categoryImageMap.set(t.category, url);
+      }
+    }
+    if (previewTrait.imageUrl) {
+      const url = previewTrait.imageUrl.startsWith("http")
+        ? previewTrait.imageUrl
+        : `${serverBase}${previewTrait.imageUrl}`;
+      categoryImageMap.set(previewTrait.category, url);
+    }
+
+    // Sort back→front: layerOrder[0] = front (topmost), last = back (bottommost)
+    const sortedCategories = Array.from(categoryImageMap.keys()).sort((a, b) => {
+      const ai = order.indexOf(a);
+      const bi = order.indexOf(b);
+      return (bi === -1 ? 1000 : bi) - (ai === -1 ? 1000 : ai);
+    });
+    const layerUrls = sortedCategories.map((cat) => categoryImageMap.get(cat)!);
+
+    const resolvedBaseImageUrl = baseImageUrl
+      ? (baseImageUrl.startsWith("http") ? baseImageUrl : `${serverBase}${baseImageUrl}`)
+      : null;
+
+    const allUrls: string[] = [
+      ...(resolvedBaseImageUrl ? [resolvedBaseImageUrl] : []),
+      ...layerUrls,
+    ];
+
+    const buffers = (await Promise.all(allUrls.map(fetchBuf))).filter(
+      (b): b is Buffer => b !== null
+    );
+
+    if (buffers.length === 0) {
+      const placeholder = await sharp({
+        create: { width: 1000, height: 1000, channels: 4, background: { r: 26, g: 5, b: 51, alpha: 1 } },
+      }).png().toBuffer();
+      res.setHeader("Content-Type", "image/png");
+      res.send(placeholder);
+      return;
+    }
+
+    const resized = await Promise.all(
+      buffers.map((b) =>
+        sharp(b)
+          .resize(1000, 1000, { fit: "cover", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .ensureAlpha()
+          .png()
+          .toBuffer()
+      )
+    );
+
+    const [base, ...rest] = resized;
+    const composited = rest.length > 0
+      ? await sharp(base)
+          .composite(rest.map((buf) => ({ input: buf, blend: "over" as const })))
+          .png()
+          .toBuffer()
+      : base;
+
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.send(composited);
+  } catch (err) {
+    req.log?.error({ err }, "Failed to composite store preview image");
+    res.status(500).send("Failed to generate image");
+  }
+});
+
 // ── GET /traits/variants/by-collection — static; must come before /:traitId ──
 router.get("/traits/variants/by-collection", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);

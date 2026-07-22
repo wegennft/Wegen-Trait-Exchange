@@ -120,6 +120,27 @@ function NftPreviewBanner({
   const previewNftIsLegend = previewNft?.isLegend === true;
   const effectivePreviewTrait = (previewNftBlocked || previewNftIsLegend) ? null : previewTrait;
 
+  // When a store trait is being previewed AND the NFT has on-chain attributes,
+  // use a server-composited image instead of overlaying the trait PNG on the flat
+  // Alchemy base image. The server fetches every on-chain trait's imageUrl from the
+  // DB, replaces the preview trait's category slot with the store trait's image, and
+  // composites them in the admin-configured layer order — so Headgear always renders
+  // above Body regardless of what the body PNG's transparency mask covers.
+  const composePreviewUrl = (() => {
+    if (!effectivePreviewTrait || !previewNft?.onChainAttributes?.length || !previewNft.imageUrl) {
+      return null;
+    }
+    const attrs = previewNft.onChainAttributes
+      .map((a: { trait_type: string; value: string }) => `${a.trait_type}:${a.value}`)
+      .join("|");
+    return `/api/traits/compose-preview?${new URLSearchParams({
+      nftCollection: collection,
+      previewTraitId: String(effectivePreviewTrait.id),
+      attrs,
+      baseImageUrl: previewNft.imageUrl,
+    })}`;
+  })();
+
   useEffect(() => {
     onPreviewNftChange?.(previewNft);
   }, [previewNft, onPreviewNftChange]);
@@ -220,10 +241,14 @@ function NftPreviewBanner({
                       : "border-border/40"
                   }`}
                 >
-                  {/* Base NFT image */}
+                  {/* Base NFT image — or server-composited preview when a store trait is selected.
+                      composePreviewUrl fetches all on-chain trait layers from the DB and
+                      re-composites them in the correct admin-configured z-order, replacing the
+                      preview trait's category slot. This ensures Headgear renders above Body
+                      even when the body PNG has content in the head/hat area. */}
                   {previewNft?.imageUrl ? (
                     <img
-                      src={previewNft.imageUrl}
+                      src={composePreviewUrl ?? previewNft.imageUrl}
                       alt={previewNft.name}
                       className={`absolute inset-0 w-full h-full object-cover transition-all duration-200 ${previewNftBlocked ? "opacity-40 grayscale" : ""}`}
                     />
@@ -233,9 +258,13 @@ function NftPreviewBanner({
                     </div>
                   )}
 
-                  {/* Trait layers in correct z-order (equipped + preview merged and sorted back→front) */}
+                  {/* Equipped locker trait overlay layers, sorted back→front.
+                      When composePreviewUrl is active the server image already contains
+                      the preview trait at the correct z-position, so we only CSS-layer
+                      the locker-equipped traits here (excluding the preview category to
+                      avoid double-rendering). When no compose URL, fall back to the old
+                      approach: CSS-layer both equipped traits AND the preview trait. */}
                   {previewNft && !previewNftBlocked && (() => {
-                    // Layer render order: index 0 = back (rendered first), last = front (rendered last/on top)
                     const LAYER_ORDER = collection === "wegenettes"
                       ? ["Background", "Body", "Clothes", "Headgear", "Mouth", "Eyes"]
                       : ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
@@ -244,8 +273,6 @@ function NftPreviewBanner({
                       return i === -1 ? 3 : i;
                     };
                     const layers: { category: string; imageUrl: string; isNew: boolean }[] = [
-                      // Equipped locker traits, excluding the category being previewed (it's replaced).
-                      // Resolve variant image when a pack is active; fall back to base imageUrl.
                       ...previewNft.equippedTraits
                         .filter(et => et.trait.imageUrl && (!effectivePreviewTrait || et.category !== effectivePreviewTrait.category))
                         .map(et => {
@@ -253,8 +280,9 @@ function NftPreviewBanner({
                           const resolvedUrl = variantEntry?.imageUrl ?? et.trait.imageUrl!;
                           return { category: et.category, imageUrl: resolvedUrl, isNew: false };
                         }),
-                      // The trait being previewed slots in at its own layer position
-                      ...(effectivePreviewTrait?.imageUrl
+                      // Only add the preview trait as a CSS layer when the server-composited
+                      // image is NOT being used (e.g. NFT has no on-chain attributes).
+                      ...(!composePreviewUrl && effectivePreviewTrait?.imageUrl
                         ? [{ category: effectivePreviewTrait.category, imageUrl: effectivePreviewTrait.imageUrl, isNew: true }]
                         : []),
                     ].sort((a, b) => getZ(a.category) - getZ(b.category));

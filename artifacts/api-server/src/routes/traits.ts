@@ -259,10 +259,18 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
       ? (baseImageUrl.startsWith("http") ? baseImageUrl : `${serverBase}${baseImageUrl}`)
       : null;
 
-    if (layerUrls.length === 0 && !resolvedBaseImageUrl) {
-      // Nothing to show at all
+    // If no variant layers matched (e.g. this collection has no variant artwork for the
+    // requested pack), redirect to the base image so the frontend shows the original NFT art
+    // instead of a dark placeholder covering it. The 302 is intentional — it avoids re-fetching
+    // and compositing when there's nothing to composite.
+    if (layerUrls.length === 0) {
+      if (resolvedBaseImageUrl) {
+        res.redirect(302, resolvedBaseImageUrl);
+        return;
+      }
+      // Nothing at all — serve a transparent placeholder
       const placeholder = await sharp({
-        create: { width: 1000, height: 1000, channels: 4, background: { r: 26, g: 5, b: 51, alpha: 1 } },
+        create: { width: 1000, height: 1000, channels: 4, background: { r: 26, g: 5, b: 51, alpha: 0 } },
       }).png().toBuffer();
       res.setHeader("Content-Type", "image/png");
       res.send(placeholder);

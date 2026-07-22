@@ -40,13 +40,20 @@ export function hasLegendAttr(nft: AlchemyNft): boolean {
   return attrs.some((a) => String(a.trait_type).toLowerCase() === "legend");
 }
 
+/** NFT has an "Ultra Rare" trait_type — identifies ultra rare 1-of-1 wegens */
+export function hasUltraRareAttr(nft: AlchemyNft): boolean {
+  const attrs = nft.raw?.metadata?.attributes ?? [];
+  return attrs.some((a) => String(a.trait_type).toLowerCase() === "ultra rare");
+}
+
 /** Returns which special category this NFT belongs to (or null) */
 export function getNftLegendCategory(
   nft: AlchemyNft,
-): "golden_ticket" | "team" | "legend" | null {
+): "golden_ticket" | "team" | "legend" | "ultra_rare" | null {
   if (hasGoldenTicketAttr(nft)) return "golden_ticket";
   if (hasTeamAttr(nft)) return "team";
   if (hasLegendAttr(nft)) return "legend";
+  if (hasUltraRareAttr(nft)) return "ultra_rare";
   return null;
 }
 

@@ -222,7 +222,7 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
     })),
     // Recognized as a legend if:
     // (a) token ID is in the legends table for this NFT's collection, OR
-    // (b) the NFT has a "Golden Ticket", "Legend", or "Team" on-chain attribute
+    // (b) the NFT has a "Golden Ticket", "Legend", "Team", or "Ultra Rare" on-chain attribute
     isLegend:
       (nft.isWegenette ? legendWegenettesIds : legendWegenIds).has(nft.tokenId) ||
       (nft.onChainAttributes ?? []).some(
@@ -230,7 +230,8 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
           a.trait_type.toLowerCase() === "golden ticket" ||
           a.value.toLowerCase() === "golden ticket" ||
           a.trait_type.toLowerCase() === "legend" ||
-          a.trait_type.toLowerCase() === "team",
+          a.trait_type.toLowerCase() === "team" ||
+          a.trait_type.toLowerCase() === "ultra rare",
       ),
   }));
 

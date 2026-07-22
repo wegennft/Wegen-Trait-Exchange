@@ -10,6 +10,7 @@ import {
   hasGoldenTicketAttr,
   hasTeamAttr,
   hasLegendAttr,
+  hasUltraRareAttr,
 } from "../utils/onchain";
 
 const router: IRouter = Router();
@@ -156,18 +157,18 @@ router.get("/legends/:id/variants", async (req, res): Promise<void> => {
 });
 
 // POST /admin/legends/sync — scan the full Wegen collection and auto-add
-// Golden Tickets, Team Wegens, and Legendary (Legend trait) NFTs to the legends table.
+// Golden Tickets, Team Wegens, Legendary (Legend trait), and Ultra Rare NFTs to the legends table.
 router.post("/admin/legends/sync-golden-tickets", async (req, res): Promise<void> => {
   // Fetch the entire collection from the blockchain
   const allNfts = await fetchAllCollectionNfts();
 
   // Separate into categories
   const candidates = allNfts.filter(
-    (nft) => hasGoldenTicketAttr(nft) || hasTeamAttr(nft) || hasLegendAttr(nft),
+    (nft) => hasGoldenTicketAttr(nft) || hasTeamAttr(nft) || hasLegendAttr(nft) || hasUltraRareAttr(nft),
   );
 
   if (candidates.length === 0) {
-    res.json({ added: 0, scanned: allNfts.length, goldenTickets: 0, team: 0, legends: 0 });
+    res.json({ added: 0, scanned: allNfts.length, goldenTickets: 0, team: 0, legends: 0, ultraRare: 0 });
     return;
   }
 
@@ -192,6 +193,7 @@ router.post("/admin/legends/sync-golden-tickets", async (req, res): Promise<void
   let goldenTickets = 0;
   let team = 0;
   let legends = 0;
+  let ultraRare = 0;
 
   if (toInsert.length > 0) {
     const rows = toInsert.map((nft) => {
@@ -201,6 +203,7 @@ router.post("/admin/legends/sync-golden-tickets", async (req, res): Promise<void
       if (hasGoldenTicketAttr(nft)) goldenTickets++;
       else if (hasTeamAttr(nft)) team++;
       else if (hasLegendAttr(nft)) legends++;
+      else if (hasUltraRareAttr(nft)) ultraRare++;
 
       return {
         // Always generate a clean name for Wegenettes — on-chain token name reads "Wegens #X" for migrated Wegenettes
@@ -222,6 +225,7 @@ router.post("/admin/legends/sync-golden-tickets", async (req, res): Promise<void
     goldenTickets,
     team,
     legends,
+    ultraRare,
   });
 });
 

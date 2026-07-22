@@ -231,7 +231,8 @@ router.get("/nfts/:walletAddress", async (req, res): Promise<void> => {
           a.value.toLowerCase() === "golden ticket" ||
           a.trait_type.toLowerCase() === "legend" ||
           a.trait_type.toLowerCase() === "team" ||
-          a.trait_type.toLowerCase() === "ultra rare",
+          a.trait_type.toLowerCase() === "ultra rare" ||
+          a.trait_type.toLowerCase() === "seasoned wegen",
       ),
   }));
 

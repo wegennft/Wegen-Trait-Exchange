@@ -46,14 +46,21 @@ export function hasUltraRareAttr(nft: AlchemyNft): boolean {
   return attrs.some((a) => String(a.trait_type).toLowerCase() === "ultra rare");
 }
 
+/** NFT has a "Seasoned Wegen" trait_type — identifies seasoned/veteran wegens and wegenettes */
+export function hasSeasonedWegenAttr(nft: AlchemyNft): boolean {
+  const attrs = nft.raw?.metadata?.attributes ?? [];
+  return attrs.some((a) => String(a.trait_type).toLowerCase() === "seasoned wegen");
+}
+
 /** Returns which special category this NFT belongs to (or null) */
 export function getNftLegendCategory(
   nft: AlchemyNft,
-): "golden_ticket" | "team" | "legend" | "ultra_rare" | null {
+): "golden_ticket" | "team" | "legend" | "ultra_rare" | "seasoned_wegen" | null {
   if (hasGoldenTicketAttr(nft)) return "golden_ticket";
   if (hasTeamAttr(nft)) return "team";
   if (hasLegendAttr(nft)) return "legend";
   if (hasUltraRareAttr(nft)) return "ultra_rare";
+  if (hasSeasonedWegenAttr(nft)) return "seasoned_wegen";
   return null;
 }
 

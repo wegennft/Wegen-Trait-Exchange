@@ -21,6 +21,8 @@ export interface UpdateTraitBody {
   rarity?: UpdateTraitBodyRarity;
   /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
   theme?: string | null;
+  /** Override for the on-chain attribute value when it differs from the trait name */
+  onChainName?: string | null;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }

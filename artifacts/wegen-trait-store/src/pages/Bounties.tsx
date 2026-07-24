@@ -1157,46 +1157,6 @@ export function Bounties() {
                 </Button>
               </div>
 
-              {/* History */}
-              <div>
-                <h3 className="text-sm font-bold mb-3" style={{ ...BANGERS, color: "hsl(var(--muted-foreground))", letterSpacing: "0.1em" }}>
-                  RECENT ACTIVITY
-                </h3>
-                <div className="space-y-2">
-                  {(meData?.history ?? []).length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">No activity yet.</p>
-                  ) : (
-                    (meData?.history ?? []).map((h) => {
-                      const Icon = TX_ICON[h.type] ?? Star;
-                      const isPositive = h.points > 0;
-                      return (
-                        <div
-                          key={h.id}
-                          className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-                          style={{ background: "hsl(272 20% 6%)", border: "1px solid hsl(272 20% 12%)" }}
-                        >
-                          <Icon className="w-4 h-4 flex-shrink-0" style={{ color: isPositive ? accent : "#ef4444" }} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium truncate">{TX_LABELS[h.type] ?? h.type}</div>
-                            {h.description && (
-                              <div className="text-[10px] text-muted-foreground truncate">{h.description}</div>
-                            )}
-                          </div>
-                          <div
-                            className="font-bold text-sm flex-shrink-0"
-                            style={{ color: isPositive ? accent : "#ef4444" }}
-                          >
-                            {isPositive ? "+" : ""}{h.points} We Smackz
-                          </div>
-                          <div className="text-[10px] text-muted-foreground flex-shrink-0">
-                            {new Date(h.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
             </>
           )}
         </TabsContent>

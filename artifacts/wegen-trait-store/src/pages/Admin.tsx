@@ -123,6 +123,7 @@ import {
   Zap,
   RefreshCw,
   Coins,
+  Star,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
@@ -160,6 +161,7 @@ const traitSchema = z.object({
   rarity: z.enum(RARITIES).default("common"),
   isActive: z.boolean().default(false),
   payoutSplits: z.array(payoutSplitSchema).default([]),
+  onChainName: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.payoutSplits.length > 0) {
     const total = data.payoutSplits.reduce((sum, s) => sum + Number(s.percentage), 0);
@@ -975,6 +977,7 @@ export function Admin() {
         isActive: data.isActive,
         theme: data.theme || undefined,
         payoutSplits: data.payoutSplits,
+        onChainName: data.onChainName || null,
       },
     });
   };
@@ -5029,6 +5032,7 @@ function TraitForm({
       rarity: (defaultValues?.rarity as Rarity) ?? "common",
       isActive: defaultValues?.isActive ?? false,
       payoutSplits: (defaultValues?.payoutSplits as TraitFormValues["payoutSplits"]) ?? [],
+      onChainName: ((defaultValues as Record<string, unknown>)?.onChainName as string) ?? "",
     },
   });
 
@@ -5187,6 +5191,22 @@ function TraitForm({
           onClear={() => { form.setValue("imageUrl", "", { shouldDirty: true }); form.setValue("mediaType", "image", { shouldDirty: true }); }}
           onMediaTypeChange={(mt) => form.setValue("mediaType", mt, { shouldDirty: true })}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="onChainName">
+          On-chain name override
+          <span className="ml-1.5 text-xs text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Input
+          id="onChainName"
+          {...form.register("onChainName")}
+          placeholder="e.g. Lavender Skin (if on-chain value differs from trait name)"
+          className="bg-secondary/50"
+        />
+        <p className="text-xs text-muted-foreground">
+          Set this if the on-chain NFT attribute value differs from the trait name above. Used for variant compositing (e.g. wegenettes).
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -7344,6 +7364,40 @@ function BountiesAdminTab() {
     },
   });
 
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityType, setActivityType] = useState("");
+  const [activityRows, setActivityRows] = useState<ActivityLogRow[]>([]);
+  const [activityHasMore, setActivityHasMore] = useState(true);
+
+  type ActivityLogRow = {
+    id: number;
+    walletAddress: string;
+    type: string;
+    points: number;
+    description: string | null;
+    createdAt: string;
+  };
+
+  const { data: activityData, isFetching: activityFetching } = useQuery({
+    queryKey: ["admin-smackz-activity", activityPage, activityType],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(activityPage) });
+      if (activityType) params.set("type", activityType);
+      const r = await fetch(`/api/admin/bounties/point-log?${params}`);
+      return r.json() as Promise<{ log: ActivityLogRow[]; page: number; limit: number }>;
+    },
+  });
+
+  useEffect(() => {
+    if (!activityData) return;
+    if (activityPage === 1) {
+      setActivityRows(activityData.log);
+    } else {
+      setActivityRows((prev) => [...prev, ...activityData.log]);
+    }
+    setActivityHasMore(activityData.log.length === activityData.limit);
+  }, [activityData, activityPage]);
+
   const sendPointsMutation = useMutation({
     mutationFn: async () => {
       const body: Record<string, unknown> = {
@@ -8130,6 +8184,96 @@ function BountiesAdminTab() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── We Smackz Activity ── */}
+      <div className="rounded-xl border border-amber-500/30 p-5 space-y-4" style={{ background: "hsl(45 100% 4%)" }}>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+              <Star className="w-4 h-4" /> Recent Activity
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">All We Smackz transactions across every wallet.</p>
+          </div>
+          <select
+            value={activityType}
+            onChange={(e) => {
+              setActivityType(e.target.value);
+              setActivityPage(1);
+              setActivityRows([]);
+            }}
+            className="h-8 rounded-md border border-amber-500/30 bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+          >
+            <option value="">All types</option>
+            <option value="purchase">Purchase</option>
+            <option value="bounty">Bounty</option>
+            <option value="airdrop">Airdrop</option>
+            <option value="redemption">Redemption</option>
+            <option value="soc">SOC</option>
+            <option value="pending">Pending</option>
+            <option value="claim">Claim</option>
+          </select>
+        </div>
+
+        {activityRows.length === 0 && !activityFetching ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">No activity found.</div>
+        ) : (
+          <div className="rounded-xl border border-border/30 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/30 bg-secondary/20">
+                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Wallet</th>
+                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Type</th>
+                  <th className="text-right px-3 py-2 text-xs text-muted-foreground font-medium">Amount</th>
+                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium hidden sm:table-cell">Description</th>
+                  <th className="text-right px-3 py-2 text-xs text-muted-foreground font-medium hidden md:table-cell">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activityRows.map((row) => {
+                  const isPositive = row.points > 0;
+                  return (
+                    <tr key={row.id} className="border-b border-border/20 last:border-0">
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                        {row.walletAddress.slice(0, 6)}…{row.walletAddress.slice(-4)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-amber-500/30 text-amber-400 font-medium capitalize">
+                          {row.type}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-xs" style={{ color: isPositive ? "#f59e0b" : "#ef4444" }}>
+                        {isPositive ? "+" : ""}{row.points.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell max-w-[200px] truncate">
+                        {row.description ?? "—"}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground text-right hidden md:table-cell whitespace-nowrap">
+                        {new Date(row.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}{" "}
+                        <span className="text-muted-foreground/50">{new Date(row.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activityHasMore && (
+          <div className="flex justify-center pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
+              disabled={activityFetching}
+              onClick={() => setActivityPage((p) => p + 1)}
+            >
+              {activityFetching ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              {activityFetching ? "Loading…" : "Load more"}
+            </Button>
           </div>
         )}
       </div>

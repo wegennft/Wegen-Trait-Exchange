@@ -70,10 +70,19 @@ export function Nfts() {
 }
 
 function NftsContent() {
+  const { walletAddress } = useWallet();
+  const { collection, collectionLabel } = useCollection();
+
   const [selectedNft, setSelectedNft] = useState<WegenNft | null>(null);
   const [activeCategoryTab, setActiveCategoryTab] = useState<string>("all");
-  // Page-level variant preview — controls which version is shown on all cards
-  const [previewVariant, setPreviewVariant] = useState<string | null>(null);
+  // Active NFT collection tab — determines which variant band + packs to show
+  // Initialize from global collection context so wegenette-primary users land on the right tab
+  const [activeTab, setActiveTab] = useState<"wegens" | "wegenettes">(() =>
+    collection === "wegenettes" ? "wegenettes" : "wegens"
+  );
+  // Per-collection variant preview — independent so wegens/"Cyber Punks" never bleeds into wegenettes/"Cyber"
+  const [wegenVariant, setWegenVariant] = useState<string | null>(null);
+  const [wegenettesVariant, setWegenettesVariant] = useState<string | null>(null);
 
   const [saveDialogNft, setSaveDialogNft] = useState<WegenNft | null>(null);
   const [saveVariantPack, setSaveVariantPack] = useState<string | null>(null);
@@ -82,9 +91,6 @@ function NftsContent() {
     txHash: string;
     tokenId: number;
   } | null>(null);
-
-  const { walletAddress } = useWallet();
-  const { collection, collectionLabel } = useCollection();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -129,54 +135,91 @@ function NftsContent() {
   });
   const onChainFeeEth = parseFloat(feeData?.onChainUpdateFeeEth ?? "0") || 0;
 
-  const { data: variantCollectionsData } = useQuery({
-    queryKey: ["trait-variant-collections", collection],
+  // Fetch variant packs per-collection — each collection has its own pack names
+  // (e.g. wegens "Cyber Punks" vs wegenettes "Cyber") so they must be queried independently.
+  const { data: wegenPacksData } = useQuery({
+    queryKey: ["trait-variant-collections", "wegens"],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/traits/variant-collections?nftCollection=${encodeURIComponent(collection)}`,
-      );
+      const res = await fetch("/api/traits/variant-collections?nftCollection=wegens");
       if (!res.ok) return { collections: [] as string[] };
       return res.json() as Promise<{ collections: string[] }>;
     },
   });
-  const variantPacks: string[] = variantCollectionsData?.collections ?? [];
-
-  // Fetch variantMap (traitId → variant imageUrl) for equipped trait thumbnail swaps
-  const { data: previewVariantData, isLoading: isLoadingPreview } = useQuery({
-    queryKey: ["trait-variants-preview", previewVariant, collection],
-    enabled: !!previewVariant,
+  const { data: wegenettesPacksData } = useQuery({
+    queryKey: ["trait-variant-collections", "wegenettes"],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/traits/variants/by-collection?name=${encodeURIComponent(previewVariant!)}&nftCollection=${encodeURIComponent(collection)}`,
-      );
-      type VariantEntry = { imageUrl: string | null; mediaType: string };
-      type VariantData = { variantMap: Record<string, VariantEntry>; nameMap: Record<string, unknown> };
-      if (!res.ok) return { variantMap: {}, nameMap: {} } as VariantData;
-      return res.json() as Promise<VariantData>;
+      const res = await fetch("/api/traits/variant-collections?nftCollection=wegenettes");
+      if (!res.ok) return { collections: [] as string[] };
+      return res.json() as Promise<{ collections: string[] }>;
     },
   });
-  // variantMap keyed by traitId string → variant imageUrl for equipped trait thumbnails
-  const previewVariantMap: Record<string, { imageUrl: string | null }> =
-    (previewVariantData?.variantMap ?? {}) as Record<string, { imageUrl: string | null }>;
+  const wegenPacks: string[] = wegenPacksData?.collections ?? [];
+  const wegenettePacks: string[] = wegenettesPacksData?.collections ?? [];
+  // Show packs for whichever tab is active
+  const variantPacks = activeTab === "wegenettes" ? wegenettePacks : wegenPacks;
+  // The active variant for the current tab
+  const previewVariant = activeTab === "wegenettes" ? wegenettesVariant : wegenVariant;
+  const setPreviewVariant = activeTab === "wegenettes" ? setWegenettesVariant : setWegenVariant;
 
-  // Fetch legend variant map (tokenId → variant imageUrl) for legend NFT card images.
-  // Legend variants live in legend_variants, not trait_variants, so the regular
-  // variant-preview-image endpoint returns nothing for them. We use the tokenMap
-  // returned by legends/variants/by-collection to swap legend card images directly.
-  const { data: legendVariantData } = useQuery({
-    queryKey: ["legend-variants-preview", previewVariant, collection],
-    enabled: !!previewVariant,
+  // Fetch traitId→variantImageUrl maps per-collection for equipped trait thumbnail swaps
+  type VariantEntry = { imageUrl: string | null; mediaType: string };
+  type VariantMapData = { variantMap: Record<string, VariantEntry>; nameMap: Record<string, unknown> };
+  const { data: wegenVariantMapData, isLoading: isLoadingWegenPreview } = useQuery({
+    queryKey: ["trait-variants-preview", wegenVariant, "wegens"],
+    enabled: !!wegenVariant,
     queryFn: async () => {
       const res = await fetch(
-        `/api/legends/variants/by-collection?name=${encodeURIComponent(previewVariant!)}&nftCollection=${encodeURIComponent(collection)}`,
+        `/api/traits/variants/by-collection?name=${encodeURIComponent(wegenVariant!)}&nftCollection=wegens`,
       );
-      type Entry = { imageUrl: string | null; mediaType: string };
-      if (!res.ok) return { tokenMap: {} as Record<number, Entry> };
-      return res.json() as Promise<{ variantMap: Record<number, Entry>; tokenMap: Record<number, Entry> }>;
+      if (!res.ok) return { variantMap: {}, nameMap: {} } as VariantMapData;
+      return res.json() as Promise<VariantMapData>;
     },
   });
-  const legendTokenVariantMap: Record<number, { imageUrl: string | null }> =
-    legendVariantData?.tokenMap ?? {};
+  const { data: wegenettesVariantMapData, isLoading: isLoadingWegenettesPreview } = useQuery({
+    queryKey: ["trait-variants-preview", wegenettesVariant, "wegenettes"],
+    enabled: !!wegenettesVariant,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/traits/variants/by-collection?name=${encodeURIComponent(wegenettesVariant!)}&nftCollection=wegenettes`,
+      );
+      if (!res.ok) return { variantMap: {}, nameMap: {} } as VariantMapData;
+      return res.json() as Promise<VariantMapData>;
+    },
+  });
+  const isLoadingPreview = isLoadingWegenPreview || isLoadingWegenettesPreview;
+  const wegenVariantMap: Record<string, { imageUrl: string | null }> =
+    (wegenVariantMapData?.variantMap ?? {}) as Record<string, { imageUrl: string | null }>;
+  const wegenettesVariantMap: Record<string, { imageUrl: string | null }> =
+    (wegenettesVariantMapData?.variantMap ?? {}) as Record<string, { imageUrl: string | null }>;
+
+  // Fetch legend variant maps per-collection (legend variants live in legend_variants, not trait_variants)
+  type LegendEntry = { imageUrl: string | null; mediaType: string };
+  const { data: wegenLegendData } = useQuery({
+    queryKey: ["legend-variants-preview", wegenVariant, "wegens"],
+    enabled: !!wegenVariant,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/legends/variants/by-collection?name=${encodeURIComponent(wegenVariant!)}&nftCollection=wegens`,
+      );
+      if (!res.ok) return { tokenMap: {} as Record<number, LegendEntry> };
+      return res.json() as Promise<{ variantMap: Record<number, LegendEntry>; tokenMap: Record<number, LegendEntry> }>;
+    },
+  });
+  const { data: wegenettesLegendData } = useQuery({
+    queryKey: ["legend-variants-preview", wegenettesVariant, "wegenettes"],
+    enabled: !!wegenettesVariant,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/legends/variants/by-collection?name=${encodeURIComponent(wegenettesVariant!)}&nftCollection=wegenettes`,
+      );
+      if (!res.ok) return { tokenMap: {} as Record<number, LegendEntry> };
+      return res.json() as Promise<{ variantMap: Record<number, LegendEntry>; tokenMap: Record<number, LegendEntry> }>;
+    },
+  });
+  const wegenLegendTokenMap: Record<number, { imageUrl: string | null }> =
+    wegenLegendData?.tokenMap ?? {};
+  const wegenettesLegendTokenMap: Record<number, { imageUrl: string | null }> =
+    wegenettesLegendData?.tokenMap ?? {};
 
   // Non-visual trait_type names to exclude from compositing
   const NON_VISUAL_TYPES = new Set([
@@ -184,19 +227,17 @@ function NftsContent() {
     "migration #", "original name", "original mint", "original id",
   ]);
 
-  // For the card's main image: when a variant is selected, composite the variant versions of
-  // the NFT's on-chain trait layers via the server-side preview endpoint. Each NFT uses its
-  // own collection (wegens vs wegenettes) so the correct layer order is applied.
-  // Legend NFTs are a special case: their variants live in legend_variants (not trait_variants),
-  // so variant-preview-image returns nothing for them. We use legendTokenVariantMap instead.
-  const getCardImageUrl = (nft: { imageUrl?: string | null; isWegenette?: boolean; isLegend?: boolean | null; tokenId?: number; onChainAttributes?: { trait_type: string; value: string }[] }) => {
-    if (!previewVariant) return nft.imageUrl ?? null;
-    // Legend NFTs: use direct legend variant image (keyed by tokenId)
+  // For the card's main image: each NFT uses its own collection's selected variant
+  // so wegens/"Cyber Punks" and wegenettes/"Cyber" are kept completely independent.
+  const getCardImageUrl = (nft: { imageUrl?: string | null; isWegenette?: boolean; isLegend?: boolean | null; tokenId?: number; onChainAttributes?: { trait_type: string; value: string }[] | null }) => {
+    const nftVariant = nft.isWegenette ? wegenettesVariant : wegenVariant;
+    if (!nftVariant) return nft.imageUrl ?? null;
+    // Legend NFTs: use direct legend variant image (keyed by tokenId), separate maps per collection
     if (nft.isLegend && nft.tokenId != null) {
-      const entry = legendTokenVariantMap[nft.tokenId];
+      const legendMap = nft.isWegenette ? wegenettesLegendTokenMap : wegenLegendTokenMap;
+      const entry = legendMap[nft.tokenId];
       return entry?.imageUrl ?? nft.imageUrl ?? null;
     }
-    // Use per-NFT collection so Wegenettes get their own layer order from admin
     const nftColl = nft.isWegenette ? "wegenettes" : "wegens";
     const attrs = (nft.onChainAttributes ?? []).filter(
       (a) => !NON_VISUAL_TYPES.has(a.trait_type.toLowerCase())
@@ -204,7 +245,7 @@ function NftsContent() {
     const attrsParam = attrs.map((a) => `${a.trait_type}:${a.value}`).join("|");
     const base = nft.imageUrl ? `&baseImageUrl=${encodeURIComponent(nft.imageUrl)}` : "";
     if (attrs.length === 0 && !nft.imageUrl) return null;
-    return `/api/traits/variant-preview-image?variant=${encodeURIComponent(previewVariant)}&nftCollection=${encodeURIComponent(nftColl)}&attrs=${encodeURIComponent(attrsParam || "_")}${base}`;
+    return `/api/traits/variant-preview-image?variant=${encodeURIComponent(nftVariant)}&nftCollection=${encodeURIComponent(nftColl)}&attrs=${encodeURIComponent(attrsParam || "_")}${base}`;
   };
 
   const applyTrait = useApplyTrait({
@@ -283,8 +324,9 @@ function NftsContent() {
 
   const openSaveDialog = (nft: WegenNft & { variantPack?: string | null }) => {
     setSaveDialogNft(nft);
-    // Pre-populate from the page-level preview selection, falling back to the NFT's saved pack
-    setSaveVariantPack(previewVariant ?? nft.variantPack ?? null);
+    // Pre-populate from the NFT's own collection variant selection, falling back to saved pack
+    const nftVariant = nft.isWegenette ? wegenettesVariant : wegenVariant;
+    setSaveVariantPack(nftVariant ?? nft.variantPack ?? null);
     setSaveTxResult(null);
   };
 
@@ -537,8 +579,10 @@ function NftsContent() {
                           className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 bg-secondary/40 border border-border/40"
                         >
                           {(() => {
-                            const variantImg = previewVariant
-                              ? (previewVariantMap[String(et.trait.id)]?.imageUrl ?? null)
+                            const nftVariant = nft.isWegenette ? wegenettesVariant : wegenVariant;
+                            const nftVariantMap = nft.isWegenette ? wegenettesVariantMap : wegenVariantMap;
+                            const variantImg = nftVariant
+                              ? (nftVariantMap[String(et.trait.id)]?.imageUrl ?? null)
                               : null;
                             const src = variantImg ?? et.trait.imageUrl;
                             return src ? (
@@ -707,7 +751,11 @@ function NftsContent() {
             </div>
           )}
 
-          <Tabs defaultValue={wegens.length > 0 ? "wegens" : "wegenettes"} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as "wegens" | "wegenettes")}
+            className="w-full"
+          >
             <TabsList className="mb-6 h-auto p-1 gap-1 bg-card/60 border border-border/40">
               {wegens.length > 0 && (
                 <TabsTrigger value="wegens" className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
@@ -1034,8 +1082,10 @@ function NftsContent() {
                   </div>
                 </div>
 
-                {/* Variant pack selector */}
-                {variantPacks.length > 0 && (
+                {/* Variant pack selector — uses packs for this NFT's own collection */}
+                {(() => {
+                  const dialogPacks = saveDialogNft?.isWegenette ? wegenettePacks : wegenPacks;
+                  return dialogPacks.length > 0 ? (
                   <div>
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
                       Choose Variant to SOC
@@ -1051,7 +1101,7 @@ function NftsContent() {
                       >
                         Original
                       </button>
-                      {variantPacks.map((pack) => (
+                      {dialogPacks.map((pack) => (
                         <button
                           key={pack}
                           onClick={() => setSaveVariantPack(pack)}
@@ -1071,7 +1121,8 @@ function NftsContent() {
                       </p>
                     )}
                   </div>
-                )}
+                  ) : null;
+                })()}
 
                 {/* On-chain fee notice */}
                 {onChainFeeEth > 0 && (

@@ -25,6 +25,8 @@ export interface CreateTraitBody {
   isActive?: boolean;
   /** Which NFT collection this trait belongs to */
   nftCollection?: CreateTraitBodyNftCollection;
+  /** Override for the on-chain attribute value when it differs from the trait name */
+  onChainName?: string | null;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }

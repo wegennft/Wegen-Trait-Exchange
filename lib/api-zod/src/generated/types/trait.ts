@@ -28,6 +28,8 @@ export interface Trait {
   isActive: boolean;
   rarity: TraitRarity;
   nftCollection?: string | null;
+  /** Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants) */
+  onChainName?: string | null;
   /** Wallet addresses and their percentage share of sale proceeds */
   payoutSplits: PayoutSplit[];
   createdAt: Date;

@@ -49,6 +49,8 @@ export interface Trait {
   isActive: boolean;
   rarity: TraitRarity;
   nftCollection?: string | null;
+  /** Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants) */
+  onChainName?: string | null;
   /** Wallet addresses and their percentage share of sale proceeds */
   payoutSplits: PayoutSplit[];
   createdAt: string;
@@ -274,6 +276,8 @@ export interface CreateTraitBody {
   isActive?: boolean;
   /** Which NFT collection this trait belongs to */
   nftCollection?: CreateTraitBodyNftCollection;
+  /** Override for the on-chain attribute value when it differs from the trait name */
+  onChainName?: string | null;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }
@@ -301,6 +305,8 @@ export interface UpdateTraitBody {
   rarity?: UpdateTraitBodyRarity;
   /** Named collection/theme (e.g. "Stoner Traits", "70s Vibes") */
   theme?: string | null;
+  /** Override for the on-chain attribute value when it differs from the trait name */
+  onChainName?: string | null;
   /** Wallet payout splits (must sum to 100%) */
   payoutSplits?: PayoutSplit[];
 }

@@ -83,7 +83,7 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, category, theme, dropName, description, imageUrl, mediaType, priceUsd, totalSupply, rarity, isActive, payoutSplits } =
+  const { name, category, theme, dropName, description, imageUrl, mediaType, priceUsd, totalSupply, rarity, isActive, payoutSplits, onChainName } =
     body.data;
 
   const splits = payoutSplits ?? [];
@@ -133,6 +133,7 @@ router.post("/admin/traits", async (req, res): Promise<void> => {
       nftCollection,
       isActive: isActive ?? true,
       payoutSplits: splits,
+      onChainName: onChainName ?? null,
     })
     .returning();
 
@@ -174,6 +175,7 @@ router.put("/admin/traits/:traitId", async (req, res): Promise<void> => {
   if (body.data.payoutSplits !== undefined) updates.payoutSplits = body.data.payoutSplits;
   if ("theme" in body.data) updates.theme = body.data.theme ?? null;
   if ("dropName" in body.data) updates.dropName = body.data.dropName ?? null;
+  if ("onChainName" in body.data) updates.onChainName = body.data.onChainName ?? null;
 
   if (body.data.priceUsd !== undefined) {
     let ethUsdRate: number;

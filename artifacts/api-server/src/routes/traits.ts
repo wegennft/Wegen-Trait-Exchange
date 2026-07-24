@@ -161,26 +161,30 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     // Filter by nftCollection so wegens traits are never mixed into wegenettes
     // cards (e.g. "Brown" body exists in both collections but with different
     // variant artwork).
+    // Also match against `on_chain_name` when set — this handles wegenette traits
+    // whose on-chain attribute value differs from the DB trait name.
     const lowerNames = pairs.map((p) => p.name.toLowerCase());
     const candidates = lowerNames.length > 0
       ? await db
-          .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name, imageUrl: traitsTable.imageUrl })
+          .select({ id: traitsTable.id, category: traitsTable.category, name: traitsTable.name, imageUrl: traitsTable.imageUrl, onChainName: traitsTable.onChainName })
           .from(traitsTable)
           .where(
             and(
               eq(traitsTable.nftCollection, nftCollection),
-              inArray(sql`lower(${traitsTable.name})`, lowerNames),
+              sql`(lower(${traitsTable.name}) = ANY(${lowerNames}) OR (${traitsTable.onChainName} IS NOT NULL AND lower(${traitsTable.onChainName}) = ANY(${lowerNames})))`,
             )
           )
       : [];
 
-    // Match case-insensitively on both category and name
+    // Match case-insensitively on both category and name (or onChainName override)
     const pairSetLower = new Set(
       pairs.map((p) => `${p.category.toLowerCase()}:::${p.name.toLowerCase()}`)
     );
-    const allMatched = candidates.filter((t) =>
-      pairSetLower.has(`${t.category.toLowerCase()}:::${t.name.toLowerCase()}`)
-    );
+    const allMatched = candidates.filter((t) => {
+      const nameKey = `${t.category.toLowerCase()}:::${t.name.toLowerCase()}`;
+      const aliasKey = t.onChainName ? `${t.category.toLowerCase()}:::${t.onChainName.toLowerCase()}` : null;
+      return pairSetLower.has(nameKey) || (aliasKey !== null && pairSetLower.has(aliasKey));
+    });
 
     // Deduplicate: keep only the first match per category (avoid double-compositing Body:Ice x2)
     const seenCategories = new Set<string>();
@@ -198,7 +202,10 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
       try { return settings?.layerOrder ? (JSON.parse(settings.layerOrder) as string[]) : []; }
       catch { return []; }
     })();
-    const defaultOrder = ["Background", "Body", "Clothes", "Mouth", "Eyes", "Headgear"];
+    // layerOrder[0] is FRONT (topmost), last entry is BACK (bottommost).
+    // Sort descending so highest index (back) is composited first, lowest (front) last.
+    // Must match admin's DEFAULT_LAYER_ORDER so headgear renders on top, background at base.
+    const defaultOrder = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
     const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
 
     // Get variant images for the matched trait IDs
@@ -404,12 +411,13 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
             category: traitsTable.category,
             name: traitsTable.name,
             imageUrl: traitsTable.imageUrl,
+            onChainName: traitsTable.onChainName,
           })
           .from(traitsTable)
           .where(
             and(
               eq(traitsTable.nftCollection, nftCollection),
-              inArray(sql`lower(${traitsTable.name})`, lowerNames),
+              sql`(lower(${traitsTable.name}) = ANY(${lowerNames}) OR (${traitsTable.onChainName} IS NOT NULL AND lower(${traitsTable.onChainName}) = ANY(${lowerNames})))`,
             )
           )
       : [];
@@ -417,9 +425,11 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
     const pairSetLower = new Set(
       otherPairs.map((p) => `${p.category.toLowerCase()}:::${p.name.toLowerCase()}`)
     );
-    const allMatched = candidates.filter((t) =>
-      pairSetLower.has(`${t.category.toLowerCase()}:::${t.name.toLowerCase()}`)
-    );
+    const allMatched = candidates.filter((t) => {
+      const nameKey = `${t.category.toLowerCase()}:::${t.name.toLowerCase()}`;
+      const aliasKey = t.onChainName ? `${t.category.toLowerCase()}:::${t.onChainName.toLowerCase()}` : null;
+      return pairSetLower.has(nameKey) || (aliasKey !== null && pairSetLower.has(aliasKey));
+    });
 
     const seenCategories = new Set<string>();
     const matched = allMatched.filter((t) => {
@@ -435,7 +445,9 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
       try { return settings?.layerOrder ? (JSON.parse(settings.layerOrder) as string[]) : []; }
       catch { return []; }
     })();
-    const defaultOrder = ["Background", "Body", "Clothes", "Mouth", "Eyes", "Headgear"];
+    // layerOrder[0] is FRONT (topmost), last entry is BACK (bottommost).
+    // Must match admin's DEFAULT_LAYER_ORDER so headgear renders on top, background at base.
+    const defaultOrder = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
     const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
 
     // Build category → imageUrl map: on-chain traits + the preview trait override

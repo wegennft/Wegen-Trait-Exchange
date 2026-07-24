@@ -1182,6 +1182,10 @@ components:
         nftCollection:
           type: string
           nullable: true
+        onChainName:
+          type: string
+          nullable: true
+          description: Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)
         payoutSplits:
           type: array
           items:
@@ -1650,6 +1654,10 @@ components:
           enum: [wegens, wegenettes]
           default: wegens
           description: Which NFT collection this trait belongs to
+        onChainName:
+          type: string
+          nullable: true
+          description: Override for the on-chain attribute value when it differs from the trait name
         payoutSplits:
           type: array
           items:
@@ -1691,6 +1699,10 @@ components:
           type: string
           nullable: true
           description: Named collection/theme (e.g. "Stoner Traits", "70s Vibes")
+        onChainName:
+          type: string
+          nullable: true
+          description: Override for the on-chain attribute value when it differs from the trait name
         payoutSplits:
           type: array
           items:

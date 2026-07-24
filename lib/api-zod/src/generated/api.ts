@@ -103,6 +103,12 @@ export const ListTraitsResponse = zod.object({
       isActive: zod.boolean(),
       rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
       nftCollection: zod.string().nullish(),
+      onChainName: zod
+        .string()
+        .nullish()
+        .describe(
+          "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+        ),
       payoutSplits: zod
         .array(
           zod.object({
@@ -273,6 +279,12 @@ export const GetTraitResponse = zod.object({
   isActive: zod.boolean(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
   nftCollection: zod.string().nullish(),
+  onChainName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+    ),
   payoutSplits: zod
     .array(
       zod.object({
@@ -350,6 +362,12 @@ export const GetLockerResponse = zod.object({
         isActive: zod.boolean(),
         rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
         nftCollection: zod.string().nullish(),
+        onChainName: zod
+          .string()
+          .nullish()
+          .describe(
+            "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+          ),
         payoutSplits: zod
           .array(
             zod.object({
@@ -471,6 +489,12 @@ export const GetUserNftsResponse = zod.object({
             isActive: zod.boolean(),
             rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
             nftCollection: zod.string().nullish(),
+            onChainName: zod
+              .string()
+              .nullish()
+              .describe(
+                "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+              ),
             payoutSplits: zod
               .array(
                 zod.object({
@@ -583,6 +607,12 @@ export const ApplyTraitResponse = zod.object({
           isActive: zod.boolean(),
           rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
           nftCollection: zod.string().nullish(),
+          onChainName: zod
+            .string()
+            .nullish()
+            .describe(
+              "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+            ),
           payoutSplits: zod
             .array(
               zod.object({
@@ -641,6 +671,12 @@ export const ApplyTraitResponse = zod.object({
       isActive: zod.boolean(),
       rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
       nftCollection: zod.string().nullish(),
+      onChainName: zod
+        .string()
+        .nullish()
+        .describe(
+          "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+        ),
       payoutSplits: zod
         .array(
           zod.object({
@@ -753,6 +789,12 @@ export const RemoveTraitResponse = zod.object({
           isActive: zod.boolean(),
           rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
           nftCollection: zod.string().nullish(),
+          onChainName: zod
+            .string()
+            .nullish()
+            .describe(
+              "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+            ),
           payoutSplits: zod
             .array(
               zod.object({
@@ -811,6 +853,12 @@ export const RemoveTraitResponse = zod.object({
       isActive: zod.boolean(),
       rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
       nftCollection: zod.string().nullish(),
+      onChainName: zod
+        .string()
+        .nullish()
+        .describe(
+          "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+        ),
       payoutSplits: zod
         .array(
           zod.object({
@@ -1167,6 +1215,12 @@ export const CreateTraitBody = zod.object({
     .enum(["wegens", "wegenettes"])
     .default(createTraitBodyNftCollectionDefault)
     .describe("Which NFT collection this trait belongs to"),
+  onChainName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Override for the on-chain attribute value when it differs from the trait name",
+    ),
   payoutSplits: zod
     .array(
       zod.object({
@@ -1214,6 +1268,12 @@ export const UpdateTraitBody = zod.object({
     .nullish()
     .describe(
       'Named collection\/theme (e.g. \"Stoner Traits\", \"70s Vibes\")',
+    ),
+  onChainName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Override for the on-chain attribute value when it differs from the trait name",
     ),
   payoutSplits: zod
     .array(
@@ -1264,6 +1324,12 @@ export const UpdateTraitResponse = zod.object({
   isActive: zod.boolean(),
   rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
   nftCollection: zod.string().nullish(),
+  onChainName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+    ),
   payoutSplits: zod
     .array(
       zod.object({
@@ -1569,6 +1635,12 @@ export const ListBundlesResponse = zod.object({
           isActive: zod.boolean(),
           rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
           nftCollection: zod.string().nullish(),
+          onChainName: zod
+            .string()
+            .nullish()
+            .describe(
+              "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+            ),
           payoutSplits: zod
             .array(
               zod.object({
@@ -1666,6 +1738,12 @@ export const ListAdminBundlesResponse = zod.object({
           isActive: zod.boolean(),
           rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
           nftCollection: zod.string().nullish(),
+          onChainName: zod
+            .string()
+            .nullish()
+            .describe(
+              "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+            ),
           payoutSplits: zod
             .array(
               zod.object({
@@ -1794,6 +1872,12 @@ export const UpdateBundleResponse = zod.object({
       isActive: zod.boolean(),
       rarity: zod.enum(["common", "uncommon", "rare", "legendary"]),
       nftCollection: zod.string().nullish(),
+      onChainName: zod
+        .string()
+        .nullish()
+        .describe(
+          "Override for the on-chain attribute value when it differs from the trait name (used for compositing wegenette variants)",
+        ),
       payoutSplits: zod
         .array(
           zod.object({

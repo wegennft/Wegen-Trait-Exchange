@@ -25,6 +25,7 @@ export const traitsTable = pgTable("traits", {
   remainingSupply: integer("remaining_supply").notNull(),
   theme: text("theme"),
   dropName: text("drop_name"),
+  onChainName: text("on_chain_name"),
   isActive: boolean("is_active").notNull().default(true),
   rarity: text("rarity").notNull().default("common"),
   nftCollection: text("nft_collection").notNull().default("wegens"),

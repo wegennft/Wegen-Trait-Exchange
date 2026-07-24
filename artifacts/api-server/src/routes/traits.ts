@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and, isNotNull, asc, inArray } from "drizzle-orm";
+import { eq, sql, and, or, isNotNull, asc, inArray } from "drizzle-orm";
 import { db, traitsTable, storeSettingsTable, traitVariantsTable } from "@workspace/db";
 import sharp from "sharp";
 import {
@@ -171,7 +171,13 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
           .where(
             and(
               eq(traitsTable.nftCollection, nftCollection),
-              sql`(lower(${traitsTable.name}) = ANY(${lowerNames}) OR (${traitsTable.onChainName} IS NOT NULL AND lower(${traitsTable.onChainName}) = ANY(${lowerNames})))`,
+              or(
+                inArray(sql`lower(${traitsTable.name})`, lowerNames),
+                and(
+                  isNotNull(traitsTable.onChainName),
+                  inArray(sql`lower(${traitsTable.onChainName})`, lowerNames),
+                ),
+              ),
             )
           )
       : [];
@@ -417,7 +423,13 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
           .where(
             and(
               eq(traitsTable.nftCollection, nftCollection),
-              sql`(lower(${traitsTable.name}) = ANY(${lowerNames}) OR (${traitsTable.onChainName} IS NOT NULL AND lower(${traitsTable.onChainName}) = ANY(${lowerNames})))`,
+              or(
+                inArray(sql`lower(${traitsTable.name})`, lowerNames),
+                and(
+                  isNotNull(traitsTable.onChainName),
+                  inArray(sql`lower(${traitsTable.onChainName})`, lowerNames),
+                ),
+              ),
             )
           )
       : [];

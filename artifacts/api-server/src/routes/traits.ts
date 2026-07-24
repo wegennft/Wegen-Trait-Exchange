@@ -131,10 +131,13 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     "HeadGear": "Headgear",
   };
 
-  // Non-visual trait_type names that should never be composited as layers
+  // Non-visual trait_type names that should never be composited as layers.
+  // Includes wegenette-specific metadata attributes (Golden Ticket, Team, Collab Edition)
+  // that appear as on-chain trait_types but have no corresponding visual layer.
   const NON_VISUAL_CATEGORIES = new Set([
     "origin", "seasoned wegen", "legend", "ultra rare",
     "migration #", "original name", "original mint", "original id",
+    "golden ticket", "team", "collab edition",
   ]);
 
   // Parse "Category:Value|..." pairs (split only on first colon per segment)
@@ -371,6 +374,7 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
   const NON_VISUAL_CATEGORIES = new Set([
     "origin", "seasoned wegen", "legend", "ultra rare",
     "migration #", "original name", "original mint", "original id",
+    "golden ticket", "team", "collab edition",
   ]);
 
   const pairs = attrsRaw.split("|").map((s) => {

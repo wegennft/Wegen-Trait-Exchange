@@ -548,6 +548,7 @@ router.get("/traits/variants/by-collection", async (req, res): Promise<void> => 
       traitId: traitVariantsTable.traitId,
       traitName: traitsTable.name,
       traitCategory: traitsTable.category,
+      onChainName: traitsTable.onChainName,
       imageUrl: traitVariantsTable.imageUrl,
       mediaType: traitVariantsTable.mediaType,
     })
@@ -564,7 +565,13 @@ router.get("/traits/variants/by-collection", async (req, res): Promise<void> => 
   const nameMap: Record<string, { imageUrl: string | null; mediaType: string; category: string }> = {};
   for (const r of rows) {
     variantMap[String(r.traitId)] = { imageUrl: r.imageUrl, mediaType: r.mediaType };
-    nameMap[r.traitName.toLowerCase()] = { imageUrl: r.imageUrl, mediaType: r.mediaType, category: r.traitCategory };
+    const entry = { imageUrl: r.imageUrl, mediaType: r.mediaType, category: r.traitCategory };
+    nameMap[r.traitName.toLowerCase()] = entry;
+    // Also index by on-chain name so the frontend can look up traits whose DB name
+    // differs from the on-chain attribute value (e.g. "B B T" in DB vs "B.B.T" on-chain).
+    if (r.onChainName) {
+      nameMap[r.onChainName.toLowerCase()] = entry;
+    }
   }
   res.json({ variantMap, nameMap });
 });

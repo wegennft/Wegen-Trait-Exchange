@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCollection } from "@/contexts/CollectionContext";
-import { useGetMyLegends } from "@workspace/api-client-react";
+import { useGetMyLegends, getGetMyLegendsQueryKey } from "@workspace/api-client-react";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 
@@ -14,9 +14,10 @@ export function MyLegends() {
   const { collection, collectionLabel, theme } = useCollection();
   const { accent, accentHsl, glow, glow2, gradient, gradient2 } = theme;
 
+  const myLegendsQueryKey = getGetMyLegendsQueryKey({ walletAddress: walletAddress ?? "", nftCollection: collection });
   const { data, isLoading, refetch, isFetching } = useGetMyLegends(
     { walletAddress: walletAddress ?? "", nftCollection: collection },
-    { enabled: !!walletAddress }
+    { query: { enabled: !!walletAddress, queryKey: myLegendsQueryKey } },
   );
   const legends = data?.legends ?? [];
 
@@ -109,7 +110,7 @@ export function MyLegends() {
             </p>
           </div>
           <Button
-            onClick={connect}
+            onClick={() => void connect()}
             className="gap-2 text-white font-bold uppercase"
             style={{
               ...BANGERS,

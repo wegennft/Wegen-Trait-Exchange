@@ -590,8 +590,8 @@ export function Store() {
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
   const { data: storeStats } = useGetStoreStats();
-  const { data: themesData } = useListStoreThemes(collection);
-  const { data: categoriesData, isLoading: isLoadingCategories } = useListTraitCategories(collection);
+  const { data: themesData } = useListStoreThemes();
+  const { data: categoriesData, isLoading: isLoadingCategories } = useListTraitCategories();
 
   // ── Legends data ──
   const { data: legendsData, isLoading: isLoadingLegends } = useListLegends(
@@ -779,7 +779,7 @@ export function Store() {
           {/* Action */}
           {!isConnected ? (
             <button
-              onClick={connect}
+              onClick={() => void connect()}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold hover:bg-amber-500/25 transition-all text-sm uppercase tracking-widest"
               style={{ fontFamily: "'Bangers', cursive", letterSpacing: "0.1em" }}
             >
@@ -1086,7 +1086,7 @@ export function Store() {
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {legends.map((legend, index) => {
-                  const variantEntry = activePack ? (legendVariantMap[legend.id] ?? legendVariantMap[String(legend.id)]) : undefined;
+                  const variantEntry = activePack ? legendVariantMap[legend.id] : undefined;
                   const hasVariant = !!activePack && !!variantEntry?.imageUrl;
                   const imageUrl = hasVariant ? variantEntry!.imageUrl : legend.imageUrl;
                   const mediaType = hasVariant ? (variantEntry!.mediaType ?? "image") : (legend.mediaType ?? "image");
@@ -1652,8 +1652,8 @@ export function Store() {
                   {/* Thumbnail */}
                   <div className="w-14 h-14 rounded-lg overflow-hidden bg-secondary/40 flex-shrink-0 border border-border/20">
                     {trait.imageUrl ? (
-                      <TraitImageZoom url={trait.imageUrl} mediaType={(trait as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
-                        <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" />
+                      <TraitImageZoom url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
+                        <TraitMedia url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" />
                       </TraitImageZoom>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
@@ -1744,7 +1744,7 @@ export function Store() {
                 <Button
                   className="w-full gap-2 font-bold"
                   style={{ ...BANGERS, background: gradient }}
-                  onClick={connect}
+                  onClick={() => void connect()}
                 >
                   <Wallet className="w-4 h-4" />
                   CONNECT WALLET TO CHECKOUT

@@ -1613,7 +1613,7 @@ export function Admin() {
                           <div className="flex flex-col items-center gap-0.5">
                             {trait.imageUrl ? (
                               <div className="w-14 h-14 rounded-lg bg-secondary/50 overflow-hidden ring-1 ring-primary/30">
-                                <TraitMedia url={trait.imageUrl} mediaType={(trait as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" showBadge />
+                                <TraitMedia url={trait.imageUrl} mediaType={(trait as unknown as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" showBadge />
                               </div>
                             ) : (
                               <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-base font-bold ring-1 ring-border/30">
@@ -3251,7 +3251,8 @@ function FeesSettings() {
   });
 
   const form = useForm<FeeFormValues>({
-    resolver: zodResolver(feeSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(feeSchema as any),
     defaultValues: {
       buyingFeePercent: "0",
       buyingFeeWallet: "",
@@ -5019,7 +5020,8 @@ function TraitForm({
   const existingCollections = collectionsData?.collections ?? [];
 
   const form = useForm<TraitFormValues>({
-    resolver: zodResolver(traitSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(traitSchema as any),
     defaultValues: {
       name: defaultValues?.name ?? "",
       category: defaultValues?.category ?? "",
@@ -8324,7 +8326,7 @@ function NftRegistryTab() {
     let meta: Record<string, unknown>;
     try { meta = JSON.parse(metadataJson); } catch { return; }
     importMut.mutate(
-      { importNftBody: { metadata: meta, walletAddress: walletAddr.trim(), upsert: true } },
+      { data: { metadata: meta, walletAddress: walletAddr.trim(), upsert: true } },
       {
         onSuccess: (data) => {
           toast({

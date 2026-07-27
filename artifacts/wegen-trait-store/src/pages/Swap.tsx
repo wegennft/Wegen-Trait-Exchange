@@ -1028,7 +1028,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
             List for Sale
           </Button>
         ) : (
-          <Button onClick={connect} className="bg-primary text-white gap-2 flex-shrink-0">
+          <Button onClick={() => void connect()} className="bg-primary text-white gap-2 flex-shrink-0">
             <Wallet className="w-4 h-4" />
             Connect Wallet
           </Button>
@@ -1110,7 +1110,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
                 <Button
                   size="sm"
                   className="ml-auto bg-primary hover:bg-primary/90 text-white gap-1.5 h-7 text-xs flex-shrink-0"
-                  onClick={connect}
+                  onClick={() => void connect()}
                 >
                   Connect Wallet
                 </Button>
@@ -1185,7 +1185,7 @@ function TraitMarket({ walletAddress, isConnected, connect, myLockerItems }: {
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground/50">
               <Wallet className="w-12 h-12" />
               <p className="text-sm">Connect your wallet to see your listings.</p>
-              <Button onClick={connect} className="bg-primary text-white">Connect Wallet</Button>
+              <Button onClick={() => void connect()} className="bg-primary text-white">Connect Wallet</Button>
             </div>
           ) : loadingMine ? (
             <div className="flex items-center justify-center py-20">
@@ -1402,7 +1402,7 @@ export function Swap() {
             Post a Swap
           </Button>
         ) : (
-          <Button onClick={connect} className="bg-primary text-white gap-2 flex-shrink-0">
+          <Button onClick={() => void connect()} className="bg-primary text-white gap-2 flex-shrink-0">
             <Wallet className="w-4 h-4" />
             Connect Wallet
           </Button>
@@ -1497,7 +1497,7 @@ export function Swap() {
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground/50">
               <Wallet className="w-12 h-12" />
               <p className="text-sm">Connect your wallet to see your listings.</p>
-              <Button onClick={connect} className="bg-primary text-white">Connect Wallet</Button>
+              <Button onClick={() => void connect()} className="bg-primary text-white">Connect Wallet</Button>
             </div>
           ) : loadingMine ? (
             <div className="flex items-center justify-center py-20">

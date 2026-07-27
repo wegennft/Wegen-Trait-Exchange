@@ -58,7 +58,7 @@ function newBountyKey(): string {
 
 function playCelebrationJingle() {
   try {
-    const AC = (window.AudioContext ?? (window as Record<string, unknown>).webkitAudioContext) as typeof AudioContext;
+    const AC = (window.AudioContext ?? (window as unknown as Record<string, unknown>).webkitAudioContext) as typeof AudioContext;
     const ctx = new AC();
     const melody: [number, number, number][] = [
       [523.25, 0.00, 0.14],

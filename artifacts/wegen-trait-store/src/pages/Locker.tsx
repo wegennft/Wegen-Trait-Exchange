@@ -9,6 +9,7 @@ import {
   useConfirmTraits,
   useListVariantCollections,
   useGetVariantsByCollection,
+  getGetVariantsByCollectionQueryKey,
   getGetLockerQueryKey,
   getGetUserNftsQueryKey,
 } from "@workspace/api-client-react";
@@ -119,7 +120,7 @@ export function Locker() {
 /* ─── Demo state types ────────────────────────────────────────────── */
 
 type DemoNft = {
-  tokenId: number; name: string; imageUrl: string | null;
+  tokenId: number; name: string; imageUrl: string | null; isWegenette?: boolean;
   equippedTraits: { category: string; trait: { id: number; name: string; imageUrl?: string | null; mediaType?: string } }[];
 };
 type DemoItem = {
@@ -178,14 +179,14 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   // Variant packs available for this collection (nfts/demo resolved before activeNft)
   const { data: variantColData } = useListVariantCollections(
     { nftCollection: collection },
-    { query: { enabled: true } },
   );
   const variantPacks = variantColData?.collections ?? [];
 
   // Variant image map for the selected pack
+  const variantsByCollectionQueryKey = getGetVariantsByCollectionQueryKey({ name: selectedVariantPack ?? "", nftCollection: collection });
   const { data: variantMapData, isLoading: isLoadingVariant } = useGetVariantsByCollection(
-    { variantPack: selectedVariantPack ?? "", nftCollection: collection },
-    { query: { enabled: !!selectedVariantPack } },
+    { name: selectedVariantPack ?? "", nftCollection: collection },
+    { query: { enabled: !!selectedVariantPack, queryKey: variantsByCollectionQueryKey } },
   );
   const variantMap = variantMapData?.variantMap ?? {};
   const nameMap   = variantMapData?.nameMap   ?? {};
@@ -242,8 +243,8 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     confirmTraits.mutate({ tokenId: activeNft.tokenId, data: { walletAddress, variantPack: selectedVariantPack } });
   };
 
-  const nfts        = demo ? demoNfts  : (nftsData?.nfts ?? []);
-  const lockerItems = demo ? demoItems : (lockerData?.items ?? []);
+  const nfts        = (demo ? demoNfts  : (nftsData?.nfts ?? [])) as DemoNft[];
+  const lockerItems = (demo ? demoItems : (lockerData?.items ?? [])) as DemoItem[];
   const activeNft   = (selectedTokenId != null ? nfts.find(n => n.tokenId === selectedTokenId) : nfts[0]) ?? null;
 
   // Sync the variant picker to whatever is saved on-chain for each NFT

@@ -11,6 +11,7 @@ import {
   GetStoreStatsResponse,
   ListStoreThemesResponse,
 } from "@workspace/api-zod";
+import { CATEGORY_ALIASES, NON_VISUAL_CATEGORIES, parseAttrs } from "./trait-utils.js";
 
 const router: IRouter = Router();
 
@@ -19,25 +20,6 @@ function getNftCollection(query: Record<string, unknown>): string {
   if (c === "wegenettes") return "wegenettes";
   return "wegens";
 }
-
-// Normalize on-chain trait_type names to DB category names.
-// Shared by variant-preview-image and compose-preview handlers so any fix
-// (e.g. a new alias) is automatically applied to both.
-const CATEGORY_ALIASES: Record<string, string> = {
-  "Skin": "Body",
-  "Head & Hair": "Headgear",
-  "HeadGear": "Headgear",
-};
-
-// Non-visual trait_type names that should never be composited as layers.
-// Includes wegenette-specific metadata attributes (Golden Ticket, Team, Collab Edition)
-// that appear as on-chain trait_types but have no corresponding visual layer.
-// Shared by variant-preview-image and compose-preview handlers.
-const NON_VISUAL_CATEGORIES = new Set([
-  "origin", "seasoned wegen", "legend", "ultra rare",
-  "migration #", "original name", "original mint", "original id",
-  "golden ticket", "team", "collab edition",
-]);
 
 router.get("/traits/categories", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);
@@ -143,22 +125,8 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
     } catch { return null; }
   };
 
-  // Parse "Category:Value|..." pairs (split only on first colon per segment)
-  const pairs = attrsRaw.split("|").map((s) => {
-    const idx = s.indexOf(":");
-    if (idx === -1) return null;
-    const rawCat = s.slice(0, idx).trim();
-    const name = s.slice(idx + 1).trim();
-    const category = CATEGORY_ALIASES[rawCat] ?? rawCat;
-    return { category, name };
-  }).filter((p): p is { category: string; name: string } =>
-    // Discard empty pairs, non-visual categories, and very long values
-    p !== null &&
-    p.category !== "" &&
-    p.name !== "" &&
-    p.name.length <= 120 &&
-    !NON_VISUAL_CATEGORIES.has(p.category.toLowerCase())
-  );
+  // Parse "Category:Value|..." pairs — apply CATEGORY_ALIASES, discard NON_VISUAL_CATEGORIES
+  const pairs = parseAttrs(attrsRaw);
 
   try {
     // Find traits matching the on-chain attribute (category, name) pairs.
@@ -368,20 +336,8 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
     } catch { return null; }
   };
 
-  const pairs = attrsRaw.split("|").map((s) => {
-    const idx = s.indexOf(":");
-    if (idx === -1) return null;
-    const rawCat = s.slice(0, idx).trim();
-    const name = s.slice(idx + 1).trim();
-    const category = CATEGORY_ALIASES[rawCat] ?? rawCat;
-    return { category, name };
-  }).filter((p): p is { category: string; name: string } =>
-    p !== null &&
-    p.category !== "" &&
-    p.name !== "" &&
-    p.name.length <= 120 &&
-    !NON_VISUAL_CATEGORIES.has(p.category.toLowerCase())
-  );
+  // Parse "Category:Value|..." pairs — apply CATEGORY_ALIASES, discard NON_VISUAL_CATEGORIES
+  const pairs = parseAttrs(attrsRaw);
 
   try {
     const [previewTrait] = await db

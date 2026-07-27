@@ -20,6 +20,25 @@ function getNftCollection(query: Record<string, unknown>): string {
   return "wegens";
 }
 
+// Normalize on-chain trait_type names to DB category names.
+// Shared by variant-preview-image and compose-preview handlers so any fix
+// (e.g. a new alias) is automatically applied to both.
+const CATEGORY_ALIASES: Record<string, string> = {
+  "Skin": "Body",
+  "Head & Hair": "Headgear",
+  "HeadGear": "Headgear",
+};
+
+// Non-visual trait_type names that should never be composited as layers.
+// Includes wegenette-specific metadata attributes (Golden Ticket, Team, Collab Edition)
+// that appear as on-chain trait_types but have no corresponding visual layer.
+// Shared by variant-preview-image and compose-preview handlers.
+const NON_VISUAL_CATEGORIES = new Set([
+  "origin", "seasoned wegen", "legend", "ultra rare",
+  "migration #", "original name", "original mint", "original id",
+  "golden ticket", "team", "collab edition",
+]);
+
 router.get("/traits/categories", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   // Only return categories that have at least one active (isActive=true) trait,
@@ -123,22 +142,6 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
       return Buffer.from(await r.arrayBuffer());
     } catch { return null; }
   };
-
-  // Normalize on-chain trait_type names to DB category names
-  const CATEGORY_ALIASES: Record<string, string> = {
-    "Skin": "Body",
-    "Head & Hair": "Headgear",
-    "HeadGear": "Headgear",
-  };
-
-  // Non-visual trait_type names that should never be composited as layers.
-  // Includes wegenette-specific metadata attributes (Golden Ticket, Team, Collab Edition)
-  // that appear as on-chain trait_types but have no corresponding visual layer.
-  const NON_VISUAL_CATEGORIES = new Set([
-    "origin", "seasoned wegen", "legend", "ultra rare",
-    "migration #", "original name", "original mint", "original id",
-    "golden ticket", "team", "collab edition",
-  ]);
 
   // Parse "Category:Value|..." pairs (split only on first colon per segment)
   const pairs = attrsRaw.split("|").map((s) => {
@@ -364,18 +367,6 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
       return Buffer.from(await r.arrayBuffer());
     } catch { return null; }
   };
-
-  const CATEGORY_ALIASES: Record<string, string> = {
-    "Skin": "Body",
-    "Head & Hair": "Headgear",
-    "HeadGear": "Headgear",
-  };
-
-  const NON_VISUAL_CATEGORIES = new Set([
-    "origin", "seasoned wegen", "legend", "ultra rare",
-    "migration #", "original name", "original mint", "original id",
-    "golden ticket", "team", "collab edition",
-  ]);
 
   const pairs = attrsRaw.split("|").map((s) => {
     const idx = s.indexOf(":");

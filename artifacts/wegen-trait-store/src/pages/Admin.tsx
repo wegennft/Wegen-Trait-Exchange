@@ -1613,7 +1613,7 @@ export function Admin() {
                           <div className="flex flex-col items-center gap-0.5">
                             {trait.imageUrl ? (
                               <div className="w-14 h-14 rounded-lg bg-secondary/50 overflow-hidden ring-1 ring-primary/30">
-                                <TraitMedia url={trait.imageUrl} mediaType={(trait as unknown as Record<string,unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" showBadge />
+                                <TraitMedia url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full object-contain" showBadge />
                               </div>
                             ) : (
                               <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-base font-bold ring-1 ring-border/30">

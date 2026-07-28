@@ -602,7 +602,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null } }[]).map(et => (
+                    {(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null; mediaType?: string | null } }[]).map(et => (
                       <div
                         key={et.category}
                         className="group/et flex items-center gap-2 px-2.5 py-1.5 transition-all rounded"
@@ -610,7 +610,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                       >
                         {et.trait.imageUrl ? (
                           <div className="w-8 h-8 flex-shrink-0 overflow-hidden bg-black/40 rounded">
-                            <TraitMedia url={et.trait.imageUrl} mediaType={(et.trait as Record<string,unknown>).mediaType as string}
+                            <TraitMedia url={et.trait.imageUrl} mediaType={et.trait.mediaType ?? undefined}
                               alt={et.trait.name} className="w-full h-full object-cover" />
                           </div>
                         ) : (
@@ -992,7 +992,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 {activeNft && activeNft.equippedTraits.length > 0 && (
                   <div className="mt-2 space-y-1.5">
                     <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest mb-2">Traits being applied:</p>
-                    {(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null } }[]).map(et => (
+                    {(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null; mediaType?: string | null } }[]).map(et => (
                       <div key={et.category} className="flex items-center gap-2 px-2.5 py-1.5 rounded"
                         style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.2)' }}>
                         <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(272 100% 65%)' }} />

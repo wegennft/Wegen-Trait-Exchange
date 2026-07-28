@@ -1380,7 +1380,7 @@ export function Store() {
                 {(() => {
                   const traitVariantEntry = activePack ? (traitVariantMap[String(trait.id)] ?? traitVariantMap[trait.id as unknown as string]) : undefined;
                   const traitDisplayUrl = traitVariantEntry?.imageUrl ?? trait.imageUrl;
-                  const traitDisplayMediaType = traitVariantEntry?.mediaType ?? (trait as unknown as Record<string, unknown>).mediaType as string;
+                  const traitDisplayMediaType = traitVariantEntry?.mediaType ?? trait.mediaType ?? undefined;
                   return traitDisplayUrl ? (
                     <TraitImageZoom url={traitDisplayUrl} mediaType={traitDisplayMediaType} alt={trait.name} className="w-full h-full">
                       <TraitMedia
@@ -1556,10 +1556,10 @@ export function Store() {
                     style={{ filter: 'grayscale(100%) brightness(0.45)' }}
                   >
                     {trait.imageUrl ? (
-                      <TraitImageZoom url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
+                      <TraitImageZoom url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full">
                         <TraitMedia
                           url={trait.imageUrl}
-                          mediaType={(trait as unknown as Record<string, unknown>).mediaType as string}
+                          mediaType={trait.mediaType ?? undefined}
                           alt={trait.name}
                           className="w-full h-full object-cover group-hover/vault:scale-105 transition-transform duration-500"
                         />
@@ -1707,8 +1707,8 @@ export function Store() {
                   {/* Thumbnail */}
                   <div className="w-14 h-14 rounded-lg overflow-hidden bg-secondary/40 flex-shrink-0 border border-border/20">
                     {trait.imageUrl ? (
-                      <TraitImageZoom url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full">
-                        <TraitMedia url={trait.imageUrl} mediaType={(trait as unknown as Record<string, unknown>).mediaType as string} alt={trait.name} className="w-full h-full object-contain" />
+                      <TraitImageZoom url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full">
+                        <TraitMedia url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full object-contain" />
                       </TraitImageZoom>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">

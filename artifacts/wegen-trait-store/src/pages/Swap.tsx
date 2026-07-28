@@ -53,6 +53,7 @@ interface LockerItemMini {
     name: string;
     category: string;
     imageUrl: string | null;
+    mediaType?: string | null;
     priceEth: string;
   };
 }
@@ -251,7 +252,7 @@ function TraitSelectCard({
         {item.trait.imageUrl ? (
           <TraitMedia
             url={item.trait.imageUrl}
-            mediaType={(item.trait as Record<string,unknown>).mediaType as string}
+            mediaType={item.trait.mediaType ?? undefined}
             alt={item.trait.name}
             className="w-full h-full"
             showBadge

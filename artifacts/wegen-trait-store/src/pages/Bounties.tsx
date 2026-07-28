@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SmackzCoin } from "@/components/SmackzCoin";
+import { Input } from "@/components/ui/input";
 import {
   Trophy, Star, Zap, Flame, ShieldCheck, Lock, CheckCircle2, Gift,
   TrendingUp, Award, Crown, Sparkles, Clock, Coins, Package, X,
+  Send, ArrowUpRight, ArrowDownLeft,
 } from "lucide-react";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
@@ -29,7 +31,7 @@ interface EarnedEntry {
 
 interface PointHistory {
   id: number;
-  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem" | "admin_airdrop";
+  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem" | "admin_airdrop" | "peer_transfer";
   points: number;
   description: string | null;
   claimedAt: string | null;
@@ -93,6 +95,7 @@ const TX_LABELS: Record<string, string> = {
   sandbox_bounty: "Sandbox Bounty",
   redeem: "Redeemed Reward",
   admin_airdrop: "Point Airdrop",
+  peer_transfer: "We Smackz Transfer",
 };
 
 const TX_ICON: Record<string, typeof Zap> = {
@@ -100,6 +103,7 @@ const TX_ICON: Record<string, typeof Zap> = {
   confirm_traits: ShieldCheck,
   sandbox_bounty: Flame,
   redeem: Gift,
+  peer_transfer: Send,
 };
 
 function truncate(addr: string) {
@@ -118,6 +122,12 @@ export function Bounties() {
   const [lbView, setLbView] = useState<"current" | "earned">("current");
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationPoints, setCelebrationPoints] = useState(0);
+
+  // Send We Smackz form state
+  const [sendRecipient, setSendRecipient] = useState("");
+  const [sendAmount, setSendAmount] = useState("");
+  const [sendNote, setSendNote] = useState("");
+  const [sendConfirming, setSendConfirming] = useState(false);
 
   // Game settings (celebration media)
   const { data: gameSettings } = useQuery({
@@ -213,6 +223,32 @@ export function Bounties() {
     },
     onError: (e: Error) => {
       toast({ title: "Claim failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  // Send We Smackz mutation
+  const sendSmackzMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/bounties/send-smackz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientWallet: sendRecipient.trim(), amount: parseInt(sendAmount, 10), note: sendNote.trim() || undefined }),
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        throw new Error(d.error ?? "Failed to send");
+      }
+      return r.json() as Promise<{ sent: number; recipientWallet: string; remainingBalance: number }>;
+    },
+    onSuccess: (d) => {
+      toast({ title: `Sent ${d.sent.toLocaleString()} We Smackz!`, description: `Delivered to ${d.recipientWallet.slice(0, 6)}…${d.recipientWallet.slice(-4)}. You have ${d.remainingBalance.toLocaleString()} remaining.` });
+      setSendRecipient(""); setSendAmount(""); setSendNote(""); setSendConfirming(false);
+      qc.invalidateQueries({ queryKey: ["bounties-me"] });
+      qc.invalidateQueries({ queryKey: ["bounties-leaderboard"] });
+    },
+    onError: (e: Error) => {
+      setSendConfirming(false);
+      toast({ title: "Send failed", description: e.message, variant: "destructive" });
     },
   });
 
@@ -1156,6 +1192,139 @@ export function Bounties() {
                   {dailyLeft <= 0 ? "Limit Reached" : sandboxMutation.isPending ? "Claiming…" : "Claim Bounty"}
                 </Button>
               </div>
+
+              {/* ── Send We Smackz ── */}
+              <div
+                className="rounded-xl p-4 space-y-4"
+                style={{ background: "hsl(272 20% 6%)", border: `1px solid hsl(${accentHsl} / 0.15)` }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: `hsl(${accentHsl} / 0.18)` }}
+                  >
+                    <Send className="w-5 h-5" style={{ color: accent }} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm">Send We Smackz</div>
+                    <div className="text-xs text-muted-foreground">Gift We Smackz to another wallet from your balance</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Recipient Wallet Address</label>
+                    <Input
+                      value={sendRecipient}
+                      onChange={(e) => { setSendRecipient(e.target.value); setSendConfirming(false); }}
+                      placeholder="0x..."
+                      className="bg-secondary/50 font-mono text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                      Amount <span style={{ color: accent }}>({myPoints.toLocaleString()} available)</span>
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={myPoints}
+                      value={sendAmount}
+                      onChange={(e) => { setSendAmount(e.target.value); setSendConfirming(false); }}
+                      placeholder="e.g. 100"
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Note (optional)</label>
+                    <Input
+                      value={sendNote}
+                      onChange={(e) => setSendNote(e.target.value)}
+                      placeholder="Add a message…"
+                      maxLength={120}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                </div>
+                {(() => {
+                  const amt = parseInt(sendAmount, 10);
+                  const validRecipient = sendRecipient.trim().length > 10;
+                  const validAmount = !isNaN(amt) && amt >= 1 && amt <= myPoints;
+                  const canSend = validRecipient && validAmount;
+                  return sendConfirming ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        disabled={sendSmackzMutation.isPending}
+                        onClick={() => sendSmackzMutation.mutate()}
+                        style={{ background: `hsl(${accentHsl})`, color: "black", fontWeight: 700 }}
+                      >
+                        {sendSmackzMutation.isPending ? "Sending…" : `Confirm — send ${amt.toLocaleString()} We Smackz`}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setSendConfirming(false)}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      disabled={!canSend}
+                      onClick={() => setSendConfirming(true)}
+                      style={canSend ? { background: `hsl(${accentHsl} / 0.2)`, color: accent, border: `1px solid hsl(${accentHsl} / 0.4)`, fontWeight: 700 } : {}}
+                    >
+                      <Send className="w-4 h-4 mr-1.5" />
+                      Send We Smackz
+                    </Button>
+                  );
+                })()}
+              </div>
+
+              {/* ── Transaction History ── */}
+              {meData && meData.history.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Recent Activity</h3>
+                  <div
+                    className="rounded-xl overflow-hidden divide-y"
+                    style={{ background: "hsl(272 20% 6%)", border: `1px solid hsl(${accentHsl} / 0.1)`, borderColor: `hsl(${accentHsl} / 0.1)` }}
+                  >
+                    {meData.history.map((h) => {
+                      const Icon = TX_ICON[h.type] ?? Coins;
+                      const label = TX_LABELS[h.type] ?? h.type;
+                      const isPositive = h.points > 0;
+                      const isPeerSend = h.type === "peer_transfer" && h.points < 0;
+                      const isPeerRecv = h.type === "peer_transfer" && h.points > 0;
+                      return (
+                        <div key={h.id} className="flex items-center gap-3 px-4 py-3">
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: isPositive ? `hsl(${accentHsl} / 0.12)` : "hsl(0 60% 12%)" }}
+                          >
+                            {isPeerSend ? (
+                              <ArrowUpRight className="w-4 h-4" style={{ color: "#f87171" }} />
+                            ) : isPeerRecv ? (
+                              <ArrowDownLeft className="w-4 h-4" style={{ color: accent }} />
+                            ) : (
+                              <Icon className="w-4 h-4" style={{ color: isPositive ? accent : "#f87171" }} />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-foreground">{label}</div>
+                            {h.description && (
+                              <div className="text-[11px] text-muted-foreground truncate">{h.description}</div>
+                            )}
+                            <div className="text-[10px] text-muted-foreground/60">
+                              {new Date(h.createdAt).toLocaleString()}
+                            </div>
+                          </div>
+                          <div
+                            className="text-sm font-bold tabular-nums flex-shrink-0"
+                            style={{ color: isPositive ? accent : "#f87171" }}
+                          >
+                            {isPositive ? "+" : ""}{h.points.toLocaleString()}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
             </>
           )}

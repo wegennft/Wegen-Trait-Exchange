@@ -30,7 +30,7 @@ const MAX_BOUNTY_TRAIT_PER_WALLET = 2;
 export async function awardPoints(
   walletAddress: string,
   points: number,
-  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem" | "admin_airdrop",
+  type: "purchase" | "confirm_traits" | "sandbox_bounty" | "redeem" | "admin_airdrop" | "peer_transfer",
   description?: string,
   pending = false,
 ) {
@@ -444,6 +444,77 @@ router.post(
       remainingPoints: currentPoints - trait.pointCost,
       deliveredTraitId: deliveredTraitIds[0] ?? null,
       deliveredTraitIds,
+    });
+  },
+);
+
+// ── POST /bounties/send-smackz ────────────────────────────────────────────────
+// Authenticated users can send We Smackz from their own balance to another wallet.
+
+router.post(
+  "/bounties/send-smackz",
+  requireWalletOwnership(),
+  async (req, res): Promise<void> => {
+    const senderWallet = getEffectiveWallet(req)!;
+
+    const { recipientWallet, amount, note } = req.body as {
+      recipientWallet?: string;
+      amount?: number;
+      note?: string;
+    };
+
+    // Validate recipient address
+    if (typeof recipientWallet !== "string" || !recipientWallet.trim()) {
+      res.status(400).json({ error: "recipientWallet is required" });
+      return;
+    }
+    const recipient = recipientWallet.trim().startsWith("0x")
+      ? recipientWallet.trim().toLowerCase()
+      : recipientWallet.trim();
+
+    if (recipient === senderWallet) {
+      res.status(400).json({ error: "You cannot send We Smackz to yourself" });
+      return;
+    }
+
+    // Validate amount
+    if (typeof amount !== "number" || !Number.isInteger(amount) || amount < 1) {
+      res.status(400).json({ error: "amount must be a positive integer" });
+      return;
+    }
+    if (amount > 1_000_000) {
+      res.status(400).json({ error: "amount exceeds maximum single transfer (1,000,000)" });
+      return;
+    }
+
+    // Check sender balance
+    const [senderRow] = await db
+      .select()
+      .from(walletPointsTable)
+      .where(eq(walletPointsTable.walletAddress, senderWallet));
+    const senderBalance = senderRow?.totalPoints ?? 0;
+
+    if (senderBalance < amount) {
+      res.status(400).json({
+        error: `Insufficient We Smackz (have ${senderBalance}, tried to send ${amount})`,
+      });
+      return;
+    }
+
+    const noteText = note?.trim() || null;
+    const senderDesc = `Sent to ${recipient.slice(0, 6)}…${recipient.slice(-4)}${noteText ? `: ${noteText}` : ""}`;
+    const recipientDesc = `Received from ${senderWallet.slice(0, 6)}…${senderWallet.slice(-4)}${noteText ? `: ${noteText}` : ""}`;
+
+    // Deduct from sender
+    await awardPoints(senderWallet, -amount, "peer_transfer", senderDesc);
+    // Credit recipient
+    await awardPoints(recipient, amount, "peer_transfer", recipientDesc);
+
+    res.json({
+      success: true,
+      sent: amount,
+      recipientWallet: recipient,
+      remainingBalance: senderBalance - amount,
     });
   },
 );

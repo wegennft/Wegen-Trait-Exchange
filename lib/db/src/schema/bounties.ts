@@ -15,6 +15,7 @@ export const pointTxTypeEnum = pgEnum("point_tx_type", [
   "sandbox_bounty",
   "redeem",
   "admin_airdrop",
+  "peer_transfer",
 ]);
 
 export const walletPointsTable = pgTable("wallet_points", {

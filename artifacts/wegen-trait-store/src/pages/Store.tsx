@@ -114,8 +114,12 @@ function NftPreviewBanner({
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  // showVariant: true = render variant images; false = render original images.
+  // Defaults to true when a pack is first selected, false when pack is cleared.
+  const [showVariant, setShowVariant] = useState(false);
 
-  const { collection, collectionLabel } = useCollection();
+  const { collection, collectionLabel, theme } = useCollection();
+  const { accent } = theme;
 
   const isNftIneligible = (nft: WegenNft) =>
     ineligibleNfts.includes(String(nft.tokenId).toLowerCase()) ||
@@ -132,25 +136,36 @@ function NftPreviewBanner({
       ? (legendTokenVariantMap[previewNft.tokenId]?.imageUrl ?? null)
       : null;
 
-  // When a store trait is being previewed AND the NFT has on-chain attributes,
-  // use a server-composited image instead of overlaying the trait PNG on the flat
-  // Alchemy base image. The server fetches every on-chain trait's imageUrl from the
-  // DB, replaces the preview trait's category slot with the store trait's image, and
-  // composites them in the admin-configured layer order — so Headgear always renders
-  // above Body regardless of what the body PNG's transparency mask covers.
+  // Reset showVariant whenever activePack changes:
+  //   • pack selected → default to showing variant style
+  //   • pack cleared  → back to original
+  useEffect(() => {
+    setShowVariant(!!activePack);
+  }, [activePack]);
+
+  // Use the server-composite endpoint when:
+  //  a) a preview trait is selected and the NFT has on-chain attributes, OR
+  //  b) variant mode is active (showVariant + activePack) and the NFT has on-chain attributes
+  // In variant mode the endpoint re-composites every layer in the pack's variant images.
   const composePreviewUrl = (() => {
-    if (!effectivePreviewTrait || !previewNft?.onChainAttributes?.length || !previewNft.imageUrl) {
-      return null;
-    }
+    if (!previewNft?.onChainAttributes?.length || !previewNft.imageUrl) return null;
+    // Variant-only compose is only valid for ordinary (non-Legend, non-blocked) NFTs.
+    // Legends use legendVariantImageUrl instead; blocked NFTs show no preview at all.
+    const needsCompose = effectivePreviewTrait ||
+      (showVariant && activePack && !previewNftIsLegend && !previewNftBlocked);
+    if (!needsCompose) return null;
+
     const attrs = previewNft.onChainAttributes
       .map((a: { trait_type: string; value: string }) => `${a.trait_type}:${a.value}`)
       .join("|");
-    return `/api/traits/compose-preview?${new URLSearchParams({
+    const params: Record<string, string> = {
       nftCollection: collection,
-      previewTraitId: String(effectivePreviewTrait.id),
       attrs,
       baseImageUrl: previewNft.imageUrl,
-    })}`;
+    };
+    if (effectivePreviewTrait) params.previewTraitId = String(effectivePreviewTrait.id);
+    if (showVariant && activePack) params.variantPack = activePack;
+    return `/api/traits/compose-preview?${new URLSearchParams(params)}`;
   })();
 
   useEffect(() => {
@@ -289,13 +304,20 @@ function NftPreviewBanner({
                         .filter(et => et.trait.imageUrl && (!effectivePreviewTrait || et.category !== effectivePreviewTrait.category))
                         .map(et => {
                           const variantEntry = traitVariantMap[String(et.trait.id)];
-                          const resolvedUrl = variantEntry?.imageUrl ?? et.trait.imageUrl!;
+                          // Respect the variant toggle: only use variant art when showVariant is on
+                          const resolvedUrl = (showVariant && variantEntry?.imageUrl) ? variantEntry.imageUrl : et.trait.imageUrl!;
                           return { category: et.category, imageUrl: resolvedUrl, isNew: false };
                         }),
                       // Only add the preview trait as a CSS layer when the server-composited
                       // image is NOT being used (e.g. NFT has no on-chain attributes).
                       ...(!composePreviewUrl && effectivePreviewTrait?.imageUrl
-                        ? [{ category: effectivePreviewTrait.category, imageUrl: effectivePreviewTrait.imageUrl, isNew: true }]
+                        ? [{
+                            category: effectivePreviewTrait.category,
+                            // In variant mode, prefer the variant image for the preview trait too
+                            imageUrl: (showVariant && traitVariantMap[String(effectivePreviewTrait.id)]?.imageUrl)
+                              || effectivePreviewTrait.imageUrl,
+                            isNew: true,
+                          }]
                         : []),
                     ].sort((a, b) => getZ(a.category) - getZ(b.category));
                     return layers.map(layer => (
@@ -347,6 +369,39 @@ function NftPreviewBanner({
                     </div>
                   )}
                 </div>
+
+                {/* ── Original / Variant toggle — visible only when a style pack is active ── */}
+                {activePack && !previewNftBlocked && !previewNftIsLegend && previewNft && (
+                  <div
+                    className="flex items-center gap-1 p-1 rounded-lg self-stretch"
+                    style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShowVariant(false)}
+                      className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
+                      style={{
+                        background: !showVariant ? `${accent}22` : "transparent",
+                        border: !showVariant ? `1px solid ${accent}55` : "1px solid transparent",
+                        color: !showVariant ? accent : "rgba(255,255,255,0.35)",
+                      }}
+                    >
+                      Original
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowVariant(true)}
+                      className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
+                      style={{
+                        background: showVariant ? `${accent}22` : "transparent",
+                        border: showVariant ? `1px solid ${accent}55` : "1px solid transparent",
+                        color: showVariant ? accent : "rgba(255,255,255,0.35)",
+                      }}
+                    >
+                      {activePack}
+                    </button>
+                  </div>
+                )}
 
                 {/* NFT selector (multiple NFTs) */}
                 {nfts.length > 1 && (

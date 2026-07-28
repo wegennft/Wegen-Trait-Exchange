@@ -309,22 +309,31 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
 });
 
 // ── GET /traits/compose-preview — server-composited NFT preview for the Store page ──
-// Takes on-chain attrs + a store preview trait ID. Fetches each on-chain trait's
-// base imageUrl from the DB, replaces the preview trait's category slot with the
-// preview trait's own imageUrl, then composites all layers in the admin-configured
-// order. This guarantees correct z-ordering (e.g. Headgear above Body) even when
-// the body PNG has opaque content in the headgear area.
+// Takes on-chain attrs + an optional preview trait ID + optional variantPack.
 //
-// ?previewTraitId=1212&nftCollection=wegens&attrs=Background:Blaze|Skin:Brown|...&baseImageUrl=https://...
+// Modes:
+//  • previewTraitId only  — replaces that category slot with the preview trait's base image
+//  • variantPack only     — renders all on-chain traits using their variant artwork
+//  • both                 — renders all on-chain traits in variant style; preview trait also
+//                           uses its variant image (falls back to base if no variant found)
+//
+// ?previewTraitId=1212&nftCollection=wegens&attrs=Background:Blaze|Body:Brown|...
+// &baseImageUrl=https://...&variantPack=Cyber
 router.get("/traits/compose-preview", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req.query as Record<string, unknown>);
   const previewTraitIdRaw = typeof req.query.previewTraitId === "string" ? req.query.previewTraitId : "";
   const attrsRaw = typeof req.query.attrs === "string" ? req.query.attrs : "";
   const baseImageUrl = typeof req.query.baseImageUrl === "string" ? req.query.baseImageUrl : "";
+  const variantPack = typeof req.query.variantPack === "string" ? req.query.variantPack : "";
 
-  const previewTraitId = parseInt(previewTraitIdRaw, 10);
-  if (!previewTraitIdRaw || isNaN(previewTraitId)) {
-    res.status(400).json({ error: "previewTraitId is required" });
+  // previewTraitId is optional; variantPack alone (with attrs) is a valid call
+  const previewTraitId = previewTraitIdRaw ? parseInt(previewTraitIdRaw, 10) : null;
+  if (previewTraitIdRaw && isNaN(previewTraitId!)) {
+    res.status(400).json({ error: "Invalid previewTraitId" });
+    return;
+  }
+  if (!previewTraitId && !variantPack) {
+    res.status(400).json({ error: "previewTraitId or variantPack is required" });
     return;
   }
 
@@ -340,26 +349,31 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
   const pairs = parseAttrs(attrsRaw);
 
   try {
-    const [previewTrait] = await db
-      .select({ id: traitsTable.id, category: traitsTable.category, imageUrl: traitsTable.imageUrl })
-      .from(traitsTable)
-      .where(eq(traitsTable.id, previewTraitId));
-
-    if (!previewTrait) {
-      res.status(404).json({ error: "Preview trait not found" });
-      return;
+    // Look up preview trait when provided
+    let previewTrait: { id: number; category: string; imageUrl: string | null } | null = null;
+    if (previewTraitId) {
+      const [row] = await db
+        .select({ id: traitsTable.id, category: traitsTable.category, imageUrl: traitsTable.imageUrl })
+        .from(traitsTable)
+        .where(eq(traitsTable.id, previewTraitId));
+      if (!row) {
+        res.status(404).json({ error: "Preview trait not found" });
+        return;
+      }
+      previewTrait = row;
     }
 
     const proto = req.headers["x-forwarded-proto"] ?? req.protocol;
     const host = req.headers["x-forwarded-host"] ?? req.get("host");
     const serverBase = `${proto}://${host}`;
+    const resolveUrl = (u: string) => (u.startsWith("http") ? u : `${serverBase}${u}`);
 
-    // Find base imageUrls for all on-chain traits EXCEPT the preview trait's category
-    // (that slot will be filled by the preview trait's imageUrl instead)
-    const otherPairs = pairs.filter(
-      (p) => p.category.toLowerCase() !== previewTrait.category.toLowerCase()
-    );
-    const lowerNames = otherPairs.map((p) => p.name.toLowerCase());
+    // Match on-chain attrs against the DB.
+    // When a preview trait is provided, exclude its category — that slot is filled below.
+    const pairsToMatch = previewTrait
+      ? pairs.filter((p) => p.category.toLowerCase() !== previewTrait!.category.toLowerCase())
+      : pairs;
+    const lowerNames = pairsToMatch.map((p) => p.name.toLowerCase());
 
     const candidates = lowerNames.length > 0
       ? await db
@@ -386,7 +400,7 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
       : [];
 
     const pairSetLower = new Set(
-      otherPairs.map((p) => `${p.category.toLowerCase()}:::${p.name.toLowerCase()}`)
+      pairsToMatch.map((p) => `${p.category.toLowerCase()}:::${p.name.toLowerCase()}`)
     );
     const allMatched = candidates.filter((t) => {
       const nameKey = `${t.category.toLowerCase()}:::${t.name.toLowerCase()}`;
@@ -409,23 +423,63 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
       catch { return []; }
     })();
     // layerOrder[0] is FRONT (topmost), last entry is BACK (bottommost).
-    // Must match admin's DEFAULT_LAYER_ORDER so headgear renders on top, background at base.
     const defaultOrder = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
     const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
 
-    // Build category → imageUrl map: on-chain traits + the preview trait override
+    // Build category → imageUrl map from matched on-chain traits (base images)
     const categoryImageMap = new Map<string, string>();
     for (const t of matched) {
-      if (t.imageUrl) {
-        const url = t.imageUrl.startsWith("http") ? t.imageUrl : `${serverBase}${t.imageUrl}`;
-        categoryImageMap.set(t.category, url);
-      }
+      if (t.imageUrl) categoryImageMap.set(t.category, resolveUrl(t.imageUrl));
     }
-    if (previewTrait.imageUrl) {
-      const url = previewTrait.imageUrl.startsWith("http")
-        ? previewTrait.imageUrl
-        : `${serverBase}${previewTrait.imageUrl}`;
-      categoryImageMap.set(previewTrait.category, url);
+
+    // ── Apply variant images when variantPack is requested ────────────────────
+    if (variantPack) {
+      const allTraitIds = [
+        ...matched.map((t) => t.id),
+        ...(previewTrait ? [previewTrait.id] : []),
+      ];
+      if (allTraitIds.length > 0) {
+        const variants = await db
+          .select({
+            traitId: traitVariantsTable.traitId,
+            imageUrl: traitVariantsTable.imageUrl,
+            category: traitsTable.category,
+          })
+          .from(traitVariantsTable)
+          .innerJoin(traitsTable, eq(traitVariantsTable.traitId, traitsTable.id))
+          .where(
+            and(
+              eq(traitVariantsTable.name, variantPack),
+              inArray(traitVariantsTable.traitId, allTraitIds),
+              eq(traitVariantsTable.isEnabled, true),
+            )
+          );
+
+        const variantByTraitId = new Map<number, string>();
+        for (const v of variants) {
+          if (v.imageUrl && !variantByTraitId.has(v.traitId)) {
+            variantByTraitId.set(v.traitId, v.imageUrl);
+          }
+        }
+
+        // Override matched on-chain trait images with their variant images
+        for (const t of matched) {
+          const vUrl = variantByTraitId.get(t.id);
+          if (vUrl) categoryImageMap.set(t.category, resolveUrl(vUrl));
+        }
+
+        // Preview trait: use variant image if available, fall back to base
+        if (previewTrait) {
+          const vUrl = variantByTraitId.get(previewTrait.id);
+          const imageUrl = vUrl ?? previewTrait.imageUrl;
+          if (imageUrl) categoryImageMap.set(previewTrait.category, resolveUrl(imageUrl));
+        }
+      } else if (previewTrait?.imageUrl) {
+        categoryImageMap.set(previewTrait.category, resolveUrl(previewTrait.imageUrl));
+      }
+    } else if (previewTrait?.imageUrl) {
+      // Original mode — use preview trait's base image
+      categoryImageMap.set(previewTrait.category, resolveUrl(previewTrait.imageUrl));
     }
 
     // Sort back→front: layerOrder[0] = front (topmost), last = back (bottommost)
@@ -436,9 +490,7 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
     });
     const layerUrls = sortedCategories.map((cat) => categoryImageMap.get(cat)!);
 
-    const resolvedBaseImageUrl = baseImageUrl
-      ? (baseImageUrl.startsWith("http") ? baseImageUrl : `${serverBase}${baseImageUrl}`)
-      : null;
+    const resolvedBaseImageUrl = baseImageUrl ? resolveUrl(baseImageUrl) : null;
 
     const allUrls: string[] = [
       ...(resolvedBaseImageUrl ? [resolvedBaseImageUrl] : []),

@@ -3334,6 +3334,23 @@ function FeesSettings() {
   const [sellingUsdInput, setSellingUsdInput] = useState<string>("");
   const [marketplaceUsdInput, setMarketplaceUsdInput] = useState<string>("");
 
+  // Populate USD display fields once saved fee data and live ETH price are both available.
+  // Without this, USD fields start blank even when fees are already saved.
+  useEffect(() => {
+    if (!fees || !ethUsd) return;
+    const ref = 0.1; // default reference ETH amount
+    setRefUsdInput((ref * ethUsd).toFixed(0));
+    const socEth = parseFloat(fees.onChainUpdateFeeEth || "0");
+    if (!isNaN(socEth)) setSocUsdInput((socEth * ethUsd).toFixed(2));
+    const buyPct = parseFloat(fees.buyingFeePercent || "0");
+    if (!isNaN(buyPct)) setBuyingUsdInput((buyPct / 100 * ref * ethUsd).toFixed(2));
+    const sellPct = parseFloat(fees.sellingFeePercent || "0");
+    if (!isNaN(sellPct)) setSellingUsdInput((sellPct / 100 * ref * ethUsd).toFixed(2));
+    const mktPct = parseFloat(fees.marketplaceListingFeePercent || "0");
+    if (!isNaN(mktPct)) setMarketplaceUsdInput((mktPct / 100 * ref * ethUsd).toFixed(2));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fees, ethUsd]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">

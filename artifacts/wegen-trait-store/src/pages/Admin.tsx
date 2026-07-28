@@ -159,7 +159,7 @@ const traitSchema = z.object({
   priceUsd: z.string().regex(/^\d+(\.\d+)?$/, "Must be a valid number e.g. 25.00"),
   totalSupply: z.coerce.number().min(1, "Supply must be at least 1"),
   rarity: z.enum(RARITIES).default("common"),
-  isActive: z.boolean().default(false),
+  isActive: z.boolean().default(true),
   payoutSplits: z.array(payoutSplitSchema).default([]),
   onChainName: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -1018,6 +1018,29 @@ export function Admin() {
     }
   };
 
+  const [publishingAll, setPublishingAll] = useState(false);
+
+  const handlePublishAll = async () => {
+    const inactiveTraits = (traitsData?.traits ?? []).filter(t => !t.isActive);
+    if (inactiveTraits.length === 0) return;
+    setPublishingAll(true);
+    try {
+      await Promise.all(inactiveTraits.map(t =>
+        fetch(`/api/traits/${t.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: true }),
+        })
+      ));
+      await queryClient.invalidateQueries({ queryKey: ['/api/traits'] });
+      toast({ title: `${inactiveTraits.length} trait${inactiveTraits.length !== 1 ? "s" : ""} published to store` });
+    } catch {
+      toast({ title: "Publish all failed", variant: "destructive" });
+    } finally {
+      setPublishingAll(false);
+    }
+  };
+
   const handleDeleteByDate = async (traitIds: number[]) => {
     if (traitIds.length === 0) return;
     setDeleteByDateRunning(true);
@@ -1187,6 +1210,47 @@ export function Admin() {
             );
           })}
         </div>
+
+        {/* ── Inactive collection warning banner ── */}
+        {(() => {
+          const allTraits = traitsData?.traits ?? [];
+          const inactiveCount = allTraits.filter(t => !t.isActive).length;
+          const activeCount = allTraits.filter(t => t.isActive).length;
+          const total = allTraits.length;
+          if (total === 0 || inactiveCount === 0) return null;
+          const isAllInactive = activeCount === 0;
+          return (
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isAllInactive ? "border-red-500/40 bg-red-500/8" : "border-yellow-500/30 bg-yellow-500/6"}`}>
+              <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${isAllInactive ? "text-red-400" : "text-yellow-400"}`} />
+              <div className="flex-1 min-w-0">
+                {isAllInactive ? (
+                  <p className="text-sm font-semibold text-red-300">
+                    Store is empty — all {total} {traitCollection === "wegenettes" ? "Wegenettes" : "Wegens"} traits are in the Vault and hidden from buyers.
+                  </p>
+                ) : (
+                  <p className="text-sm font-semibold text-yellow-300">
+                    {inactiveCount} of {total} {traitCollection === "wegenettes" ? "Wegenettes" : "Wegens"} traits are in the Vault and hidden from buyers.
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => void handlePublishAll()}
+                disabled={publishingAll}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border transition-all flex-shrink-0"
+                style={{
+                  background: isAllInactive ? "rgba(239,68,68,0.15)" : "rgba(234,179,8,0.12)",
+                  borderColor: isAllInactive ? "rgba(239,68,68,0.5)" : "rgba(234,179,8,0.4)",
+                  color: isAllInactive ? "#fca5a5" : "#fde68a",
+                }}
+              >
+                {publishingAll
+                  ? <><Loader2 className="w-3 h-3 animate-spin" /> Publishing…</>
+                  : <><Power className="w-3 h-3" /> Publish All {inactiveCount}</>
+                }
+              </button>
+            </div>
+          );
+        })()}
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -5049,7 +5113,7 @@ function TraitForm({
       priceUsd: defaultValues?.priceUsd ?? "25.00",
       totalSupply: defaultValues?.totalSupply ?? 100,
       rarity: (defaultValues?.rarity as Rarity) ?? "common",
-      isActive: defaultValues?.isActive ?? false,
+      isActive: defaultValues?.isActive ?? true,
       payoutSplits: (defaultValues?.payoutSplits as TraitFormValues["payoutSplits"]) ?? [],
       onChainName: ((defaultValues as Record<string, unknown>)?.onChainName as string) ?? "",
     },

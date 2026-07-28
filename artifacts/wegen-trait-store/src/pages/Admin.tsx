@@ -6692,6 +6692,121 @@ type LegendVariantRow = {
   isEnabled: boolean;
 };
 
+// ── LegendPackMismatchWarning ─────────────────────────────────────────────────
+// Fetches trait pack names and legend pack names per collection, then warns
+// whenever a legend variant pack has no matching trait variant pack (or vice
+// versa).  The Store merges both into allPacks, so a single-character typo
+// like "Cyber Punks" vs "Cyber" produces two separate style buttons showing
+// only half the content each.
+
+function LegendPackMismatchWarning() {
+  const { data: wegenTraitPacks } = useQuery({
+    queryKey: ["pack-mismatch-trait", "wegens"],
+    queryFn: async () => {
+      const res = await fetch("/api/traits/variant-collections?nftCollection=wegens");
+      return res.ok ? (await res.json() as { collections: string[] }).collections : ([] as string[]);
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+  const { data: wegenettesTraitPacks } = useQuery({
+    queryKey: ["pack-mismatch-trait", "wegenettes"],
+    queryFn: async () => {
+      const res = await fetch("/api/traits/variant-collections?nftCollection=wegenettes");
+      return res.ok ? (await res.json() as { collections: string[] }).collections : ([] as string[]);
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+  const { data: wegenLegendPacks } = useQuery({
+    queryKey: ["pack-mismatch-legend", "wegens"],
+    queryFn: async () => {
+      const res = await fetch("/api/legends/variant-collections?nftCollection=wegens");
+      return res.ok ? (await res.json() as { collections: string[] }).collections : ([] as string[]);
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+  const { data: wegenettesLegendPacks } = useQuery({
+    queryKey: ["pack-mismatch-legend", "wegenettes"],
+    queryFn: async () => {
+      const res = await fetch("/api/legends/variant-collections?nftCollection=wegenettes");
+      return res.ok ? (await res.json() as { collections: string[] }).collections : ([] as string[]);
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const isLoaded =
+    wegenTraitPacks !== undefined &&
+    wegenettesTraitPacks !== undefined &&
+    wegenLegendPacks !== undefined &&
+    wegenettesLegendPacks !== undefined;
+
+  if (!isLoaded) return null;
+
+  const wegenTraitSet = new Set(wegenTraitPacks ?? []);
+  const wegenLegendSet = new Set(wegenLegendPacks ?? []);
+  const wegenettesTraitSet = new Set(wegenettesTraitPacks ?? []);
+  const wegenettesLegendSet = new Set(wegenettesLegendPacks ?? []);
+
+  // Legend packs that have no matching trait pack in the same collection
+  const wegenLegendOnly = [...wegenLegendSet].filter((p) => !wegenTraitSet.has(p));
+  // Trait packs that have no matching legend pack (only report when legend packs exist)
+  const wegenTraitOnly = wegenLegendSet.size > 0
+    ? [...wegenTraitSet].filter((p) => !wegenLegendSet.has(p))
+    : [];
+  const wegenettesLegendOnly = [...wegenettesLegendSet].filter((p) => !wegenettesTraitSet.has(p));
+  const wegenettesTraitOnly = wegenettesLegendSet.size > 0
+    ? [...wegenettesTraitSet].filter((p) => !wegenettesLegendSet.has(p))
+    : [];
+
+  const totalIssues =
+    wegenLegendOnly.length + wegenTraitOnly.length +
+    wegenettesLegendOnly.length + wegenettesTraitOnly.length;
+
+  if (totalIssues === 0) return null;
+
+  type MismatchRow = { pack: string; kind: "legend-only" | "trait-only"; collection: string };
+  const rows: MismatchRow[] = [
+    ...wegenLegendOnly.map((p) => ({ pack: p, kind: "legend-only" as const, collection: "Wegens" })),
+    ...wegenTraitOnly.map((p) => ({ pack: p, kind: "trait-only" as const, collection: "Wegens" })),
+    ...wegenettesLegendOnly.map((p) => ({ pack: p, kind: "legend-only" as const, collection: "Wegenettes" })),
+    ...wegenettesTraitOnly.map((p) => ({ pack: p, kind: "trait-only" as const, collection: "Wegenettes" })),
+  ];
+
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-orange-500/30 bg-orange-500/5 px-4 py-3">
+      <AlertTriangle className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
+      <div className="space-y-2 flex-1 min-w-0">
+        <p className="text-orange-300/90 font-semibold text-sm">
+          Pack name mismatch — {totalIssues} issue{totalIssues !== 1 ? "s" : ""}
+        </p>
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          The Store merges trait and legend packs by exact name. When names don't match, users see
+          two separate style buttons that each show only half the content. Rename one side so both
+          use the same spelling.
+        </p>
+        <div className="space-y-1.5 pt-0.5">
+          {rows.map(({ pack, kind, collection: col }) => (
+            <div key={`${col}-${kind}-${pack}`} className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className={`text-[10px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                col === "Wegens"
+                  ? "bg-blue-900/40 text-blue-400 border border-blue-500/20"
+                  : "bg-purple-900/40 text-purple-400 border border-purple-500/20"
+              }`}>{col}</span>
+              <code className="font-mono text-orange-200 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.5 rounded">
+                {pack}
+              </code>
+              {kind === "legend-only" ? (
+                <span className="text-muted-foreground/60">is a legend-only pack — no matching trait pack</span>
+              ) : (
+                <span className="text-muted-foreground/60">is a trait-only pack — no matching legend pack</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LegendsAdminTab({ collection }: { collection: NftCollection }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -6881,6 +6996,8 @@ function LegendsAdminTab({ collection }: { collection: NftCollection }) {
           <p className="text-muted-foreground/60 text-xs">Click <span className="text-foreground/50">Sync</span> to scan the full collection and add any missing entries.</p>
         </div>
       </div>
+
+      <LegendPackMismatchWarning />
 
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -7238,7 +7355,9 @@ function LegendVariantsManager({ legendId, collection }: { legendId: number; col
   const [pickerOpen, setPickerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Fetch existing pack names from both collections and merge them
+  // Fetch trait packs and legend packs separately so we can:
+  //   1. Show trait pack names prominently (admins should match these)
+  //   2. Warn inline when the chosen name has no matching trait pack
   const { data: wegensPacks } = useQuery({
     queryKey: ["legend-variant-collections-admin", "wegens"],
     queryFn: async () => {
@@ -7246,9 +7365,9 @@ function LegendVariantsManager({ legendId, collection }: { legendId: number; col
         fetch("/api/traits/variant-collections?nftCollection=wegens"),
         fetch("/api/legends/variant-collections?nftCollection=wegens"),
       ]);
-      const trait = traitRes.ok ? (await traitRes.json() as { collections: string[] }).collections : [];
-      const legend = legendRes.ok ? (await legendRes.json() as { collections: string[] }).collections : [];
-      return Array.from(new Set([...trait, ...legend]));
+      const trait = traitRes.ok ? (await traitRes.json() as { collections: string[] }).collections : ([] as string[]);
+      const legend = legendRes.ok ? (await legendRes.json() as { collections: string[] }).collections : ([] as string[]);
+      return { trait, legend };
     },
     staleTime: 1000 * 60 * 2,
   });
@@ -7259,13 +7378,26 @@ function LegendVariantsManager({ legendId, collection }: { legendId: number; col
         fetch("/api/traits/variant-collections?nftCollection=wegenettes"),
         fetch("/api/legends/variant-collections?nftCollection=wegenettes"),
       ]);
-      const trait = traitRes.ok ? (await traitRes.json() as { collections: string[] }).collections : [];
-      const legend = legendRes.ok ? (await legendRes.json() as { collections: string[] }).collections : [];
-      return Array.from(new Set([...trait, ...legend]));
+      const trait = traitRes.ok ? (await traitRes.json() as { collections: string[] }).collections : ([] as string[]);
+      const legend = legendRes.ok ? (await legendRes.json() as { collections: string[] }).collections : ([] as string[]);
+      return { trait, legend };
     },
     staleTime: 1000 * 60 * 2,
   });
-  const allPackOptions = Array.from(new Set([...(wegensPacks ?? []), ...(wegenettePacks ?? [])])).sort();
+  // Trait packs across both collections (these are the names admins should match)
+  const traitPackOptions = Array.from(new Set([
+    ...(wegensPacks?.trait ?? []),
+    ...(wegenettePacks?.trait ?? []),
+  ])).sort();
+  // Legend-only packs: legend packs that don't appear in any trait pack list
+  const traitPackSet = new Set(traitPackOptions);
+  const legendOnlyOptions = Array.from(new Set([
+    ...(wegensPacks?.legend ?? []),
+    ...(wegenettePacks?.legend ?? []),
+  ])).filter((p) => !traitPackSet.has(p)).sort();
+  const allPackOptions = Array.from(new Set([...traitPackOptions, ...legendOnlyOptions]));
+  // Whether the currently-entered pack name matches a known trait pack
+  const packMatchesTrait = packName.trim() === "" || traitPackSet.has(packName.trim());
 
   const qKey = ["admin-legend-variants", legendId];
 
@@ -7346,17 +7478,53 @@ function LegendVariantsManager({ legendId, collection }: { legendId: number; col
           <Label className="text-xs">Pack Name</Label>
           {allPackOptions.length > 0 ? (
             <Select value={packName} onValueChange={setPackName}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className={`h-8 text-sm ${!packMatchesTrait && packName.trim() ? "border-orange-500/50 focus:ring-orange-500/30" : ""}`}>
                 <SelectValue placeholder="Choose a pack…" />
               </SelectTrigger>
               <SelectContent>
-                {allPackOptions.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
+                {traitPackOptions.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                      Trait packs — match these
+                    </div>
+                    {traitPackOptions.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                          {p}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                {legendOnlyOptions.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mt-1">
+                      Legend-only packs
+                    </div>
+                    {legendOnlyOptions.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                          {p}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           ) : (
             <Input value={packName} onChange={e => setPackName(e.target.value)} placeholder="e.g. Cyber Punks" className="h-8 text-sm" />
+          )}
+          {/* Inline warning when chosen pack name has no matching trait pack */}
+          {!packMatchesTrait && packName.trim() && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <AlertTriangle className="w-3 h-3 text-orange-400 flex-shrink-0" />
+              <span className="text-[10px] text-orange-400/80 leading-tight">
+                No trait pack named "{packName}" — store will show a separate style button for legends only.
+              </span>
+            </div>
           )}
         </div>
         <div className="space-y-1 flex-1 min-w-0">

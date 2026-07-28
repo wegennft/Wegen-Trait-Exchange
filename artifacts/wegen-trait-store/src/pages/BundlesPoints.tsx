@@ -8,10 +8,9 @@ import {
   usePurchasePointPack,
   useGetStorePoints,
   useListBundles,
-  usePurchaseBundle,
   getGetStorePointsQueryKey,
-  getListBundlesQueryKey,
 } from "@workspace/api-client-react";
+import { useCart, bundleKey } from "@/contexts/CartContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +20,7 @@ import { TraitMedia } from "@/components/TraitMedia";
 import { TraitImageZoom } from "@/components/TraitImageZoom";
 import { TxConfirmModal, type TxDetail } from "@/components/wallet/TxConfirmModal";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, Package, Sparkles, Wallet, Zap, Gem, Search, X } from "lucide-react";
+import { Coins, Package, Sparkles, Wallet, Zap, Gem, Search, X, Check, ShoppingCart } from "lucide-react";
 import { SmackzCoin } from "@/components/SmackzCoin";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.08em" };
@@ -54,15 +53,14 @@ export function BundlesPoints() {
   const queryClient = useQueryClient();
 
   const [pendingPack, setPendingPack] = useState<{ id: number; name: string; usdValue: string; pointsGranted: number } | null>(null);
-  const [pendingBundle, setPendingBundle] = useState<{ id: number; name: string; priceUsd: string } | null>(null);
   const [traitSearch, setTraitSearch] = useState("");
+  const { addItem, removeItem, hasItem } = useCart();
 
   const { data: packsData, isLoading: loadingPacks } = useListPointPacks();
   const { data: bundlesData, isLoading: loadingBundles } = useListBundles();
   const { data: balanceData } = useGetStorePoints(walletAddress ?? "", { query: { enabled: !!walletAddress, queryKey: getGetStorePointsQueryKey(walletAddress ?? "") } });
 
   const purchasePointPack = usePurchasePointPack();
-  const purchaseBundle = usePurchaseBundle();
 
   const pointPacks = [...(packsData?.pointPacks ?? [])].sort(
     (a, b) => parseFloat(a.usdValue) - parseFloat(b.usdValue)
@@ -100,36 +98,12 @@ export function BundlesPoints() {
     }
   };
 
-  const handleBundleConfirm = async () => {
-    if (!pendingBundle || !walletAddress) return;
-    try {
-      await purchaseBundle.mutateAsync({
-        bundleId: pendingBundle.id,
-        data: { walletAddress, txHash: `0xsimulated${Date.now()}` },
-      });
-      queryClient.invalidateQueries({ queryKey: getListBundlesQueryKey() });
-      toast({ title: "Pack purchased!", description: "Traits have been added to your Locker." });
-    } catch (err) {
-      toast({ title: "Purchase failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
-    } finally {
-      setPendingBundle(null);
-    }
-  };
-
   const packDetails: TxDetail[] = pendingPack && ethUsd !== null
     ? [
         { label: "Pack", value: pendingPack.name },
         { label: "We Smackz", value: `${pendingPack.pointsGranted}`, accent: true },
         { label: "USD Value", value: `$${pendingPack.usdValue}` },
         { label: "ETH Amount", value: `${(parseFloat(pendingPack.usdValue) / ethUsd).toFixed(6)} ETH` },
-      ]
-    : [];
-
-  const bundleDetails: TxDetail[] = pendingBundle
-    ? [
-        { label: "Pack", value: pendingBundle.name },
-        { label: "Price", value: `$${pendingBundle.priceUsd}`, accent: true },
-        ...(formatEth(pendingBundle.priceUsd, ethUsd) ? [{ label: "ETH Amount", value: formatEth(pendingBundle.priceUsd, ethUsd)! }] : []),
       ]
     : [];
 
@@ -319,17 +293,32 @@ export function BundlesPoints() {
                         </div>
                       )}
                     </div>
-                    <Button
-                      className="w-full gap-1.5"
-                      size="lg"
-                      disabled={soldOut}
-                      onClick={() => {
-                        if (!isConnected) { connect(); return; }
-                        setPendingBundle(bundle);
-                      }}
-                    >
-                      <Zap className="w-4 h-4" /> {soldOut ? "Sold Out" : "Buy Pack"}
-                    </Button>
+                    {(() => {
+                      const inCart = hasItem(bundleKey(bundle.id));
+                      return inCart ? (
+                        <Button
+                          className="w-full gap-1.5"
+                          size="lg"
+                          variant="secondary"
+                          onClick={() => removeItem(bundleKey(bundle.id))}
+                          style={{ background: `${accent}20`, color: accent, border: `1px solid ${accent}40` }}
+                        >
+                          <Check className="w-4 h-4" /> In Cart — Remove
+                        </Button>
+                      ) : (
+                        <Button
+                          className="w-full gap-1.5"
+                          size="lg"
+                          disabled={soldOut}
+                          onClick={() => {
+                            if (!isConnected) { connect(); return; }
+                            addItem({ kind: "bundle", item: bundle });
+                          }}
+                        >
+                          <ShoppingCart className="w-4 h-4" /> {soldOut ? "Sold Out" : "Add to Cart"}
+                        </Button>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               );
@@ -349,16 +338,6 @@ export function BundlesPoints() {
         confirmLabel="Buy We Smackz"
       />
 
-      <TxConfirmModal
-        open={!!pendingBundle}
-        onOpenChange={(open) => !open && setPendingBundle(null)}
-        title="Buy Trait Pack"
-        description="All traits in this pack will be added directly to your Trait Locker."
-        details={bundleDetails}
-        onConfirm={handleBundleConfirm}
-        isPending={purchaseBundle.isPending}
-        confirmLabel="Buy Pack"
-      />
     </div>
   );
 }

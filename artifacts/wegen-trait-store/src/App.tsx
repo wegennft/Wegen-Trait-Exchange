@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { WalletProvider, useWallet } from "@/contexts/WalletContext";
 import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { CollectionProvider, useCollection, type NftCollection } from "@/contexts/CollectionContext";
+import { CartProvider } from "@/contexts/CartContext";
 import { Layout } from "@/components/layout/Layout";
 import NotFound from "@/pages/not-found";
 import { Store } from "@/pages/Store";
@@ -67,6 +68,7 @@ function App() {
     <SiteSettingsProvider>
       <CollectionProvider>
         <QueryClientProvider client={queryClient}>
+          <CartProvider>
           <WalletProvider>
             <TooltipProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
@@ -75,6 +77,7 @@ function App() {
               <Toaster />
             </TooltipProvider>
           </WalletProvider>
+          </CartProvider>
         </QueryClientProvider>
       </CollectionProvider>
     </SiteSettingsProvider>

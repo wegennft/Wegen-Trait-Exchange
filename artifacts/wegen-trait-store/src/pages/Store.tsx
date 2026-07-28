@@ -14,8 +14,12 @@ import {
   getGetStoreStatsQueryKey,
   getGetUserNftsQueryKey,
   useListLegends,
+  useListBundles,
+  usePurchaseBundle,
+  getListBundlesQueryKey,
 } from "@workspace/api-client-react";
 import type { Trait, WegenNft, LegendItem } from "@workspace/api-client-react";
+import { useCart, traitKey, bundleKey } from "@/contexts/CartContext";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -595,11 +599,10 @@ export function Store() {
   const [selectedTheme, setSelectedTheme] = useState<string | undefined>();
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [previewTrait, setPreviewTrait] = useState<Trait | null>(null);
-  const [cart, setCart] = useState<Map<number, Trait>>(new Map());
   const [cartOpen, setCartOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutProgress, setCheckoutProgress] = useState<{ done: number; total: number } | null>(null);
-  const [storeMode, setStoreMode] = useState<"traits" | "legends">("traits");
+  const [storeMode, setStoreMode] = useState<"traits" | "legends" | "packs">("traits");
   const [activePack, setActivePack] = useState<string | undefined>();
   const [previewNftIsLegend, setPreviewNftIsLegend] = useState(false);
 
@@ -713,59 +716,63 @@ export function Store() {
   );
 
   const purchaseTrait = usePurchaseTrait();
+  const purchaseBundle = usePurchaseBundle();
 
-  // ── Cart helpers ──
-  const cartCount = cart.size;
-  const cartItems = Array.from(cart.values());
-  const cartTotalUsd = cartItems.reduce((sum, t) => sum + parseFloat(t.priceUsd || "0"), 0);
-  const cartTotal = cartItems.reduce((sum, t) => sum + parseFloat(t.priceEth || "0"), 0);
-  const isInCart = (id: number) => cart.has(id);
+  // ── Bundles data (for TRAIT PACKS tab) ──
+  const { data: bundlesData, isLoading: isLoadingBundles } = useListBundles();
+  const bundles = bundlesData?.bundles ?? [];
+
+  // ── Cart (shared via CartContext) ──
+  const { items: cartItemsMap, addItem, removeItem, clearCart, hasItem, count: cartCount, totalUsd: cartTotalUsd, totalEth: cartTotal } = useCart();
+  const cartItems = Array.from(cartItemsMap.values());
+  const isInCart = (id: number) => hasItem(traitKey(id));
+  const isBundleInCart = (id: number) => hasItem(bundleKey(id));
 
   const toggleCart = (trait: Trait) => {
     if (!isConnected) { connect(); return; }
-    setCart(prev => {
-      const next = new Map(prev);
-      if (next.has(trait.id)) next.delete(trait.id);
-      else next.set(trait.id, trait);
-      return next;
-    });
+    const key = traitKey(trait.id);
+    if (hasItem(key)) removeItem(key);
+    else addItem({ kind: "trait", item: trait });
   };
 
-  const removeFromCart = (id: number) => {
-    setCart(prev => { const next = new Map(prev); next.delete(id); return next; });
-  };
+  const removeFromCart = (key: string) => removeItem(key);
 
   const handleCheckout = async () => {
-    if (!walletAddress || cartItems.length === 0) return;
+    const allItems = Array.from(cartItemsMap.values());
+    if (!walletAddress || allItems.length === 0) return;
     setIsCheckingOut(true);
-    setCheckoutProgress({ done: 0, total: cartItems.length });
+    setCheckoutProgress({ done: 0, total: allItems.length });
     let succeeded = 0;
     let failed = 0;
-    for (let i = 0; i < cartItems.length; i++) {
-      const trait = cartItems[i];
+    for (let i = 0; i < allItems.length; i++) {
+      const ci = allItems[i];
       try {
-        await purchaseTrait.mutateAsync({
-          walletAddress,
-          data: {
-            traitId: trait.id,
-            quantity: 1,
-            txHash: `0xsimulated${Date.now()}`,
-          },
-        });
+        if (ci.kind === "trait") {
+          await purchaseTrait.mutateAsync({
+            walletAddress,
+            data: { traitId: ci.item.id, quantity: 1, txHash: `0xsimulated${Date.now()}` },
+          });
+        } else {
+          await purchaseBundle.mutateAsync({
+            bundleId: ci.item.id,
+            data: { walletAddress, txHash: `0xsimulated${Date.now()}` },
+          });
+        }
         succeeded++;
       } catch {
         failed++;
       }
-      setCheckoutProgress({ done: i + 1, total: cartItems.length });
+      setCheckoutProgress({ done: i + 1, total: allItems.length });
     }
     queryClient.invalidateQueries({ queryKey: getListTraitsQueryKey({ category: selectedCategory, theme: selectedTheme, limit: 9999 }) });
     queryClient.invalidateQueries({ queryKey: getGetStoreStatsQueryKey() });
-    setCart(new Map());
+    queryClient.invalidateQueries({ queryKey: getListBundlesQueryKey() });
+    clearCart();
     setCartOpen(false);
     setIsCheckingOut(false);
     setCheckoutProgress(null);
     if (failed === 0) {
-      toast({ title: `${succeeded} trait${succeeded > 1 ? "s" : ""} purchased!`, description: "Check your Locker to equip them." });
+      toast({ title: `${succeeded} item${succeeded > 1 ? "s" : ""} purchased!`, description: "Check your Locker to equip them." });
     } else {
       toast({ title: `${succeeded} purchased, ${failed} failed`, description: "Some items could not be completed.", variant: "destructive" });
     }
@@ -1036,11 +1043,12 @@ export function Store() {
         </Card>
       </div>
 
-      {/* ── Mode Toggle: TRAITS / LEGENDS ── */}
+      {/* ── Mode Toggle: TRAITS / LEGENDS / PACKS ── */}
       <div className="flex gap-0 rounded-xl overflow-hidden border border-border/40" style={{ background: 'rgba(0,0,0,0.3)' }}>
         {([
           { key: "traits" as const, label: "TRAIT STORE", icon: <Package className="w-4 h-4" />, desc: "Browse & purchase traits" },
           { key: "legends" as const, label: "LEGENDS", icon: <Crown className="w-4 h-4" />, desc: `${legends.length > 0 ? `${legends.length} 1-of-1s` : "1-of-1 NFTs"}` },
+          { key: "packs" as const, label: "TRAIT PACKS", icon: <Gem className="w-4 h-4" />, desc: bundles.length > 0 ? `${bundles.length} pack${bundles.length !== 1 ? "s" : ""}` : "Bundle packs" },
         ]).map(({ key, label, icon, desc }) => (
           <button
             key={key}
@@ -1212,6 +1220,174 @@ export function Store() {
                 })}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ── PACKS MODE content ── */}
+      {storeMode === "packs" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-black tracking-widest" style={{ ...BANGERS, color: accent, textShadow: `0 0 20px ${accent}` }}>
+                TRAIT PACKS
+              </h2>
+              <p className="text-xs text-muted-foreground/60 mt-1 uppercase tracking-widest" style={BANGERS}>
+                // add entire bundles to your cart //
+              </p>
+            </div>
+          </div>
+
+          {isLoadingBundles ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {[1, 2].map((i) => (
+                <Card key={i} className="overflow-hidden bg-card border-border/50">
+                  <Skeleton className="h-48 w-full rounded-none" />
+                  <CardContent className="p-4 space-y-3">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : bundles.length === 0 ? (
+            <div className="text-center py-20 border border-dashed border-border/50 rounded-xl bg-card/90">
+              <div className="w-16 h-16 rounded-full bg-secondary mx-auto flex items-center justify-center mb-4">
+                <Gem className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">No Trait Packs</h3>
+              <p className="text-muted-foreground">No packs are available right now.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {bundles.map((bundle) => {
+                const soldOut = bundle.totalSupply !== -1 && bundle.remainingSupply < 1;
+                const inCart = isBundleInCart(bundle.id);
+                return (
+                  <Card
+                    key={bundle.id}
+                    className="item-glow-gold bg-card/92 overflow-hidden flex flex-col"
+                    style={{ opacity: soldOut ? 0.65 : 1 }}
+                  >
+                    {/* Pack image or trait mosaic */}
+                    <div className="relative aspect-video bg-secondary/20 overflow-hidden">
+                      {bundle.imageUrl ? (
+                        <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover" />
+                      ) : bundle.traits.length > 0 ? (
+                        <div className={`w-full h-full grid gap-0 ${bundle.traits.length < 4 ? `grid-cols-${bundle.traits.length}` : "grid-cols-2 grid-rows-2"}`}>
+                          {bundle.traits.slice(0, 4).map((t) => (
+                            <div key={t.id} className="overflow-hidden bg-secondary/40">
+                              {t.imageUrl
+                                ? <TraitMedia url={t.imageUrl} mediaType={t.mediaType ?? undefined} alt={t.name} className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 opacity-20" /></div>
+                              }
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Gem className="w-16 h-16 opacity-20" style={{ color: accent }} />
+                        </div>
+                      )}
+                      {soldOut && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <Badge variant="destructive">Sold Out</Badge>
+                        </div>
+                      )}
+                      {inCart && !soldOut && (
+                        <div className="absolute top-2 left-2">
+                          <Badge className="text-xs font-bold gap-1" style={{ background: accent, color: "black" }}>
+                            <Check className="w-3 h-3" /> In Cart
+                          </Badge>
+                        </div>
+                      )}
+                      {bundle.totalSupply !== -1 && !soldOut && (
+                        <div className="absolute top-2 right-2">
+                          <Badge variant="secondary" className="text-xs">{bundle.remainingSupply}/{bundle.totalSupply} left</Badge>
+                        </div>
+                      )}
+                    </div>
+
+                    <CardContent className="p-4 flex-1 flex flex-col space-y-3">
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="text-base font-bold tracking-tight leading-tight" style={BANGERS}>{bundle.name}</h3>
+                          <Badge variant="outline" className="flex-shrink-0 text-xs gap-1" style={{ color: accent, borderColor: `${accent}50` }}>
+                            <Package className="w-3 h-3" />
+                            {bundle.traits.length} trait{bundle.traits.length !== 1 ? "s" : ""}
+                          </Badge>
+                        </div>
+                        {bundle.description && (
+                          <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-2">{bundle.description}</p>
+                        )}
+                      </div>
+
+                      {/* Trait thumbnails row */}
+                      {bundle.traits.length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {bundle.traits.slice(0, 8).map((t) => (
+                            <div
+                              key={t.id}
+                              className="w-8 h-8 rounded-md overflow-hidden border flex-shrink-0"
+                              style={{ borderColor: `${accent}30` }}
+                              title={t.name}
+                            >
+                              {t.imageUrl
+                                ? <TraitMedia url={t.imageUrl} mediaType={t.mediaType ?? undefined} alt={t.name} className="w-full h-full object-cover" />
+                                : <div className="w-full h-full bg-secondary/40 flex items-center justify-center"><Package className="w-2.5 h-2.5 opacity-20" /></div>
+                              }
+                            </div>
+                          ))}
+                          {bundle.traits.length > 8 && (
+                            <div className="w-8 h-8 rounded-md bg-secondary/40 border border-border/30 flex items-center justify-center text-[10px] font-bold text-muted-foreground/50">
+                              +{bundle.traits.length - 8}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-auto pt-1">
+                        {/* Price block */}
+                        <div className="px-3 py-2 rounded mb-3" style={{ background: `${accent}1a`, border: `1px solid ${accent}40` }}>
+                          <div className="flex items-baseline gap-2" style={{ ...BANGERS, color: accent }}>
+                            <Coins className="w-5 h-5 flex-shrink-0 self-center" style={{ color: "hsl(43 100% 60%)" }} />
+                            <span className="text-3xl leading-none">${bundle.priceUsd}</span>
+                          </div>
+                          <div className="text-sm font-mono mt-0.5 pl-7" style={{ color: "hsl(43 100% 62%)", opacity: 0.85 }}>
+                            ≈ {formatEth(bundle.priceUsd, ethUsd) ?? "fetching rate..."}
+                          </div>
+                        </div>
+
+                        {/* Add / Remove button */}
+                        {inCart ? (
+                          <button
+                            onClick={() => removeItem(bundleKey(bundle.id))}
+                            className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold transition-all rounded-lg"
+                            style={{ background: gradient2, color: "hsl(43 100% 60%)", ...BANGERS }}
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            IN CART — REMOVE
+                          </button>
+                        ) : soldOut ? (
+                          <div className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground/40 select-none" style={BANGERS}>
+                            SOLD OUT
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { if (!isConnected) { connect(); return; } addItem({ kind: "bundle", item: bundle }); }}
+                            className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:text-white hover:bg-primary/80 transition-all group/btn rounded-lg"
+                            style={BANGERS}
+                          >
+                            <Plus className="w-3.5 h-3.5 group-hover/btn:rotate-90 transition-transform" />
+                            ADD TO CART
+                          </button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -1665,7 +1841,7 @@ export function Store() {
                 </div>
                 {cartCount > 0 && (
                   <button
-                    onClick={() => setCart(new Map())}
+                    onClick={() => clearCart()}
                     className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-destructive transition-colors px-2 py-1"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -1695,50 +1871,99 @@ export function Store() {
                 </Button>
               </div>
             ) : (
-              cartItems.map((trait) => (
-                <div
-                  key={trait.id}
-                  className="flex items-center gap-3 p-3 rounded-xl border transition-all"
-                  style={{
-                    background: "hsl(268 35% 6%)",
-                    border: "1px solid hsl(268 22% 14%)",
-                  }}
-                >
-                  {/* Thumbnail */}
-                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-secondary/40 flex-shrink-0 border border-border/20">
-                    {trait.imageUrl ? (
-                      <TraitImageZoom url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full">
-                        <TraitMedia url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full object-contain" />
-                      </TraitImageZoom>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
-                        {trait.category?.[0]}
+              cartItems.map((ci) => {
+                const ik = ci.kind === "trait" ? traitKey(ci.item.id) : bundleKey(ci.item.id);
+                if (ci.kind === "bundle") {
+                  const bundle = ci.item;
+                  return (
+                    <div
+                      key={ik}
+                      className="flex items-center gap-3 p-3 rounded-xl transition-all"
+                      style={{ background: "hsl(268 35% 6%)", border: "1px solid hsl(268 22% 14%)" }}
+                    >
+                      {/* 2×2 mosaic of trait images */}
+                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-secondary/40 flex-shrink-0 border border-border/20 grid grid-cols-2">
+                        {bundle.traits.slice(0, 4).map((t, i) => (
+                          <div key={i} className="overflow-hidden bg-secondary/50">
+                            {t.imageUrl
+                              ? <img src={t.imageUrl} alt={t.name} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><Package className="w-2 h-2 opacity-20" /></div>
+                            }
+                          </div>
+                        ))}
+                        {bundle.traits.length < 4 && Array.from({ length: 4 - bundle.traits.length }).map((_, i) => (
+                          <div key={`e${i}`} className="bg-secondary/30" />
+                        ))}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold truncate text-foreground">{trait.name}</div>
-                    <div className="text-xs text-muted-foreground/60 capitalize">{trait.category} · {trait.rarity}</div>
-                    <div className="flex items-center gap-1 text-accent text-xs font-bold font-mono mt-0.5">
-                      <Coins className="w-3 h-3" />
-                      ${trait.priceUsd}
-                      <span className="text-muted-foreground/50 font-normal ml-1">
-                        · {formatEth(trait.priceUsd, ethUsd) ?? "..."}
-                      </span>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold truncate text-foreground">{bundle.name}</div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground/60 mt-0.5">
+                          <Package className="w-3 h-3" />
+                          {bundle.traits.length} trait{bundle.traits.length !== 1 ? "s" : ""}
+                        </div>
+                        <div className="flex items-center gap-1 text-accent text-xs font-bold font-mono mt-0.5">
+                          <Coins className="w-3 h-3" />
+                          ${bundle.priceUsd}
+                          <span className="text-muted-foreground/50 font-normal ml-1">
+                            · {formatEth(bundle.priceUsd, ethUsd) ?? "..."}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Remove */}
+                      <button
+                        onClick={() => removeFromCart(ik)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Remove */}
-                  <button
-                    onClick={() => removeFromCart(trait.id)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
+                  );
+                }
+                const trait = ci.item;
+                return (
+                  <div
+                    key={ik}
+                    className="flex items-center gap-3 p-3 rounded-xl border transition-all"
+                    style={{
+                      background: "hsl(268 35% 6%)",
+                      border: "1px solid hsl(268 22% 14%)",
+                    }}
                   >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))
+                    {/* Thumbnail */}
+                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-secondary/40 flex-shrink-0 border border-border/20">
+                      {trait.imageUrl ? (
+                        <TraitImageZoom url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full">
+                          <TraitMedia url={trait.imageUrl} mediaType={trait.mediaType ?? undefined} alt={trait.name} className="w-full h-full object-contain" />
+                        </TraitImageZoom>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
+                          {trait.category?.[0]}
+                        </div>
+                      )}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold truncate text-foreground">{trait.name}</div>
+                      <div className="text-xs text-muted-foreground/60 capitalize">{trait.category} · {trait.rarity}</div>
+                      <div className="flex items-center gap-1 text-accent text-xs font-bold font-mono mt-0.5">
+                        <Coins className="w-3 h-3" />
+                        ${trait.priceUsd}
+                        <span className="text-muted-foreground/50 font-normal ml-1">
+                          · {formatEth(trait.priceUsd, ethUsd) ?? "..."}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Remove */}
+                    <button
+                      onClick={() => removeFromCart(ik)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -1751,7 +1976,7 @@ export function Store() {
               {/* Order summary */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground/60">
-                  <span>{cartCount} trait{cartCount > 1 ? "s" : ""}</span>
+                  <span>{cartCount} item{cartCount > 1 ? "s" : ""}</span>
                   <span className="font-mono">${cartTotalUsd.toFixed(2)}</span>
                 </div>
                 {walletAddress && (

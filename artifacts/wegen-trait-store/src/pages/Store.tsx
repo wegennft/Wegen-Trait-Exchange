@@ -298,7 +298,7 @@ function NftPreviewBanner({
                   {previewNft && !previewNftBlocked && (() => {
                     const LAYER_ORDER = collection === "wegenettes"
                       ? ["Background", "Body", "Clothes", "Headgear", "Mouth", "Eyes"]
-                      : ["Background", "Body", "Clothes", "Eyes", "Headgear", "Mouth"];
+                      : ["Background", "Body", "Clothes", "Mouth", "Eyes", "Headgear"];
                     const getZ = (cat: string) => {
                       const i = LAYER_ORDER.indexOf(cat);
                       return i === -1 ? 3 : i;

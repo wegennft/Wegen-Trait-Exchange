@@ -65,8 +65,8 @@ function Router() {
 
 function App() {
   return (
-    <SiteSettingsProvider>
-      <CollectionProvider>
+    <CollectionProvider>
+      <SiteSettingsProvider>
         <QueryClientProvider client={queryClient}>
           <CartProvider>
           <WalletProvider>
@@ -79,8 +79,8 @@ function App() {
           </WalletProvider>
           </CartProvider>
         </QueryClientProvider>
-      </CollectionProvider>
-    </SiteSettingsProvider>
+      </SiteSettingsProvider>
+    </CollectionProvider>
   );
 }
 

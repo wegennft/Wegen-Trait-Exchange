@@ -633,7 +633,26 @@ function serializeAppearanceSettings(settings: typeof storeSettingsTable.$inferS
 router.get("/admin/appearance-settings", async (req, res): Promise<void> => {
   const nftCollection = getNftCollection(req);
   const settings = await getOrCreateSettings(nftCollection);
-  res.json(serializeAppearanceSettings(settings));
+
+  // For non-wegens collections: when logo AND background are both unset,
+  // fall back to the wegens branding so the store always looks correct.
+  const isNonWegens = nftCollection !== "wegens";
+  const hasOwnImages = !!(settings.logoUrl || settings.backgroundUrl);
+  if (isNonWegens && !hasOwnImages) {
+    const wegensSettings = await getOrCreateSettings("wegens");
+    const wegensAppearance = serializeAppearanceSettings(wegensSettings);
+    const ownAppearance = serializeAppearanceSettings(settings);
+    res.json({
+      ...ownAppearance,
+      logoUrl: wegensAppearance.logoUrl,
+      backgroundUrl: wegensAppearance.backgroundUrl,
+      bannerUrl: ownAppearance.bannerUrl ?? wegensAppearance.bannerUrl,
+      isInheriting: true,
+    });
+    return;
+  }
+
+  res.json({ ...serializeAppearanceSettings(settings), isInheriting: false });
 });
 
 router.put("/admin/appearance-settings", async (req, res): Promise<void> => {
@@ -654,7 +673,25 @@ router.put("/admin/appearance-settings", async (req, res): Promise<void> => {
     toUpdate.themeColors = JSON.stringify({ ...existingColors, ...d.colors });
   }
   const [updated] = await db.update(storeSettingsTable).set(toUpdate).where(eq(storeSettingsTable.id, existing.id)).returning();
-  res.json(serializeAppearanceSettings(updated));
+
+  // Re-run the same fallback logic as GET so the client always gets a canonical isInheriting flag
+  const isNonWegens = nftCollection !== "wegens";
+  const hasOwnImages = !!(updated.logoUrl || updated.backgroundUrl);
+  if (isNonWegens && !hasOwnImages) {
+    const wegensSettings = await getOrCreateSettings("wegens");
+    const wegensAppearance = serializeAppearanceSettings(wegensSettings);
+    const ownAppearance = serializeAppearanceSettings(updated);
+    res.json({
+      ...ownAppearance,
+      logoUrl: wegensAppearance.logoUrl,
+      backgroundUrl: wegensAppearance.backgroundUrl,
+      bannerUrl: ownAppearance.bannerUrl ?? wegensAppearance.bannerUrl,
+      isInheriting: true,
+    });
+    return;
+  }
+
+  res.json({ ...serializeAppearanceSettings(updated), isInheriting: false });
 });
 
 // ── Update Authority Key (set / clear) ────────────────────────────────────────

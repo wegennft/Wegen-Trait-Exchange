@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { useCollection } from "@/contexts/CollectionContext";
 
 export interface SiteColors {
   primary: string;
@@ -33,17 +34,6 @@ const DEFAULT_SETTINGS: SiteSettings = {
 };
 
 const STORAGE_KEY = "wegen-site-settings";
-
-function getInitialCollection(): string {
-  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const urlParam = params?.get("c");
-  if (urlParam === "wegenettes") return "wegenettes";
-  if (urlParam === "wegens") return "wegens";
-  if (typeof localStorage !== "undefined") {
-    return localStorage.getItem("nftCollection") === "wegenettes" ? "wegenettes" : "wegens";
-  }
-  return "wegens";
-}
 
 function hexToHsl(hex: string): string {
   const clean = hex.replace("#", "");
@@ -102,6 +92,7 @@ function applyColorsToRoot(colors: SiteColors) {
 
 interface SiteSettingsContextValue {
   settings: SiteSettings;
+  isInheriting: boolean;
   updateColors: (colors: Partial<SiteColors>) => void;
   updateImages: (images: Partial<Pick<SiteSettings, "logoUrl" | "backgroundUrl" | "bannerUrl">>) => void;
   resetColors: () => void;
@@ -109,7 +100,9 @@ interface SiteSettingsContextValue {
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue | undefined>(undefined);
 
-async function fetchRemoteSettings(collection: string): Promise<SiteSettings | null> {
+type RemoteSettings = SiteSettings & { isInheriting: boolean };
+
+async function fetchRemoteSettings(collection: string): Promise<RemoteSettings | null> {
   try {
     const res = await fetch(`/api/admin/appearance-settings?nftCollection=${encodeURIComponent(collection)}`);
     if (!res.ok) return null;
@@ -119,13 +112,14 @@ async function fetchRemoteSettings(collection: string): Promise<SiteSettings | n
       backgroundUrl: data.backgroundUrl ?? DEFAULT_SETTINGS.backgroundUrl,
       bannerUrl: data.bannerUrl ?? null,
       colors: { ...DEFAULT_COLORS, ...(data.colors ?? {}) },
+      isInheriting: data.isInheriting === true,
     };
   } catch {
     return null;
   }
 }
 
-async function saveRemoteSettings(collection: string, patch: Partial<SiteSettings>): Promise<SiteSettings | null> {
+async function saveRemoteSettings(collection: string, patch: Partial<SiteSettings>): Promise<RemoteSettings | null> {
   try {
     const body: Record<string, unknown> = {};
     if (patch.logoUrl !== undefined) body.logoUrl = patch.logoUrl;
@@ -144,6 +138,8 @@ async function saveRemoteSettings(collection: string, patch: Partial<SiteSetting
       backgroundUrl: data.backgroundUrl ?? DEFAULT_SETTINGS.backgroundUrl,
       bannerUrl: data.bannerUrl ?? null,
       colors: { ...DEFAULT_COLORS, ...(data.colors ?? {}) },
+      // PUT response now includes isInheriting from the server
+      isInheriting: data.isInheriting === true,
     };
   } catch {
     return null;
@@ -151,6 +147,8 @@ async function saveRemoteSettings(collection: string, patch: Partial<SiteSetting
 }
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
+  const { collection } = useCollection();
+
   const [settings, setSettings] = useState<SiteSettings>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -166,18 +164,21 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     }
     return DEFAULT_SETTINGS;
   });
+  const [isInheriting, setIsInheriting] = useState(false);
 
+  // Re-fetch settings whenever the active collection changes
   useEffect(() => {
     let cancelled = false;
-    const collection = getInitialCollection();
     fetchRemoteSettings(collection).then(remote => {
       if (remote && !cancelled) {
-        setSettings(remote);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...remote, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
+        const { isInheriting: inheriting, ...settingsOnly } = remote;
+        setSettings(settingsOnly);
+        setIsInheriting(inheriting);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settingsOnly, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
       }
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [collection]);
 
   useEffect(() => {
     applyColorsToRoot(settings.colors);
@@ -194,14 +195,15 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const persist = useCallback((next: SiteSettings, patch: Partial<SiteSettings>) => {
     setSettings(next);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
-    const collection = getInitialCollection();
     saveRemoteSettings(collection, patch).then(remote => {
       if (remote) {
-        setSettings(remote);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...remote, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
+        const { isInheriting: inheriting, ...settingsOnly } = remote;
+        setSettings(settingsOnly);
+        setIsInheriting(inheriting);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settingsOnly, _version: SETTINGS_VERSION })); } catch { /* ignore */ }
       }
     });
-  }, []);
+  }, [collection]);
 
   const updateColors = useCallback((colors: Partial<SiteColors>) => {
     setSettings(prev => {
@@ -228,7 +230,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   }, [persist]);
 
   return (
-    <SiteSettingsContext.Provider value={{ settings, updateColors, updateImages, resetColors }}>
+    <SiteSettingsContext.Provider value={{ settings, isInheriting, updateColors, updateImages, resetColors }}>
       {children}
     </SiteSettingsContext.Provider>
   );

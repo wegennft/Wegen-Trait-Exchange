@@ -2956,7 +2956,8 @@ function RarityTiersSettings() {
 
 // ── Appearance Settings Tab ────────────────────────────────────────────────────
 function AppearanceSettings() {
-  const { settings, updateColors, updateImages, resetColors } = useSiteSettings();
+  const { settings, isInheriting, updateColors, updateImages, resetColors } = useSiteSettings();
+  const { collection, collectionLabel } = useCollection();
   const { toast } = useToast();
 
   const logoUpload = useUpload();
@@ -3011,6 +3012,21 @@ function AppearanceSettings() {
         <h2 className="text-xl font-bold mb-1">Appearance Settings</h2>
         <p className="text-sm text-muted-foreground">Customize the site logo, images, and color theme. Changes apply instantly.</p>
       </div>
+
+      {/* ── Inheritance notice (non-wegens collections only) ── */}
+      {isInheriting && collection !== "wegens" && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold text-amber-300">
+              {collectionLabel} is using Wegens branding
+            </p>
+            <p className="text-amber-300/70 mt-0.5">
+              No logo or background has been set for {collectionLabel}. Upload images below to give this collection its own distinct look, or leave it as-is to keep the Wegens branding.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Image Assets ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

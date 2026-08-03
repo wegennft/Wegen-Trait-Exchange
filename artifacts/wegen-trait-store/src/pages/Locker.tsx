@@ -38,16 +38,21 @@ const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.
 
 const RARITY_ORDER: Record<string, number> = { legendary: 4, rare: 3, uncommon: 2, common: 1 };
 
+// Layer z-values match the canonical server order:
+// Headgear (front) → Eyes → Mouth → Clothes → Body → Background (back).
+// "headgear" MUST be an explicit key — the DB category is exactly that string.
 const CATEGORY_LAYER_ORDER: Record<string, number> = {
   background: 0, bg: 0,
   base: 1, skin: 1, body: 2,
-  // Wegen on-chain attribute types
+  // Clothes layer
   clothes: 3, clothing: 3, outfit: 3, shirt: 3, pants: 3, jacket: 3, top: 3, bottom: 3,
-  accessory: 4, accessories: 4, jewelry: 4, necklace: 4, earring: 4,
-  // Head / face layers (Wegen on-chain: "Head & Hair", "Mouth", "Eyes")
-  "head & hair": 5, hat: 5, headwear: 5, head: 5,
-  mouth: 5, eyes: 5, glasses: 5, eyewear: 5, mask: 5, face: 5,
-  overlay: 6, effect: 7, special: 8,
+  accessory: 3, accessories: 3, jewelry: 3, necklace: 3, earring: 3,
+  // Face layers — mouth below eyes, eyes below headgear
+  mouth: 4, face: 4,
+  eyes: 5, glasses: 5, eyewear: 5, mask: 5,
+  // Head / hair / hat — frontmost; "headgear" is the exact DB category name
+  headgear: 6, "head & hair": 6, hat: 6, headwear: 6, head: 6,
+  overlay: 7, effect: 8, special: 9,
 };
 function getLayerZ(category: string): number {
   return CATEGORY_LAYER_ORDER[category.toLowerCase()] ?? 3;

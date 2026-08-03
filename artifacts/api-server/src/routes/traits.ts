@@ -11,7 +11,7 @@ import {
   GetStoreStatsResponse,
   ListStoreThemesResponse,
 } from "@workspace/api-zod";
-import { CATEGORY_ALIASES, NON_VISUAL_CATEGORIES, parseAttrs } from "./trait-utils.js";
+import { CATEGORY_ALIASES, NON_VISUAL_CATEGORIES, parseAttrs, sortByLayerOrder, DEFAULT_LAYER_ORDER } from "./trait-utils.js";
 
 const router: IRouter = Router();
 
@@ -182,11 +182,6 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
       try { return settings?.layerOrder ? (JSON.parse(settings.layerOrder) as string[]) : []; }
       catch { return []; }
     })();
-    // layerOrder[0] is FRONT (topmost), last entry is BACK (bottommost).
-    // Sort descending so highest index (back) is composited first, lowest (front) last.
-    // Must match admin's DEFAULT_LAYER_ORDER so headgear renders on top, background at base.
-    const defaultOrder = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
-    const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
 
     // Get variant images for the matched trait IDs
     const proto = req.headers["x-forwarded-proto"] ?? req.protocol;
@@ -221,14 +216,10 @@ router.get("/traits/variant-preview-image", async (req, res): Promise<void> => {
         }
       }
 
-      // Sort matched traits by layer order: layerOrder[0] is the FRONT layer
-      // (topmost), last entry is BACK (bottommost). Composite back→front, so
-      // sort DESCENDING by index — highest index (back) comes first as base.
-      const sorted = [...matched].sort((a, b) => {
-        const ai = order.indexOf(a.category);
-        const bi = order.indexOf(b.category);
-        return (bi === -1 ? 1000 : bi) - (ai === -1 ? 1000 : ai);
-      });
+      // Sort matched traits back→front using the shared helper.
+      // layerOrder[0] is FRONT (topmost); highest index is BACK (bottommost).
+      // sortByLayerOrder places the back layer first so it is composited first.
+      const sorted = sortByLayerOrder(matched, (t) => t.category, layerOrder);
 
       for (const item of sorted) {
         // Prefer variant artwork; fall back to the trait's base DB imageUrl so that
@@ -422,9 +413,6 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
       try { return settings?.layerOrder ? (JSON.parse(settings.layerOrder) as string[]) : []; }
       catch { return []; }
     })();
-    // layerOrder[0] is FRONT (topmost), last entry is BACK (bottommost).
-    const defaultOrder = ["Headgear", "Eyes", "Mouth", "Clothes", "Body", "Background"];
-    const order = layerOrder.length > 0 ? layerOrder : defaultOrder;
 
     // Build category → imageUrl map from matched on-chain traits (base images)
     const categoryImageMap = new Map<string, string>();
@@ -482,12 +470,14 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
       categoryImageMap.set(previewTrait.category, resolveUrl(previewTrait.imageUrl));
     }
 
-    // Sort back→front: layerOrder[0] = front (topmost), last = back (bottommost)
-    const sortedCategories = Array.from(categoryImageMap.keys()).sort((a, b) => {
-      const ai = order.indexOf(a);
-      const bi = order.indexOf(b);
-      return (bi === -1 ? 1000 : bi) - (ai === -1 ? 1000 : ai);
-    });
+    // Sort back→front using the shared helper.
+    // layerOrder[0] is FRONT (topmost); highest index is BACK (bottommost).
+    // sortByLayerOrder places the back layer first so it is composited first.
+    const sortedCategories = sortByLayerOrder(
+      Array.from(categoryImageMap.keys()),
+      (cat) => cat,
+      layerOrder,
+    );
     const layerUrls = sortedCategories.map((cat) => categoryImageMap.get(cat)!);
 
     const resolvedBaseImageUrl = baseImageUrl ? resolveUrl(baseImageUrl) : null;

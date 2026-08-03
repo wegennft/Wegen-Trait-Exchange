@@ -11,6 +11,8 @@ import {
   CATEGORY_ALIASES,
   NON_VISUAL_CATEGORIES,
   parseAttrs,
+  sortByLayerOrder,
+  DEFAULT_LAYER_ORDER,
 } from "../trait-utils.js";
 
 // ── CATEGORY_ALIASES ──────────────────────────────────────────────────────────
@@ -184,5 +186,114 @@ describe("parseAttrs", () => {
   it("trims whitespace from category and name", () => {
     const result = parseAttrs(" Body : Brown ");
     expect(result).toEqual([{ category: "Body", name: "Brown" }]);
+  });
+});
+
+// ── sortByLayerOrder ──────────────────────────────────────────────────────────
+
+describe("sortByLayerOrder", () => {
+  // Helper: sort plain strings using identity getter
+  const sortStrings = (cats: string[], order: string[]) =>
+    sortByLayerOrder(cats, (c) => c, order);
+
+  // ── Known category order ──────────────────────────────────────────────────
+
+  it("sorts back→front: Background first, Headgear last with default order", () => {
+    const input = ["Headgear", "Eyes", "Background", "Body"];
+    const result = sortStrings(input, DEFAULT_LAYER_ORDER);
+    // back→front compositing order: Background (idx 5) → Body (4) → Eyes (1) → Headgear (0)
+    expect(result).toEqual(["Background", "Body", "Eyes", "Headgear"]);
+  });
+
+  it("sorts all six default categories in correct back→front order", () => {
+    const shuffled = ["Mouth", "Headgear", "Background", "Clothes", "Body", "Eyes"];
+    const result = sortStrings(shuffled, DEFAULT_LAYER_ORDER);
+    expect(result).toEqual(["Background", "Body", "Clothes", "Mouth", "Eyes", "Headgear"]);
+  });
+
+  it("works with a custom layer order", () => {
+    const customOrder = ["Overlay", "Body", "Base"];
+    const result = sortStrings(["Base", "Overlay", "Body"], customOrder);
+    // Base (idx 2) → Body (1) → Overlay (0)
+    expect(result).toEqual(["Base", "Body", "Overlay"]);
+  });
+
+  // ── Unknown categories sort last (highest sentinel = furthest back) ───────
+
+  it("places unknown categories before all known layers (sentinel = 1000)", () => {
+    // Unknown categories get index 1000 — sort as most-back, appear first in output
+    const result = sortStrings(["Headgear", "Mystery"], DEFAULT_LAYER_ORDER);
+    // Mystery (1000) appears before Headgear (0) in back→front order
+    expect(result[0]).toBe("Mystery");
+    expect(result[1]).toBe("Headgear");
+  });
+
+  it("places multiple unknown categories before known ones", () => {
+    const result = sortStrings(["Eyes", "Unknown1", "Body", "Unknown2"], DEFAULT_LAYER_ORDER);
+    const knownIdx = result.findIndex((c) => c === "Body" || c === "Eyes");
+    const lastUnknownIdx = Math.max(result.indexOf("Unknown1"), result.indexOf("Unknown2"));
+    // All unknowns appear before the known layers
+    expect(lastUnknownIdx).toBeLessThan(knownIdx);
+  });
+
+  // ── Tie-breaking ──────────────────────────────────────────────────────────
+
+  it("preserves relative order of items that share the same category name", () => {
+    // Two items with the same category → stable relative order (JS sort is stable)
+    const items = [
+      { cat: "Body", val: "first" },
+      { cat: "Body", val: "second" },
+    ];
+    const result = sortByLayerOrder(items, (i) => i.cat, DEFAULT_LAYER_ORDER);
+    expect(result[0].val).toBe("first");
+    expect(result[1].val).toBe("second");
+  });
+
+  it("does not change order when all categories have different indices", () => {
+    // Already in back→front order
+    const input = ["Background", "Body", "Headgear"];
+    const result = sortStrings(input, DEFAULT_LAYER_ORDER);
+    expect(result).toEqual(["Background", "Body", "Headgear"]);
+  });
+
+  // ── Empty order falls back to DEFAULT_LAYER_ORDER ─────────────────────────
+
+  it("falls back to DEFAULT_LAYER_ORDER when an empty layerOrder is passed", () => {
+    const input = ["Headgear", "Background", "Body"];
+    const withEmpty = sortStrings(input, []);
+    const withDefault = sortStrings(input, DEFAULT_LAYER_ORDER);
+    expect(withEmpty).toEqual(withDefault);
+  });
+
+  it("DEFAULT_LAYER_ORDER has Headgear first (frontmost) and Background last (backmost)", () => {
+    expect(DEFAULT_LAYER_ORDER[0]).toBe("Headgear");
+    expect(DEFAULT_LAYER_ORDER[DEFAULT_LAYER_ORDER.length - 1]).toBe("Background");
+  });
+
+  // ── Works with object items ───────────────────────────────────────────────
+
+  it("sorts trait objects by category using a getter function", () => {
+    const traits = [
+      { id: 1, category: "Headgear" },
+      { id: 2, category: "Background" },
+      { id: 3, category: "Body" },
+    ];
+    const result = sortByLayerOrder(traits, (t) => t.category, DEFAULT_LAYER_ORDER);
+    expect(result.map((t) => t.category)).toEqual(["Background", "Body", "Headgear"]);
+  });
+
+  // ── Does not mutate the input array ──────────────────────────────────────
+
+  it("does not mutate the original items array", () => {
+    const input = ["Headgear", "Background"];
+    const inputCopy = [...input];
+    sortStrings(input, DEFAULT_LAYER_ORDER);
+    expect(input).toEqual(inputCopy);
+  });
+
+  // ── Empty input ───────────────────────────────────────────────────────────
+
+  it("returns empty array for empty input", () => {
+    expect(sortStrings([], DEFAULT_LAYER_ORDER)).toEqual([]);
   });
 });

@@ -30,6 +30,51 @@ export interface ParsedAttr {
 }
 
 /**
+ * Default back→front layer order used when no custom order is stored in
+ * storeSettings. layerOrder[0] is FRONT (topmost), last entry is BACK.
+ * Exported so callers and tests share the single source of truth.
+ */
+export const DEFAULT_LAYER_ORDER = [
+  "Headgear",
+  "Eyes",
+  "Mouth",
+  "Clothes",
+  "Body",
+  "Background",
+];
+
+/**
+ * Sort trait items back→front for compositing.
+ *
+ * layerOrder[0] is the FRONT (topmost) layer; the last entry is BACK
+ * (bottommost). Items are sorted so the highest index (furthest back)
+ * appears first in the returned array — i.e. the base layer is element 0
+ * and the topmost layer is the last element.
+ *
+ * Unknown categories (not present in layerOrder) are treated as if they
+ * have the highest possible index (1000) so they are composited at the
+ * very bottom, below all known layers.
+ *
+ * Falls back to DEFAULT_LAYER_ORDER when layerOrder is empty.
+ *
+ * @param items      Array of items to sort (not mutated).
+ * @param getCategory  Extracts the category string from an item.
+ * @param layerOrder   Ordered array of category names (front → back).
+ */
+export function sortByLayerOrder<T>(
+  items: T[],
+  getCategory: (item: T) => string,
+  layerOrder: string[],
+): T[] {
+  const order = layerOrder.length > 0 ? layerOrder : DEFAULT_LAYER_ORDER;
+  return [...items].sort((a, b) => {
+    const ai = order.indexOf(getCategory(a));
+    const bi = order.indexOf(getCategory(b));
+    return (bi === -1 ? 1000 : bi) - (ai === -1 ? 1000 : ai);
+  });
+}
+
+/**
  * Parse a pipe-delimited "Category:Value|..." string into structured pairs,
  * applying CATEGORY_ALIASES and discarding NON_VISUAL_CATEGORIES entries.
  *

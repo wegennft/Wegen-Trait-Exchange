@@ -664,6 +664,15 @@ router.get("/store/config", async (req, res): Promise<void> => {
     ineligibleNfts: JSON.parse(settings?.ineligibleNfts ?? "[]") as string[],
     storeName: settings?.storeName ?? (nftCollection === "wegenettes" ? "Wegenettes Trait Store" : "Wegen Trait Store"),
     announcementBanner: settings?.announcementBanner ?? null,
+    // Front→back layer order (index 0 = topmost). Falls back to the shared default.
+    layerOrder: (() => {
+      try {
+        const parsed: unknown = settings?.layerOrder ? JSON.parse(settings.layerOrder) : [];
+        return Array.isArray(parsed) && parsed.length > 0 && parsed.every(v => typeof v === "string")
+          ? (parsed as string[])
+          : DEFAULT_LAYER_ORDER;
+      } catch { return DEFAULT_LAYER_ORDER; }
+    })(),
   });
 });
 

@@ -171,6 +171,26 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
       return res.json();
     },
   });
+  // Admin-configured layer order (front→back, index 0 = topmost) — keeps the
+  // Locker preview in sync with server-side compositing per collection.
+  const { data: storeCfg } = useQuery<{ layerOrder?: string[] }>({
+    queryKey: ["store-config", collection],
+    queryFn: async () => {
+      const res = await fetch(`/api/store/config?nftCollection=${encodeURIComponent(collection)}`);
+      if (!res.ok) throw new Error("Failed to load store config");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const adminLayerOrder = storeCfg?.layerOrder ?? [];
+  // z for a category: derived from admin order when known; falls back to the
+  // hardcoded map for aliases/unknown categories.
+  const getZ = (category: string): number => {
+    const idx = adminLayerOrder.findIndex(c => c.toLowerCase() === category.toLowerCase());
+    if (idx !== -1) return adminLayerOrder.length - idx; // index 0 (front) = highest z
+    return getLayerZ(category);
+  };
+
   const { data: nftsData, isLoading: isLoadingNfts } = useQuery({
     queryKey: nftsQueryKey,
     enabled: !!walletAddress && !demo,
@@ -501,21 +521,21 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                     src={entry.imageUrl}
                     alt={attr.value}
                     className="absolute inset-0 w-full h-full object-cover"
-                    style={{ zIndex: getLayerZ(attr.trait_type) + 1 }}
+                    style={{ zIndex: getZ(attr.trait_type) + 1 }}
                   />
                 ) : null;
               })}
 
               {/* Equipped store-trait layers — sorted by canonical z-order */}
               {[...activeNft.equippedTraits]
-                .sort((a, b) => getLayerZ(a.category) - getLayerZ(b.category))
+                .sort((a, b) => getZ(a.category) - getZ(b.category))
                 .filter(et => !hoverTrait || et.category !== hoverTrait.category)
                 .map(et => {
                   const imgUrl = getVariantImageUrl(et.trait.id, et.trait.imageUrl);
                   return imgUrl ? (
                     <img key={et.category} src={imgUrl} alt={et.trait.name}
                       className="absolute inset-0 w-full h-full object-cover"
-                      style={{ zIndex: getLayerZ(et.category) + 1 }} />
+                      style={{ zIndex: getZ(et.category) + 1 }} />
                   ) : null;
                 })}
 
@@ -525,7 +545,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 return url ? (
                   <img src={url} alt={hoverTrait.name}
                     className="absolute inset-0 w-full h-full object-cover"
-                    style={{ zIndex: getLayerZ(hoverTrait.category) + 1, outline: '2px solid rgba(157,0,255,0.6)' }} />
+                    style={{ zIndex: getZ(hoverTrait.category) + 1, outline: '2px solid rgba(157,0,255,0.6)' }} />
                 ) : null;
               })()}
 
@@ -608,7 +628,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {([...(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null; mediaType?: string | null } }[])]
-                      .sort((a, b) => getLayerZ(b.category) - getLayerZ(a.category))
+                      .sort((a, b) => getZ(b.category) - getZ(a.category))
                     ).map(et => (
                       <div
                         key={et.category}
@@ -1000,7 +1020,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                   <div className="mt-2 space-y-1.5">
                     <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest mb-2">Traits being applied:</p>
                     {([...(activeNft.equippedTraits as { category: string; trait: { name: string; imageUrl?: string | null; mediaType?: string | null } }[])]
-                      .sort((a, b) => getLayerZ(b.category) - getLayerZ(a.category))
+                      .sort((a, b) => getZ(b.category) - getZ(a.category))
                     ).map(et => (
                       <div key={et.category} className="flex items-center gap-2 px-2.5 py-1.5 rounded"
                         style={{ background: 'rgba(157,0,255,0.08)', border: '1px solid rgba(157,0,255,0.2)' }}>

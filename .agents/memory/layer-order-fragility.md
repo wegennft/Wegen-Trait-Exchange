@@ -9,7 +9,7 @@ description: Three separate places hardcode or store trait layer order; they can
 Whenever layer order is adjusted anywhere, verify all three locations match:
 
 1. **DB `store_settings.layer_order`** (per collection) — source used by `variant-preview-image` and `compose-preview` server endpoints. Front = index 0. Correct Wegens value: `["Headgear","Eyes","Mouth","Clothes","Body","Background"]`.
-2. **`CATEGORY_LAYER_ORDER` in `Locker.tsx`** — hardcoded z-index map for CSS stacking in the Trait Locker. Must have `"headgear"` as an explicit key (DB category is that exact string). Correct values: background=0, body=1~2, clothes=3, mouth=4, eyes=5, headgear=6.
+2. **Locker.tsx** — now fetches the admin order from public `/api/store/config` (`layerOrder`, front = index 0) per collection; the hardcoded `CATEGORY_LAYER_ORDER` map is only a fallback for aliases/unknowns and before config loads.
 3. **`LAYER_ORDER` in `Store.tsx` NFT preview panel** — hardcoded per-collection array for CSS stacking of locker-equipped overlays. Back-to-front, so last entry = topmost. Correct Wegens value: `["Background","Body","Clothes","Mouth","Eyes","Headgear"]`.
 
 ## Why
@@ -17,5 +17,6 @@ The DB layer order was set to `["Mouth","Headgear",...]` by an admin, placing Mo
 
 ## How to apply
 - Bug report: "hat/headgear trait renders behind other traits" → check all three locations above.
-- Admin saves new layer order → remind them the Locker and Store CSS arrays are still hardcoded (Task #55 tracks making Locker dynamic).
+- Admin saves new layer order → Locker follows automatically via /store/config; Store.tsx preview array is still hardcoded and must be updated by hand.
+- Collections differ: wegenettes put Eyes frontmost, wegens put Headgear frontmost — never assume one shared order.
 - Never add a new category to the server defaultOrder without also updating both CSS locations.

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { Trait, Bundle } from "@workspace/api-client-react";
 
 // ── Discriminated cart item union ──────────────────────────────────────────────
@@ -15,6 +15,45 @@ export function bundleKey(id: number): string {
 }
 function itemKey(ci: CartItem): string {
   return ci.kind === "trait" ? traitKey(ci.item.id) : bundleKey(ci.item.id);
+}
+
+// ── localStorage persistence helpers ─────────────────────────────────────────
+
+const STORAGE_KEY = "wegen-cart-v1";
+
+type SerializedCart = Array<[string, CartItem]>;
+
+function isValidCartItem(value: unknown): value is CartItem {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  if (v.kind !== "trait" && v.kind !== "bundle") return false;
+  if (!v.item || typeof v.item !== "object") return false;
+  const item = v.item as Record<string, unknown>;
+  return typeof item.id === "number";
+}
+
+function loadFromStorage(): Map<string, CartItem> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Map();
+    const entries = (parsed as SerializedCart).filter(
+      ([key, ci]) => typeof key === "string" && isValidCartItem(ci),
+    );
+    return new Map(entries);
+  } catch {
+    return new Map();
+  }
+}
+
+function saveToStorage(items: Map<string, CartItem>): void {
+  try {
+    const serialized: SerializedCart = Array.from(items.entries());
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+  } catch {
+    // Storage quota exceeded or private browsing — silently ignore
+  }
 }
 
 // ── Context definition ────────────────────────────────────────────────────────
@@ -35,7 +74,12 @@ const CartContext = createContext<CartContextValue | null>(null);
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<Map<string, CartItem>>(new Map());
+  const [items, setItems] = useState<Map<string, CartItem>>(() => loadFromStorage());
+
+  // Persist to localStorage whenever the cart changes
+  useEffect(() => {
+    saveToStorage(items);
+  }, [items]);
 
   const addItem = (ci: CartItem) => {
     const key = itemKey(ci);

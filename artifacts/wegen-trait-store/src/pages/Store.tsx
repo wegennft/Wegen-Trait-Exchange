@@ -103,6 +103,8 @@ function NftPreviewBanner({
   traitVariantMap = {},
   activePack,
   legendTokenVariantMap = {},
+  allPacks,
+  onPackChange,
 }: {
   walletAddress: string | null;
   isConnected: boolean;
@@ -115,6 +117,8 @@ function NftPreviewBanner({
   traitVariantMap?: Record<string, { imageUrl: string | null; mediaType: string }>;
   activePack?: string;
   legendTokenVariantMap?: Record<number, { imageUrl: string | null; mediaType: string }>;
+  allPacks?: string[];
+  onPackChange?: (pack: string | undefined) => void;
 }) {
   const [previewNft, setPreviewNft] = useState<WegenNft | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -374,37 +378,75 @@ function NftPreviewBanner({
                   )}
                 </div>
 
-                {/* ── Original / Variant toggle — visible only when a style pack is active ── */}
-                {activePack && !previewNftBlocked && !previewNftIsLegend && previewNft && (
+                {/* ── Pack selector / Original+Variant toggle ── */}
+                {allPacks && allPacks.length > 0 && !previewNftBlocked && !previewNftIsLegend && previewNft ? (
+                  /* Multi-pack (or single-pack) selector — buttons match the top-level Style Pack row */
                   <div
-                    className="flex items-center gap-1 p-1 rounded-lg self-stretch"
+                    className="flex items-center gap-1 p-1 rounded-lg self-stretch flex-wrap"
                     style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
+                    {/* Original button always first */}
                     <button
                       type="button"
-                      onClick={() => setShowVariant(false)}
+                      onClick={() => onPackChange?.(undefined)}
                       className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
                       style={{
-                        background: !showVariant ? `${accent}22` : "transparent",
-                        border: !showVariant ? `1px solid ${accent}55` : "1px solid transparent",
-                        color: !showVariant ? accent : "rgba(255,255,255,0.35)",
+                        background: !activePack ? `${accent}22` : "transparent",
+                        border: !activePack ? `1px solid ${accent}55` : "1px solid transparent",
+                        color: !activePack ? accent : "rgba(255,255,255,0.35)",
                       }}
                     >
                       Original
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowVariant(true)}
-                      className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
-                      style={{
-                        background: showVariant ? `${accent}22` : "transparent",
-                        border: showVariant ? `1px solid ${accent}55` : "1px solid transparent",
-                        color: showVariant ? accent : "rgba(255,255,255,0.35)",
-                      }}
-                    >
-                      {activePack}
-                    </button>
+                    {allPacks.map((pack) => (
+                      <button
+                        key={pack}
+                        type="button"
+                        onClick={() => onPackChange?.(pack)}
+                        className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
+                        style={{
+                          background: activePack === pack ? `${accent}22` : "transparent",
+                          border: activePack === pack ? `1px solid ${accent}55` : "1px solid transparent",
+                          color: activePack === pack ? accent : "rgba(255,255,255,0.35)",
+                        }}
+                      >
+                        {pack}
+                      </button>
+                    ))}
                   </div>
+                ) : (
+                  /* Fallback: no allPacks prop — keep the two-state toggle when a pack is active externally */
+                  activePack && !previewNftBlocked && !previewNftIsLegend && previewNft ? (
+                    <div
+                      className="flex items-center gap-1 p-1 rounded-lg self-stretch"
+                      style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setShowVariant(false)}
+                        className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
+                        style={{
+                          background: !showVariant ? `${accent}22` : "transparent",
+                          border: !showVariant ? `1px solid ${accent}55` : "1px solid transparent",
+                          color: !showVariant ? accent : "rgba(255,255,255,0.35)",
+                        }}
+                      >
+                        Original
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowVariant(true)}
+                        className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
+                        style={{
+                          background: showVariant ? `${accent}22` : "transparent",
+                          border: showVariant ? `1px solid ${accent}55` : "1px solid transparent",
+                          color: showVariant ? accent : "rgba(255,255,255,0.35)",
+                        }}
+                      >
+                        {activePack}
+                      </button>
+                    </div>
+                  ) : null
                 )}
 
                 {/* NFT selector (multiple NFTs) */}
@@ -1409,6 +1451,8 @@ export function Store() {
           traitVariantMap={traitVariantMap}
           activePack={activePack}
           legendTokenVariantMap={legendTokenVariantMap}
+          allPacks={allPacks}
+          onPackChange={setActivePack}
         />
       </div>
 

@@ -67,6 +67,10 @@ interface CartContextValue {
   count: number;
   totalUsd: number;
   totalEth: number;
+  // Cart sheet open/close — shared so any page can open checkout
+  cartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -75,6 +79,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Map<string, CartItem>>(() => loadFromStorage());
+  const [cartOpen, setCartOpen] = useState(false);
 
   // Persist to localStorage whenever the cart changes
   useEffect(() => {
@@ -116,9 +121,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     0,
   );
 
+  const openCart = () => setCartOpen(true);
+  const closeCart = () => setCartOpen(false);
+
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, clearCart, hasItem, count, totalUsd, totalEth }}
+      value={{
+        items, addItem, removeItem, clearCart, hasItem,
+        count, totalUsd, totalEth,
+        cartOpen, openCart, closeCart,
+      }}
     >
       {children}
     </CartContext.Provider>

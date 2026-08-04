@@ -54,7 +54,7 @@ export function BundlesPoints() {
 
   const [pendingPack, setPendingPack] = useState<{ id: number; name: string; usdValue: string; pointsGranted: number } | null>(null);
   const [traitSearch, setTraitSearch] = useState("");
-  const { addItem, removeItem, hasItem } = useCart();
+  const { addItem, removeItem, hasItem, count: cartCount, openCart } = useCart();
 
   const { data: packsData, isLoading: loadingPacks } = useListPointPacks();
   const { data: bundlesData, isLoading: loadingBundles } = useListBundles();
@@ -108,7 +108,7 @@ export function BundlesPoints() {
     : [];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-12 relative z-10">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-12 relative z-10 pb-24">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -337,6 +337,36 @@ export function BundlesPoints() {
         isPending={purchasePointPack.isPending}
         confirmLabel="Buy We Smackz"
       />
+
+      {/* ── Sticky checkout bar — appears when cart has items ── */}
+      {cartCount > 0 && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-4 px-4 py-3 border-t backdrop-blur-xl"
+          style={{
+            background: "hsl(268 40% 3% / 0.95)",
+            borderColor: `${accent}40`,
+            boxShadow: `0 -8px 40px ${glow}`,
+          }}
+        >
+          <span className="text-sm text-muted-foreground/70" style={{ fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: "0.06em" }}>
+            {cartCount} item{cartCount !== 1 ? "s" : ""} in cart
+          </span>
+          <button
+            onClick={openCart}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-black transition-all"
+            style={{
+              fontFamily: "'Bungee', Impact, sans-serif",
+              letterSpacing: "0.06em",
+              fontSize: "0.9rem",
+              background: "linear-gradient(135deg, hsl(43 100% 56%), hsl(35 100% 50%))",
+              boxShadow: "0 0 20px hsl(43 100% 56% / 0.5), 0 3px 12px rgba(0,0,0,0.4)",
+            }}
+          >
+            <ShoppingCart className="w-4 h-4" />
+            Checkout ({cartCount})
+          </button>
+        </div>
+      )}
 
     </div>
   );

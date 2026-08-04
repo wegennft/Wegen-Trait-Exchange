@@ -7,6 +7,7 @@ import { WalletProvider, useWallet } from "@/contexts/WalletContext";
 import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { CollectionProvider, useCollection, type NftCollection } from "@/contexts/CollectionContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { CartSheet } from "@/components/shared/CartSheet";
 import { Layout } from "@/components/layout/Layout";
 import NotFound from "@/pages/not-found";
 import { Store } from "@/pages/Store";
@@ -74,6 +75,7 @@ function App() {
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <Router />
               </WouterRouter>
+              <CartSheet />
               <Toaster />
             </TooltipProvider>
           </WalletProvider>

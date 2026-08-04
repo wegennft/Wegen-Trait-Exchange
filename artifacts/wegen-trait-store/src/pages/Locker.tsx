@@ -171,26 +171,6 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
       return res.json();
     },
   });
-  // Admin-configured layer order (front→back, index 0 = topmost) — keeps the
-  // Locker preview in sync with server-side compositing per collection.
-  const { data: storeCfg } = useQuery<{ layerOrder?: string[] }>({
-    queryKey: ["store-config", collection],
-    queryFn: async () => {
-      const res = await fetch(`/api/store/config?nftCollection=${encodeURIComponent(collection)}`);
-      if (!res.ok) throw new Error("Failed to load store config");
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-  const adminLayerOrder = storeCfg?.layerOrder ?? [];
-  // z for a category: derived from admin order when known; falls back to the
-  // hardcoded map for aliases/unknown categories.
-  const getZ = (category: string): number => {
-    const idx = adminLayerOrder.findIndex(c => c.toLowerCase() === category.toLowerCase());
-    if (idx !== -1) return adminLayerOrder.length - idx; // index 0 (front) = highest z
-    return getLayerZ(category);
-  };
-
   const { data: nftsData, isLoading: isLoadingNfts } = useQuery({
     queryKey: nftsQueryKey,
     enabled: !!walletAddress && !demo,
@@ -271,6 +251,29 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
   const nfts        = (demo ? demoNfts  : (nftsData?.nfts ?? [])) as DemoNft[];
   const lockerItems = (demo ? demoItems : (lockerData?.items ?? [])) as DemoItem[];
   const activeNft   = (selectedTokenId != null ? nfts.find(n => n.tokenId === selectedTokenId) : nfts[0]) ?? null;
+
+  // Admin-configured layer order (front→back, index 0 = topmost) — keeps the
+  // Locker preview in sync with server-side compositing. Keyed off the SELECTED
+  // NFT's collection (the in-panel Wegens/Wegenettes tabs are independent of the
+  // global collection context, and each collection has its own layer order).
+  const previewCollection = (activeNft as { isWegenette?: boolean } | null)?.isWegenette ? "wegenettes" : "wegens";
+  const { data: storeCfg } = useQuery<{ layerOrder?: string[] }>({
+    queryKey: ["store-config", previewCollection],
+    queryFn: async () => {
+      const res = await fetch(`/api/store/config?nftCollection=${encodeURIComponent(previewCollection)}`);
+      if (!res.ok) throw new Error("Failed to load store config");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const adminLayerOrder = storeCfg?.layerOrder ?? [];
+  // z for a category: derived from admin order when known; falls back to the
+  // hardcoded map for aliases/unknown categories.
+  const getZ = (category: string): number => {
+    const idx = adminLayerOrder.findIndex(c => c.toLowerCase() === category.toLowerCase());
+    if (idx !== -1) return adminLayerOrder.length - idx; // index 0 (front) = highest z
+    return getLayerZ(category);
+  };
 
   // Sync the variant picker to whatever is saved on-chain for each NFT
   useEffect(() => {

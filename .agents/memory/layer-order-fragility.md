@@ -19,4 +19,5 @@ The DB layer order was set to `["Mouth","Headgear",...]` by an admin, placing Mo
 - Bug report: "hat/headgear trait renders behind other traits" → check all three locations above.
 - Admin saves new layer order → Locker follows automatically via /store/config; Store.tsx preview array is still hardcoded and must be updated by hand.
 - Collections differ: wegenettes put Eyes frontmost, wegens put Headgear frontmost — never assume one shared order.
+- The Locker has in-panel Wegens/Wegenettes tabs independent of the global collection context: layer order must key off the SELECTED NFT's collection (isWegenette), not the header dropdown.
 - Never add a new category to the server defaultOrder without also updating both CSS locations.

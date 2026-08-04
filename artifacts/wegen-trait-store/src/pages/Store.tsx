@@ -146,18 +146,41 @@ function NftPreviewBanner({
 
   // Use the server-composite endpoint when:
   //  a) a preview trait is selected and the NFT has on-chain attributes, OR
-  //  b) variant mode is active (showVariant + activePack) and the NFT has on-chain attributes
+  //  b) variant mode is active (showVariant + activePack) and the NFT has on-chain attributes, OR
+  //  c) the NFT has equipped locker traits (they must slot INTO the layer stack —
+  //     CSS-stacking them over the flat base image would paint e.g. an equipped
+  //     Body over the base's clothes/hat pixels).
   // In variant mode the endpoint re-composites every layer in the pack's variant images.
   const composePreviewUrl = (() => {
     if (!previewNft?.onChainAttributes?.length || !previewNft.imageUrl) return null;
     // Variant-only compose is only valid for ordinary (non-Legend, non-blocked) NFTs.
     // Legends use legendVariantImageUrl instead; blocked NFTs show no preview at all.
+    const equipped = (!previewNftBlocked && !previewNftIsLegend) ? previewNft.equippedTraits : [];
     const needsCompose = effectivePreviewTrait ||
-      (showVariant && activePack && !previewNftIsLegend && !previewNftBlocked);
+      (showVariant && activePack && !previewNftIsLegend && !previewNftBlocked) ||
+      equipped.length > 0;
     if (!needsCompose) return null;
 
+    // Mirror the server's CATEGORY_ALIASES so equipped-trait overrides match
+    // the on-chain trait_type even when it differs from the DB category name.
+    const normalize = (c: string): string => {
+      const k = c.toLowerCase();
+      if (k === "skin") return "body";
+      if (k === "head & hair" || k === "headgear") return "headgear";
+      return k;
+    };
+    // Equipped traits replace their category slot by name. The previewed store
+    // trait is handled server-side via previewTraitId, so its category is
+    // excluded here to avoid the equipped trait overriding the preview.
+    const overrides = new Map<string, string>();
+    for (const et of equipped) {
+      if (!effectivePreviewTrait || normalize(et.category) !== normalize(effectivePreviewTrait.category)) {
+        overrides.set(normalize(et.category), et.trait.name);
+      }
+    }
     const attrs = previewNft.onChainAttributes
-      .map((a: { trait_type: string; value: string }) => `${a.trait_type}:${a.value}`)
+      .map((a: { trait_type: string; value: string }) =>
+        `${a.trait_type}:${overrides.get(normalize(a.trait_type)) ?? a.value}`)
       .join("|");
     const params: Record<string, string> = {
       nftCollection: collection,
@@ -301,7 +324,10 @@ function NftPreviewBanner({
                       return i === -1 ? 3 : i;
                     };
                     const layers: { category: string; imageUrl: string; isNew: boolean }[] = [
-                      ...previewNft.equippedTraits
+                      // When the server-composited image is active, equipped traits are
+                      // already baked into it at the correct layer slot — CSS-layering
+                      // them again would paint them over the composed clothes/hat.
+                      ...(composePreviewUrl ? [] : previewNft.equippedTraits)
                         .filter(et => et.trait.imageUrl && (!effectivePreviewTrait || et.category !== effectivePreviewTrait.category))
                         .map(et => {
                           const variantEntry = traitVariantMap[String(et.trait.id)];

@@ -323,8 +323,8 @@ router.get("/traits/compose-preview", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid previewTraitId" });
     return;
   }
-  if (!previewTraitId && !variantPack) {
-    res.status(400).json({ error: "previewTraitId or variantPack is required" });
+  if (!previewTraitId && !variantPack && !attrsRaw) {
+    res.status(400).json({ error: "previewTraitId, variantPack, or attrs is required" });
     return;
   }
 

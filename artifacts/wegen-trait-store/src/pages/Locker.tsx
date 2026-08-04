@@ -267,6 +267,44 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
     staleTime: 5 * 60 * 1000,
   });
   const adminLayerOrder = storeCfg?.layerOrder ?? [];
+
+  // Server-composited preview URL: layers the NFT's on-chain trait art (from the
+  // DB) in the admin order, with equipped/hovered store traits REPLACING their
+  // categories. This is the only way an equipped Body can render UNDER the
+  // original Clothes/Mouth — CSS-stacking over the flat base image cannot.
+  const composeSrc = (() => {
+    if (!activeNft || demo) return null;
+    const attrs = ((activeNft as { onChainAttributes?: { trait_type: string; value: string }[] }).onChainAttributes ?? []);
+    // Mirror the server's CATEGORY_ALIASES so overrides match the on-chain
+    // trait_type even when it differs from the DB category name.
+    const normalize = (c: string): string => {
+      const k = c.toLowerCase();
+      if (k === "skin") return "body";
+      if (k === "head & hair" || k === "headgear") return "headgear";
+      return k;
+    };
+    const overrides = new Map<string, { label: string; name: string }>();
+    for (const et of activeNft.equippedTraits) {
+      overrides.set(normalize(et.category), { label: et.category, name: et.trait.name });
+    }
+    if (hoverTrait) overrides.set(normalize(hoverTrait.category), { label: hoverTrait.category, name: hoverTrait.name });
+    if (attrs.length === 0 && overrides.size === 0) return null;
+    const used = new Set<string>();
+    const pairs: string[] = [];
+    for (const a of attrs) {
+      const k = normalize(a.trait_type);
+      const ov = overrides.get(k);
+      if (ov) used.add(k);
+      pairs.push(`${a.trait_type}:${ov?.name ?? a.value}`);
+    }
+    for (const [k, ov] of overrides) {
+      if (!used.has(k)) pairs.push(`${ov.label}:${ov.name}`);
+    }
+    const params = new URLSearchParams({ nftCollection: previewCollection, attrs: pairs.join("|") });
+    if (activeNft.imageUrl) params.set("baseImageUrl", activeNft.imageUrl);
+    if (selectedVariantPack) params.set("variantPack", selectedVariantPack);
+    return `/api/traits/compose-preview?${params.toString()}`;
+  })();
   // z for a category: derived from admin order when known; falls back to the
   // hardcoded map for aliases/unknown categories.
   const getZ = (category: string): number => {
@@ -510,27 +548,23 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                 if (!isNaN(id) && id !== 0) handleEquip(id);
               }}
             >
-              {/* Base NFT image */}
+              {/* Base NFT image — stays visible beneath while the composite loads */}
               {activeNft.imageUrl && (
                 <img src={activeNft.imageUrl} alt={activeNft.name} className="absolute inset-0 w-full h-full object-cover" />
               )}
 
-              {/* On-chain base trait variant layers (shown when variant pack active + nameMap has matches) */}
-              {selectedVariantPack && !isLoadingVariant && (activeNft as { onChainAttributes?: { trait_type: string; value: string }[] }).onChainAttributes?.map(attr => {
-                const entry = nameMap[attr.value.toLowerCase()];
-                return entry?.imageUrl ? (
-                  <img
-                    key={`oc-${attr.trait_type}`}
-                    src={entry.imageUrl}
-                    alt={attr.value}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ zIndex: getZ(attr.trait_type) + 1 }}
-                  />
-                ) : null;
-              })}
+              {/* Server-composited preview: on-chain trait layers + equipped/hover
+                  overrides, stacked in the admin layer order. Replaces the old
+                  CSS overlay stacking (which drew equipped art over the FLAT base
+                  image and could not put e.g. an equipped Body under Clothes). */}
+              {composeSrc && (
+                <img key={composeSrc} src={composeSrc} alt={`${activeNft.name} preview`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ zIndex: 10, outline: hoverTrait ? '2px solid rgba(157,0,255,0.6)' : undefined }} />
+              )}
 
-              {/* Equipped store-trait layers — sorted by canonical z-order */}
-              {[...activeNft.equippedTraits]
+              {/* Demo mode fallback: simple CSS layer stacking */}
+              {demo && [...activeNft.equippedTraits]
                 .sort((a, b) => getZ(a.category) - getZ(b.category))
                 .filter(et => !hoverTrait || et.category !== hoverTrait.category)
                 .map(et => {
@@ -541,9 +575,7 @@ function LockerContent({ demo = false }: { demo?: boolean }) {
                       style={{ zIndex: getZ(et.category) + 1 }} />
                   ) : null;
                 })}
-
-              {/* Hover preview layer — correct z-index + uses variant image when pack active */}
-              {hoverTrait && (() => {
+              {demo && hoverTrait && (() => {
                 const url = getVariantImageUrl(hoverTrait.traitId, hoverTrait.imageUrl);
                 return url ? (
                   <img src={url} alt={hoverTrait.name}

@@ -9,7 +9,7 @@ description: Three separate places hardcode or store trait layer order; they can
 Whenever layer order is adjusted anywhere, verify all three locations match:
 
 1. **DB `store_settings.layer_order`** (per collection) — source used by `variant-preview-image` and `compose-preview` server endpoints. Front = index 0. Correct Wegens value: `["Headgear","Eyes","Mouth","Clothes","Body","Background"]`.
-2. **Locker.tsx** — now fetches the admin order from public `/api/store/config` (`layerOrder`, front = index 0) per collection; the hardcoded `CATEGORY_LAYER_ORDER` map is only a fallback for aliases/unknowns and before config loads.
+2. **Locker.tsx** — the non-demo preview is now a single server-composited image from `/api/traits/compose-preview` (on-chain attrs + equipped/hover name overrides, baseImageUrl, optional variantPack), so equipped traits slot INTO the layer stack instead of painting over the flat base image. CSS z-stacking (getZ from /store/config layerOrder, hardcoded map fallback) remains for demo mode and the equipped-traits list ordering. Frontend must mirror server CATEGORY_ALIASES (Skin→Body, Head & Hair/HeadGear→Headgear) when matching override categories.
 3. **`LAYER_ORDER` in `Store.tsx` NFT preview panel** — hardcoded per-collection array for CSS stacking of locker-equipped overlays. Back-to-front, so last entry = topmost. Correct Wegens value: `["Background","Body","Clothes","Mouth","Eyes","Headgear"]`.
 
 ## Why

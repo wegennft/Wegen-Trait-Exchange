@@ -4,6 +4,7 @@ import { useWallet, detectWallets, detectSolanaWallets, type DetectedWallet, typ
 import { NetworkMismatchBanner } from "@/components/wallet/NetworkMismatchBanner";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
+import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins, Menu, ExternalLink, Smartphone } from "lucide-react";
@@ -115,6 +116,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [detectedWallets, setDetectedWallets] = useState<DetectedWallet[]>([]);
   const [detectedSolanaWallets, setDetectedSolanaWallets] = useState<DetectedSolanaWallet[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { count: cartCount } = useCart();
 
   const doConnect = async (wallet: DetectedWallet) => {
     setWalletPickerOpen(false);
@@ -465,17 +467,34 @@ export function Layout({ children }: { children: ReactNode }) {
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location === item.href;
+                const isStore = item.href === "/";
+                const showBadge = isStore && cartCount > 0;
+                const navHref = showBadge ? "/?cart=open" : item.href;
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={navHref}
                     className={`relative flex flex-col items-center gap-0.5 px-2 py-2 transition-all group flex-1 min-w-0 ${
                       isActive
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                    <span className="relative flex-shrink-0">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : ''}`} />
+                      {showBadge && (
+                        <span
+                          className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-white font-bold leading-none px-0.5"
+                          style={{
+                            fontSize: '9px',
+                            background: `hsl(${accentHsl})`,
+                            boxShadow: `0 0 6px hsl(${accentHsl} / 0.8)`,
+                          }}
+                        >
+                          {cartCount > 99 ? "99+" : cartCount}
+                        </span>
+                      )}
+                    </span>
                     <span className="text-center leading-tight line-clamp-2 w-full" style={{ ...BANGERS, fontSize: 'clamp(0.6rem, 0.75vw, 0.75rem)', letterSpacing: '0.06em' }}>
                       {item.label}
                     </span>
@@ -562,17 +581,48 @@ export function Layout({ children }: { children: ReactNode }) {
                     {navItems.map((item) => {
                       const Icon = item.icon;
                       const isActive = location === item.href;
+                      const isStore = item.href === "/";
+                      const showBadge = isStore && cartCount > 0;
+                      const mobileHref = showBadge ? "/?cart=open" : item.href;
                       return (
                         <Link
                           key={item.href}
-                          href={item.href}
+                          href={mobileHref}
                           onClick={() => setMobileMenuOpen(false)}
                           className={`flex items-center gap-3 px-4 py-3 transition-colors ${
                             isActive ? "text-primary bg-white/5" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                           }`}
                         >
-                          <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
-                          <span style={{ ...BANGERS, fontSize: '0.8rem', letterSpacing: '0.05em' }}>{item.label}</span>
+                          <span className="relative flex-shrink-0">
+                            <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : ''}`} />
+                            {showBadge && (
+                              <span
+                                className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-white font-bold leading-none px-0.5"
+                                style={{
+                                  fontSize: '9px',
+                                  background: `hsl(${accentHsl})`,
+                                  boxShadow: `0 0 6px hsl(${accentHsl} / 0.8)`,
+                                }}
+                              >
+                                {cartCount > 99 ? "99+" : cartCount}
+                              </span>
+                            )}
+                          </span>
+                          <span style={{ ...BANGERS, fontSize: '0.8rem', letterSpacing: '0.05em' }}>
+                            {item.label}
+                            {showBadge && (
+                              <span
+                                className="ml-2 inline-flex items-center justify-center rounded-full text-white font-bold px-1.5 py-0.5"
+                                style={{
+                                  fontSize: '9px',
+                                  background: `hsl(${accentHsl})`,
+                                  boxShadow: `0 0 6px hsl(${accentHsl} / 0.8)`,
+                                }}
+                              >
+                                {cartCount > 99 ? "99+" : cartCount}
+                              </span>
+                            )}
+                          </span>
                         </Link>
                       );
                     })}

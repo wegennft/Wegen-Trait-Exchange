@@ -655,6 +655,18 @@ export function Store() {
   const queryClient = useQueryClient();
   const { ethUsd, change24h, isLoading: priceLoading } = useEthPrice();
 
+  // Open cart sheet when navigated here with ?cart=open (e.g. from nav badge)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("cart") === "open") {
+      setCartOpen(true);
+      // Remove the param from the URL without a page reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("cart");
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
+
   // Reset filters + preview when collection changes
   useEffect(() => {
     setSelectedCategory(undefined);

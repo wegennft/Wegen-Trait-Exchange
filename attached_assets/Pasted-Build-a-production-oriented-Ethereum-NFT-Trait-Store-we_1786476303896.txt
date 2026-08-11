@@ -1,0 +1,139 @@
+Build a production-oriented Ethereum NFT Trait Store web app.
+
+The purpose:
+Owners of NFTs from a specified ERC-721 collection can connect their wallet, verify ownership of a token, view the token’s current traits, buy a new trait, or pay to swap one trait for another. Each successful transaction must update the NFT’s displayed metadata/traits through an authorized smart-contract mechanism.
+
+IMPORTANT: Do not assume the existing NFT collection’s metadata is mutable. First build a “Compatibility Check” screen and configuration flow that asks for:
+- NFT collection contract address
+- target network / chain ID
+- whether the existing collection has a public tokenURI update function, trait update function, approved operator role, or upgradeable contract
+- current tokenURI format
+- metadata hosting method: IPFS, Arweave, centralized API, or fully on-chain
+- collection owner/admin wallet address
+
+If the original NFT contract cannot update token metadata or delegate authorization to the Trait Store contract, clearly state that the collection is immutable and offer two paths:
+1. build the Trait Store only for a new compatible NFT collection
+2. build a companion “equipped traits” contract/UI that records traits separately, while preserving the original NFT unchanged
+
+Tech stack:
+- Next.js with TypeScript
+- Tailwind CSS and a clean dark Web3 game-style UI
+- wagmi + viem + WalletConnect/Reown for wallet connectivity
+- Solidity smart contracts using OpenZeppelin libraries
+- Foundry or Hardhat for contract tests, deployment scripts, and verification
+- PostgreSQL database using Prisma for off-chain catalog data, trait inventory, purchase records, analytics, and admin management
+- Use environment variables for all secrets and configuration
+- Never place private keys, API keys, database URLs, or admin secrets in client-side code
+
+Smart contract requirements:
+1. TraitStore contract
+- Accept native ETH payments initially
+- Make payment token support modular so ERC-20 payment can be added later
+- Include configurable platform treasury address
+- Include configurable platform fee / royalty fee basis points
+- Support buying a trait and equipping it to an NFT
+- Support swapping an equipped trait for a different compatible trait
+- Prevent trait purchases/equips if caller does not own the NFT
+- Include nonReentrant protections and checks-effects-interactions pattern
+- Emit events for TraitPurchased, TraitEquipped, TraitSwapped, PriceUpdated, TraitCreated, TraitDisabled, TreasuryUpdated
+- Use AccessControl roles: DEFAULT_ADMIN_ROLE, TRAIT_MANAGER_ROLE, PAUSER_ROLE
+- Include pause/unpause functionality
+- Use custom errors where appropriate
+- Include withdrawal logic restricted to the treasury/admin according to a clearly documented design
+- Do not use insecure randomness
+- Do not allow arbitrary metadata URLs to be injected by users
+
+2. Dynamic trait / metadata architecture:
+Implement an interface adapter layer because every NFT collection may differ.
+- Create INFTTraitAdapter.sol
+- Create an example MutableERC721 collection contract for test purposes with a secure updateTokenTraits or updateTokenURI function
+- Create a CollectionAdapter contract that can call a compatible collection only when it has explicitly been granted the required role/permission
+- Store the canonical equipped trait state on-chain in the TraitStore or adapter contract
+- Generate metadata from a server-side API endpoint using token ID plus on-chain equipped traits
+- Metadata must follow standard NFT metadata conventions, including an attributes array with trait_type and value
+- Do not overwrite a user’s NFT image or non-trait fields unnecessarily
+- Clearly document how metadata refresh works on OpenSea and other marketplaces
+- Make metadata versioned and include a trait state hash so changes can be audited
+
+3. Trait rules:
+- Each trait has: ID, category, name, image/asset URL, price, enabled status, compatible collection, optional rarity, and optional max supply
+- Only one equipped trait per category unless the admin config allows multiple
+- Make incompatible trait combinations impossible through contract and server validation
+- Support these initial categories: Background, Skin, Eyes, Headwear, Clothing, Weapon, Companion, Power-Up
+- Seed the app with mock game traits only for local/testnet demonstration
+- Do not use copyrighted or third-party assets
+
+Application pages:
+- Landing page explaining the Trait Store
+- Connect Wallet page/state
+- Collection Compatibility Check page
+- My NFTs page: show NFTs owned by connected wallet from configured collection
+- NFT Detail page: current traits, visual preview, buy trait, equip trait, swap trait, transaction status/history
+- Trait Catalog page with filters by category, price, rarity, and compatibility
+- Checkout confirmation modal that shows price, fees, receiving NFT/token ID, selected trait, and wallet network
+- Transaction status UI for wallet signature, pending transaction, confirmed transaction, and failed/reverted transaction
+- Admin dashboard protected by wallet allowlist and server-side authorization
+- Admin abilities: create trait, set price, enable/disable trait, set compatibility rules, see transactions, update treasury address through the contract admin flow
+- Documentation page with user instructions and collection-owner integration instructions
+- Terms, privacy, and risk disclosure placeholders; do not present the project as investment advice
+
+Security and production requirements:
+- Validate all addresses, token IDs, chain IDs, prices, and user input
+- Require the wallet to be on the configured chain; provide safe network-switch UX
+- Never trust ownership data from the client alone; verify ownership from chain reads
+- Ensure users sign transactions themselves; do not custody wallets or private keys
+- Add rate limiting and input validation to API routes
+- Use SIWE or an equivalent signed-message wallet authentication flow for the admin session
+- Separate public user functions from privileged admin functions
+- Add a complete test suite: ownership checks, payment amount, unauthorized access, trait compatibility, swap logic, pausing, reentrancy-oriented cases, event emissions, and metadata output
+- Run linting, type checking, tests, and build before presenting the app as ready
+- Include a security checklist that says an independent smart-contract audit is required before Ethereum mainnet launch
+
+Deployment requirements:
+- Default first deployment target: Sepolia testnet
+- Create .env.example with every required variable and no real secrets
+- Create scripts for local deployment, Sepolia deployment, contract verification, and production build
+- Provide a deployment checklist in README.md
+- Include instructions for setting Replit Secrets:
+  DATABASE_URL
+  NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+  NEXT_PUBLIC_CHAIN_ID
+  NEXT_PUBLIC_COLLECTION_ADDRESS
+  TRAIT_STORE_CONTRACT_ADDRESS
+  RPC_URL
+  DEPLOYER_PRIVATE_KEY (deployment only; never expose it to browser code)
+  ETHERSCAN_API_KEY
+  ADMIN_WALLET_ADDRESSES
+  METADATA_SIGNING_SECRET
+- Configure the Replit deployment for the Next.js app only. Contract deployment must remain a deliberate command/script and must not automatically use a production private key.
+- Add a health check endpoint
+- Add error logging hooks/placeholders
+
+Deliverables:
+1. Working full-stack app in Replit
+2. Solidity contracts and deployment scripts
+3. A mock compatible NFT collection for Sepolia testing
+4. Automated tests
+5. .env.example
+6. README with exact local, testnet, and production deployment steps
+7. A GO_LIVE_CHECKLIST.md divided into:
+   - Collection compatibility confirmed
+   - Contracts tested
+   - Contracts independently audited
+   - Sepolia end-to-end testing complete
+   - Metadata hosting and persistence configured
+   - Contract deployed and verified
+   - Admin roles transferred to multisig
+   - Treasury tested
+   - Frontend deployed with custom domain
+   - Wallet connection tested on mobile and desktop
+   - Monitoring and incident-response plan ready
+   - Terms/privacy/legal review complete
+   - Mainnet launch approval
+
+Work in phases:
+Phase 1: Inspect and explain the architecture and assumptions before coding.
+Phase 2: Build mock contracts, tests, and the Sepolia-compatible app.
+Phase 3: Test the complete flow: connect wallet → prove NFT ownership → buy trait → equip/swap trait → transaction confirmation → metadata endpoint reflects changed traits.
+Phase 4: Produce the exact launch checklist and identify every item that must be completed outside Replit.
+Do not claim the application is safe for mainnet until the test suite passes and an independent audit is completed.

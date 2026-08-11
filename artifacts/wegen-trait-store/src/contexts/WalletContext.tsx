@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   ReactNode,
   useCallback,
 } from "react";
@@ -184,11 +185,36 @@ interface WalletContextState {
   connect: (provider?: Eip1193Provider) => Promise<void>;
   connectSolana: (wallet: DetectedSolanaWallet) => Promise<void>;
   disconnect: () => void;
+  // ── Payment helpers (EVM only) ──────────────────────────────────────
+  /** Send ETH from the connected wallet to `to`. Returns the tx hash. */
+  sendPayment: (to: string, valueWeiHex: string) => Promise<string>;
+  /** Switch the wallet to `targetChainId`, adding the chain if needed. */
+  switchToChain: (targetChainId: number) => Promise<void>;
+  /** Sign EIP-712 typed data. Returns the 0x-prefixed signature. */
+  signTypedData: (
+    domain: Record<string, unknown>,
+    types: Record<string, { name: string; type: string }[]>,
+    value: Record<string, unknown>,
+  ) => Promise<string>;
 }
 
 const WalletContext = createContext<WalletContextState | undefined>(undefined);
 
 // ─── Provider ────────────────────────────────────────────────────────────────
+
+// Well-known chains that can be added to the wallet if not already present.
+const KNOWN_CHAINS: Record<number, {
+  chainName: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+  rpcUrls: string[];
+  blockExplorerUrls: string[];
+}> = {
+  1:   { chainName: "Ethereum Mainnet", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://eth.llamarpc.com"], blockExplorerUrls: ["https://etherscan.io"] },
+  8453:{ chainName: "Base",            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://mainnet.base.org"],  blockExplorerUrls: ["https://basescan.org"] },
+  84532:{ chainName: "Base Sepolia",   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://sepolia.base.org"],  blockExplorerUrls: ["https://sepolia.basescan.org"] },
+  137: { chainName: "Polygon",         nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 }, rpcUrls: ["https://polygon-rpc.com"], blockExplorerUrls: ["https://polygonscan.com"] },
+  11155111: { chainName: "Sepolia",    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://rpc.sepolia.org"],   blockExplorerUrls: ["https://sepolia.etherscan.io"] },
+};
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   // ── EVM state (unchanged) ─────────────────────────────────────────────────
@@ -200,6 +226,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectStep, setConnectStep] = useState<ConnectStep>(null);
   const [isDevBypass, setIsDevBypass] = useState(false);
+  // Stores the active EIP-1193 provider so payment helpers can use it after connect.
+  const providerRef = useRef<Eip1193Provider | null>(null);
 
   // Restore an existing server session on mount
   useEffect(() => {
@@ -274,6 +302,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       );
     }
 
+    // Store provider for payment helpers (sendPayment, switchToChain, signTypedData)
+    providerRef.current = resolvedEth;
     setIsConnecting(true);
     setConnectStep("requesting");
     try {
@@ -457,8 +487,96 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setChainId(null);
     setWalletChain(null);
     setIsDevBypass(false);
+    providerRef.current = null;
     fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
   };
+
+  // ── Payment helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Send ETH from the connected wallet to `to`.
+   * `valueWeiHex` must be a 0x-prefixed hex string (e.g. "0x38d7ea4c68000").
+   * Returns the transaction hash.
+   * Throws if the user rejects (code 4001) or the wallet is disconnected.
+   */
+  const sendPayment = useCallback(async (to: string, valueWeiHex: string): Promise<string> => {
+    const provider = providerRef.current;
+    if (!provider || !walletAddress) throw new Error("Wallet not connected");
+    type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
+    const raw = provider as unknown as RawProvider;
+    const txHash = await raw.request({
+      method: "eth_sendTransaction",
+      params: [{ from: walletAddress, to, value: valueWeiHex, gas: "0x5208" /* 21 000 */ }],
+    }) as string;
+    return txHash;
+  }, [walletAddress]);
+
+  /**
+   * Switch the connected wallet to `targetChainId`.
+   * Adds the chain to the wallet if it isn't already known (for well-known chains).
+   * Throws with code 4001 if the user rejects.
+   */
+  const switchToChain = useCallback(async (targetChainId: number): Promise<void> => {
+    const provider = providerRef.current;
+    if (!provider) throw new Error("Wallet not connected");
+    type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
+    const raw = provider as unknown as RawProvider;
+    const chainHex = "0x" + targetChainId.toString(16);
+    try {
+      await raw.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chainHex }] });
+      setChainId(chainHex);
+    } catch (err) {
+      const code = (err as { code?: number }).code;
+      if (code === 4902 || code === -32603) {
+        // Chain not added yet — try to add it
+        const cfg = KNOWN_CHAINS[targetChainId];
+        if (!cfg) throw new Error(`Chain ${targetChainId} is not known. Add it to your wallet manually.`);
+        await raw.request({
+          method: "wallet_addEthereumChain",
+          params: [{ chainId: chainHex, ...cfg }],
+        });
+        setChainId(chainHex);
+      } else {
+        throw err;
+      }
+    }
+  }, []);
+
+  /**
+   * Sign EIP-712 typed data using `eth_signTypedData_v4`.
+   * Returns the 0x-prefixed signature string.
+   * Throws with code 4001 if the user rejects.
+   */
+  const signTypedData = useCallback(async (
+    domain: Record<string, unknown>,
+    types: Record<string, { name: string; type: string }[]>,
+    value: Record<string, unknown>,
+  ): Promise<string> => {
+    const provider = providerRef.current;
+    if (!provider || !walletAddress) throw new Error("Wallet not connected");
+    type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
+    const raw = provider as unknown as RawProvider;
+
+    // Build EIP712Domain fields from the domain object
+    const domainTypes: { name: string; type: string }[] = [];
+    if ("name"              in domain) domainTypes.push({ name: "name",              type: "string"  });
+    if ("version"           in domain) domainTypes.push({ name: "version",           type: "string"  });
+    if ("chainId"           in domain) domainTypes.push({ name: "chainId",           type: "uint256" });
+    if ("verifyingContract" in domain) domainTypes.push({ name: "verifyingContract", type: "address" });
+
+    const typedDataJson = JSON.stringify({
+      domain,
+      types: { EIP712Domain: domainTypes, ...types },
+      primaryType: Object.keys(types)[0],
+      message: value,
+    });
+
+    const sig = await raw.request({
+      method: "eth_signTypedData_v4",
+      params: [walletAddress, typedDataJson],
+    }) as string;
+    return sig;
+  }, [walletAddress]);
 
   return (
     <WalletContext.Provider
@@ -475,6 +593,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         connect,
         connectSolana,
         disconnect,
+        sendPayment,
+        switchToChain,
+        signTypedData,
       }}
     >
       {isDevBypass && <DevBypassBanner walletAddress={walletAddress} />}

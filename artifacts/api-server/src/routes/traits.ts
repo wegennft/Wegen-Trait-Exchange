@@ -12,6 +12,7 @@ import {
   ListStoreThemesResponse,
 } from "@workspace/api-zod";
 import { CATEGORY_ALIASES, NON_VISUAL_CATEGORIES, parseAttrs, sortByLayerOrder, DEFAULT_LAYER_ORDER } from "./trait-utils.js";
+import { networkNameToChainId } from "../utils/rpcClient.js";
 
 const router: IRouter = Router();
 
@@ -647,6 +648,39 @@ router.get("/traits/:traitId/variants", async (req, res): Promise<void> => {
     .where(and(eq(traitVariantsTable.traitId, traitId), eq(traitVariantsTable.isEnabled, true)))
     .orderBy(asc(traitVariantsTable.sortOrder), asc(traitVariantsTable.createdAt));
   res.json({ variants });
+});
+
+// ── GET /store/payment-config — public payment destination for checkout ────────
+// Returns the treasury wallet address, chain ID, and fee configuration.
+// Frontend uses this to construct and send the real ETH payment before calling
+// the purchase APIs.
+router.get("/store/payment-config", async (req, res): Promise<void> => {
+  const nftCollection = getNftCollection(req.query as Record<string, unknown>);
+  const [settings] = await db
+    .select()
+    .from(storeSettingsTable)
+    .where(eq(storeSettingsTable.nftCollection, nftCollection))
+    .limit(1);
+
+  // Env var PAYMENT_WALLET_ADDRESS overrides the DB value so operators can set
+  // the treasury address securely without touching the admin panel.
+  const paymentWallet =
+    process.env.PAYMENT_WALLET_ADDRESS ||
+    settings?.collectionWallet ||
+    null;
+
+  const networkName = settings?.networkName ?? "mainnet";
+  const chainId = networkNameToChainId(networkName);
+
+  res.json({
+    paymentWallet,
+    chainId,
+    networkName,
+    // Fee for confirm-on-chain (SAVE ON CHAIN / SOC) — send to onChainUpdateFeeWallet
+    onChainUpdateFeeEth: settings?.onChainUpdateFeeEth ?? "0",
+    onChainUpdateFeeWallet: settings?.onChainUpdateFeeWallet ?? paymentWallet,
+    buyingFeePercent: settings?.buyingFeePercent ?? "0",
+  });
 });
 
 // ── GET /store/config — public config for frontend (maintenance gate etc.) ────

@@ -82,9 +82,121 @@ function getRarityGlow(rarity: string) {
   }
 }
 
+// ── Global Pack Selector Bar ──────────────────────────────────────────────────
+
+/** The top-level "Style Pack:" row rendered above the trait grid. Exported so
+ *  it can be rendered in isolation in component tests alongside NftPreviewBanner
+ *  to verify that both selectors stay in sync through shared state. */
+export function PackSelectorBar({
+  allPacks,
+  activePack,
+  onPackChange,
+  accent,
+}: {
+  allPacks: string[];
+  activePack: string | undefined;
+  onPackChange: (pack: string | undefined) => void;
+  accent: string;
+}) {
+  if (allPacks.length === 0) return null;
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border/30" style={{ background: 'rgba(0,0,0,0.25)' }}>
+      <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-mono shrink-0">Style Pack:</span>
+      <div className="flex gap-1.5 flex-wrap">
+        <button
+          data-testid="global-pack-original"
+          aria-pressed={!activePack}
+          onClick={() => onPackChange(undefined)}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
+          style={{
+            background: !activePack ? `${accent}20` : 'transparent',
+            border: !activePack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
+            color: !activePack ? accent : 'rgba(255,255,255,0.4)',
+          }}
+        >
+          Original
+        </button>
+        {allPacks.map((pack) => (
+          <button
+            key={pack}
+            data-testid={`global-pack-${pack}`}
+            aria-pressed={activePack === pack}
+            onClick={() => onPackChange(pack)}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+            style={{
+              background: activePack === pack ? `${accent}20` : 'transparent',
+              border: activePack === pack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
+              color: activePack === pack ? accent : 'rgba(255,255,255,0.4)',
+            }}
+          >
+            {pack}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Panel Pack Selector ───────────────────────────────────────────────────────
+
+/** The pack-selector row rendered inside NftPreviewBanner's panel. Exported so
+ *  it can be rendered in isolation in component tests alongside PackSelectorBar
+ *  to verify that both selectors stay in sync through shared state. */
+export function PanelPackSelector({
+  allPacks,
+  activePack,
+  onPackChange,
+  accent,
+}: {
+  allPacks: string[];
+  activePack: string | undefined;
+  onPackChange: (pack: string | undefined) => void;
+  accent: string;
+}) {
+  if (allPacks.length === 0) return null;
+  return (
+    <div
+      className="flex items-center gap-1 p-1 rounded-lg self-stretch flex-wrap"
+      style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <button
+        type="button"
+        data-testid="panel-pack-original"
+        aria-pressed={!activePack}
+        onClick={() => onPackChange(undefined)}
+        className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
+        style={{
+          background: !activePack ? `${accent}22` : "transparent",
+          border: !activePack ? `1px solid ${accent}55` : "1px solid transparent",
+          color: !activePack ? accent : "rgba(255,255,255,0.35)",
+        }}
+      >
+        Original
+      </button>
+      {allPacks.map((pack) => (
+        <button
+          key={pack}
+          type="button"
+          data-testid={`panel-pack-${pack}`}
+          aria-pressed={activePack === pack}
+          onClick={() => onPackChange(pack)}
+          className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
+          style={{
+            background: activePack === pack ? `${accent}22` : "transparent",
+            border: activePack === pack ? `1px solid ${accent}55` : "1px solid transparent",
+            color: activePack === pack ? accent : "rgba(255,255,255,0.35)",
+          }}
+        >
+          {pack}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── NFT Preview Banner ────────────────────────────────────────────────────────
 
-function NftPreviewBanner({
+export function NftPreviewBanner({
   walletAddress,
   isConnected,
   connect,
@@ -399,40 +511,13 @@ function NftPreviewBanner({
 
                 {/* ── Pack selector / Original+Variant toggle ── */}
                 {allPacks && allPacks.length > 0 && !previewNftBlocked && !previewNftIsLegend && previewNft ? (
-                  /* Multi-pack (or single-pack) selector — buttons match the top-level Style Pack row */
-                  <div
-                    className="flex items-center gap-1 p-1 rounded-lg self-stretch flex-wrap"
-                    style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}
-                  >
-                    {/* Original button always first */}
-                    <button
-                      type="button"
-                      onClick={() => onPackChange?.(undefined)}
-                      className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
-                      style={{
-                        background: !activePack ? `${accent}22` : "transparent",
-                        border: !activePack ? `1px solid ${accent}55` : "1px solid transparent",
-                        color: !activePack ? accent : "rgba(255,255,255,0.35)",
-                      }}
-                    >
-                      Original
-                    </button>
-                    {allPacks.map((pack) => (
-                      <button
-                        key={pack}
-                        type="button"
-                        onClick={() => onPackChange?.(pack)}
-                        className="flex-1 px-2 py-1 rounded text-[11px] font-bold tracking-wide transition-all"
-                        style={{
-                          background: activePack === pack ? `${accent}22` : "transparent",
-                          border: activePack === pack ? `1px solid ${accent}55` : "1px solid transparent",
-                          color: activePack === pack ? accent : "rgba(255,255,255,0.35)",
-                        }}
-                      >
-                        {pack}
-                      </button>
-                    ))}
-                  </div>
+                  /* Multi-pack selector — reuses PanelPackSelector which matches the top-level PackSelectorBar */
+                  <PanelPackSelector
+                    allPacks={allPacks}
+                    activePack={activePack}
+                    onPackChange={(pack) => onPackChange?.(pack)}
+                    accent={accent}
+                  />
                 ) : (
                   /* Fallback: no allPacks prop — keep the two-state toggle when a pack is active externally */
                   activePack && !previewNftBlocked && !previewNftIsLegend && previewNft ? (
@@ -1099,38 +1184,12 @@ export function Store() {
       </div>
 
       {/* ── Global Variant Pack Selector ── */}
-      {allPacks.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border/30" style={{ background: 'rgba(0,0,0,0.25)' }}>
-          <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-mono shrink-0">Style Pack:</span>
-          <div className="flex gap-1.5 flex-wrap">
-            <button
-              onClick={() => setActivePack(undefined)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
-              style={{
-                background: !activePack ? `${accent}20` : 'transparent',
-                border: !activePack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
-                color: !activePack ? accent : 'rgba(255,255,255,0.4)',
-              }}
-            >
-              Original
-            </button>
-            {allPacks.map((pack) => (
-              <button
-                key={pack}
-                onClick={() => setActivePack(pack)}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                style={{
-                  background: activePack === pack ? `${accent}20` : 'transparent',
-                  border: activePack === pack ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
-                  color: activePack === pack ? accent : 'rgba(255,255,255,0.4)',
-                }}
-              >
-                {pack}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <PackSelectorBar
+        allPacks={allPacks}
+        activePack={activePack}
+        onPackChange={setActivePack}
+        accent={accent}
+      />
 
 
       {/* ── LEGENDS MODE ── */}

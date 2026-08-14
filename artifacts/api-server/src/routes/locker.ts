@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
-import { db, lockerItemsTable, traitsTable, transactionsTable, storeSettingsTable } from "@workspace/db";
+import { db, lockerItemsTable, traitsTable, transactionsTable } from "@workspace/db";
 import { awardPoints } from "./bounties";
 import {
   GetLockerParams,
@@ -10,7 +10,6 @@ import {
 } from "@workspace/api-zod";
 import { requireWalletOwnership } from "../middleware/requireAuth";
 import { convertUsdToEth, EthPriceUnavailableError } from "../lib/ethPriceService";
-import { verifyPaymentTx, networkNameToChainId } from "../utils/rpcClient.js";
 
 const router: IRouter = Router();
 
@@ -138,26 +137,6 @@ router.post(
         return;
       }
       throw err;
-    }
-
-    // ── On-chain payment verification ────────────────────────────────────────
-    // If the client sent a real tx hash, verify it on-chain before crediting.
-    // Skipped silently when RPC_URL / ALCHEMY_API_KEY is not configured (dev).
-    if (txHash && txHash !== "null" && !txHash.startsWith("0xsimulated")) {
-      const [settings] = await db
-        .select({ collectionWallet: storeSettingsTable.collectionWallet, networkName: storeSettingsTable.networkName })
-        .from(storeSettingsTable)
-        .where(eq(storeSettingsTable.nftCollection, getNftCollection(req)))
-        .limit(1);
-      const paymentWallet = process.env.PAYMENT_WALLET_ADDRESS || settings?.collectionWallet;
-      if (paymentWallet) {
-        const chainId = networkNameToChainId(settings?.networkName ?? "mainnet");
-        const { valid, reason } = await verifyPaymentTx(txHash, paymentWallet, chainId);
-        if (!valid) {
-          res.status(402).json({ error: reason ?? "Payment could not be verified on-chain." });
-          return;
-        }
-      }
     }
 
     await db

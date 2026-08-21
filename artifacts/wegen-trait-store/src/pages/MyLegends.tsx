@@ -10,7 +10,7 @@ import { useGetMyLegends, getGetMyLegendsQueryKey } from "@workspace/api-client-
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 
 export function MyLegends() {
-  const { walletAddress, isConnected, connect } = useWallet();
+  const { walletAddress, isConnected, openWalletPicker } = useWallet();
   const { collection, collectionLabel, theme } = useCollection();
   const { accent, accentHsl, glow, glow2, gradient, gradient2 } = theme;
 
@@ -110,7 +110,7 @@ export function MyLegends() {
             </p>
           </div>
           <Button
-            onClick={() => void connect()}
+            onClick={() => openWalletPicker()}
             className="gap-2 text-white font-bold uppercase"
             style={{
               ...BANGERS,

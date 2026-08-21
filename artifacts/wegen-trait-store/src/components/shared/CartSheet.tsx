@@ -46,7 +46,7 @@ export function CartSheet() {
     closeCart,
   } = useCart();
 
-  const { walletAddress, isConnected, connect } = useWallet();
+  const { walletAddress, isConnected, openWalletPicker } = useWallet();
   const { theme } = useCollection();
   const { accent, glow, glow2, gradient } = theme;
   const { ethUsd } = useEthPrice();
@@ -317,7 +317,7 @@ export function CartSheet() {
               <Button
                 className="w-full gap-2 font-bold"
                 style={{ ...BANGERS, background: gradient }}
-                onClick={() => void connect()}
+                onClick={() => openWalletPicker()}
               >
                 <Wallet className="w-4 h-4" />
                 CONNECT WALLET TO CHECKOUT

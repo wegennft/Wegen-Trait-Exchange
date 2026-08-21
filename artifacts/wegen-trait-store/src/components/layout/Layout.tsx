@@ -1,162 +1,30 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useWallet, detectWallets, detectSolanaWallets, type DetectedWallet, type DetectedSolanaWallet, type WalletId, type SolanaWalletId } from "@/contexts/WalletContext";
+import { useWallet } from "@/contexts/WalletContext";
 import { NetworkMismatchBanner } from "@/components/wallet/NetworkMismatchBanner";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useCollection, COLLECTION_THEMES, type NftCollection } from "@/contexts/CollectionContext";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins, Menu, ExternalLink, Smartphone } from "lucide-react";
+import { ShoppingBag, Package, Gem, ShieldAlert, LogOut, Wallet, Zap, Repeat2, FlaskConical, ChevronDown, Layers, Crown, Loader2, PenLine, Trophy, X, Coins, Menu } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const BANGERS = { fontFamily: "'Bungee', Impact, sans-serif", letterSpacing: '0.08em' };
 const DISPLAY = { fontFamily: "'Bungee Shade', 'Bungee', Impact, sans-serif", letterSpacing: '0.04em' };
 const MARKER  = { fontFamily: "'Permanent Marker', cursive", letterSpacing: '0.03em' };
 
-// ─── Wallet metadata ──────────────────────────────────────────────────────────
-
-const WALLET_COLORS: Record<WalletId | SolanaWalletId, string> = {
-  metamask: "#E2761B",
-  phantom:  "#AB9FF2",
-  backpack: "#E33E3F",
-  coinbase: "#0052FF",
-  okx:      "#000000",
-  trust:    "#3375BB",
-  rabby:    "#8697FF",
-  rainbow:  "#174299",
-  brave:    "#FF5500",
-  injected: "#6B7280",
-  "phantom-sol":  "#AB9FF2",
-  solflare:       "#FC9965",
-  "backpack-sol": "#E33E3F",
-  "solana-injected": "#14F195",
-};
-
-const WALLET_ICONS: Partial<Record<WalletId | SolanaWalletId, string>> = {
-  metamask: "https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg",
-  phantom:  "https://raw.githubusercontent.com/phantom-labs/phantom-brand-assets/main/phantom-icon-purple.svg",
-  backpack: "https://raw.githubusercontent.com/coral-xyz/backpack/master/assets/backpack.png",
-  coinbase: "https://raw.githubusercontent.com/coinbase/coinbase-wallet-sdk/master/packages/wallet-sdk/src/assets/coinbaseWalletLogo.svg",
-  okx:      "https://static.okx.com/cdn/assets/imgs/2211/6BB53EF6A4CF49718CC14EA04EB9E29F.png",
-  trust:    "https://trustwallet.com/assets/images/media/assets/TWT.png",
-  rabby:    "https://raw.githubusercontent.com/RabbyHub/Rabby/master/src/_raw/images/icon-128.png",
-  rainbow:  "https://avatars.githubusercontent.com/u/48327834",
-  brave:    "https://brave.com/static-assets/images/brave-logo-sans-text.svg",
-  "phantom-sol": "https://raw.githubusercontent.com/phantom-labs/phantom-brand-assets/main/phantom-icon-purple.svg",
-  "backpack-sol": "https://raw.githubusercontent.com/coral-xyz/backpack/master/assets/backpack.png",
-};
-
-const WALLET_DESC: Partial<Record<WalletId | SolanaWalletId, string>> = {
-  metamask: "MetaMask browser extension",
-  phantom:  "Phantom — Ethereum provider",
-  backpack: "Backpack — Ethereum provider",
-  coinbase: "Coinbase Wallet extension",
-  okx:      "OKX Wallet — Ethereum provider",
-  trust:    "Trust Wallet browser extension",
-  rabby:    "Rabby — EVM-focused wallet",
-  rainbow:  "Rainbow — Ethereum wallet",
-  brave:    "Brave browser built-in wallet",
-  injected: "Browser-injected EVM wallet",
-  "phantom-sol": "Phantom — native Solana provider",
-  solflare: "Solflare — Solana wallet",
-  "backpack-sol": "Backpack — native Solana provider",
-  "solana-injected": "Browser-injected Solana wallet",
-};
-
-function WalletIcon({ id, name }: { id: WalletId | SolanaWalletId; name: string }) {
-  const iconUrl = WALLET_ICONS[id];
-  const color = WALLET_COLORS[id];
-  const initial = name.charAt(0).toUpperCase();
-
-  if (iconUrl) {
-    return (
-      <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ background: color + "22", border: `1px solid ${color}44` }}>
-        <img
-          src={iconUrl}
-          alt={name}
-          className="w-7 h-7 object-contain"
-          onError={(e) => {
-            const target = e.currentTarget;
-            target.style.display = "none";
-            const parent = target.parentElement;
-            if (parent) {
-              parent.style.background = color;
-              const span = document.createElement("span");
-              span.textContent = initial;
-              span.style.cssText = "color:white;font-weight:700;font-size:16px;";
-              parent.appendChild(span);
-            }
-          }}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white text-base"
-      style={{ background: color }}
-    >
-      {initial}
-    </div>
-  );
-}
-
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { walletAddress, isConnected, connect, connectSolana, disconnect, isConnecting, connectStep } = useWallet();
+  const { walletAddress, isConnected, disconnect, isConnecting, connectStep, openWalletPicker } = useWallet();
   const { settings } = useSiteSettings();
   const { collection, collectionLabel, setCollection, theme } = useCollection();
   const { accent, accent2, accentHsl, glow, glow2, gradient, gradient2 } = theme;
-  const { toast } = useToast();
-  const [walletPickerOpen, setWalletPickerOpen] = useState(false);
-  const [detectedWallets, setDetectedWallets] = useState<DetectedWallet[]>([]);
-  const [detectedSolanaWallets, setDetectedSolanaWallets] = useState<DetectedSolanaWallet[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { count: cartCount } = useCart();
 
-  const doConnect = async (wallet: DetectedWallet) => {
-    setWalletPickerOpen(false);
-    try {
-      await connect(wallet.provider);
-    } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4001) return; // user cancelled — silent
-
-      let description = err instanceof Error ? err.message : "Could not connect wallet";
-      if (code === -32000 || code === 32000) {
-        const hints: Partial<Record<WalletId, string>> = {
-          phantom: "Open Phantom → Settings → Developer Settings and enable Ethereum, then retry.",
-          backpack: "Open Backpack → Settings and ensure the Ethereum network is enabled, then retry.",
-        };
-        description =
-          `${wallet.name} returned an internal error. ` +
-          (hints[wallet.id] ?? "Try disconnecting this site from the wallet and reconnecting.");
-      }
-      toast({ title: "Connection failed", description, variant: "destructive" });
-    }
-  };
-
-  const doConnectSolana = async (wallet: DetectedSolanaWallet) => {
-    setWalletPickerOpen(false);
-    try {
-      await connectSolana(wallet);
-    } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4001) return; // user cancelled — silent
-      const description = err instanceof Error ? err.message : "Could not connect wallet";
-      toast({ title: "Connection failed", description, variant: "destructive" });
-    }
-  };
-
   const handleConnect = () => {
-    const evmWallets = detectWallets();
-    setDetectedWallets(evmWallets);
-    setDetectedSolanaWallets([]);
-    setWalletPickerOpen(true);
+    openWalletPicker();
   };
 
   const isInIframe = window.self !== window.top;
@@ -188,7 +56,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <Wallet className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">
               <strong>Wallet extensions don't work inside this preview.</strong>
-              {" "}Open the app in its own tab to connect MetaMask, Phantom, or a Solana wallet.
+              {" "}Open the app in its own tab to connect MetaMask, Phantom, or use WalletConnect on mobile.
             </span>
           </div>
           <a
@@ -816,123 +684,6 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
       </footer>
 
-      {/* ── Wallet Picker Dialog ── */}
-      <Dialog open={walletPickerOpen} onOpenChange={setWalletPickerOpen}>
-        <DialogContent className="sm:max-w-[390px] p-0 gap-0 border border-white/10 bg-black/92 backdrop-blur-2xl overflow-hidden">
-
-          {/* Header + anti-phishing strip */}
-          <div className="px-5 pt-5 pb-4 border-b border-white/8">
-            <DialogHeader>
-              <DialogTitle className="text-center text-xl mb-3" style={BANGERS}>
-                Connect Wallet
-              </DialogTitle>
-            </DialogHeader>
-            {/* Anti-phishing domain verification */}
-            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg"
-              style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.18)' }}>
-              <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#4ade80' }} />
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-mono uppercase tracking-wider font-bold" style={{ color: '#4ade80' }}>
-                  Sign-In With Ethereum · EIP-4361
-                </div>
-                <div className="text-[10px] font-mono mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  {window.location.hostname}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="px-5 py-4 flex flex-col gap-4 max-h-[65vh] overflow-y-auto">
-
-            {/* ── Detected EVM wallets ── */}
-            {detectedWallets.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
-                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  Detected wallets
-                </div>
-                {detectedWallets.map((w) => (
-                  <button
-                    key={`evm-${w.id}`}
-                    onClick={() => void doConnect(w)}
-                    className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all text-left"
-                  >
-                    <WalletIcon id={w.id} name={w.name} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm leading-tight">{w.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{WALLET_DESC[w.id] ?? "EVM browser wallet"}</div>
-                    </div>
-                    <span className="flex-shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border"
-                      style={{ color: "#60a5fa", borderColor: "#60a5fa44", background: "#60a5fa11" }}>
-                      EVM
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              /* No wallet detected — show install options */
-              <div className="flex flex-col gap-1.5">
-                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  Install a wallet
-                </div>
-                <p className="text-xs text-muted-foreground/70 mb-2">
-                  No EVM wallet detected. Install one of these or open this app inside your mobile wallet's browser.
-                </p>
-                {([
-                  { id: "metamask" as WalletId, name: "MetaMask",      desc: "Most popular — desktop & mobile", url: "https://metamask.io/download" },
-                  { id: "rabby"    as WalletId, name: "Rabby",          desc: "Best for DeFi & NFTs",            url: "https://rabby.io" },
-                  { id: "coinbase" as WalletId, name: "Coinbase Wallet",desc: "Easy setup, mobile-first",        url: "https://www.coinbase.com/wallet/downloads" },
-                  { id: "rainbow"  as WalletId, name: "Rainbow",        desc: "Beautiful mobile wallet",         url: "https://rainbow.me/download" },
-                ] as const).map((w) => (
-                  <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 w-full rounded-xl px-4 py-3 border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left">
-                    <WalletIcon id={w.id} name={w.name} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm leading-tight">{w.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{w.desc}</div>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground/40" />
-                  </a>
-                ))}
-              </div>
-            )}
-
-            {/* ── Mobile deep-link section ── */}
-            <div className="border-t border-white/8 pt-4">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Smartphone className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                <div className="text-[10px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  Open in mobile wallet
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {(() => {
-                  const appUrl = encodeURIComponent(window.location.href);
-                  const host   = window.location.hostname + window.location.pathname;
-                  return ([
-                    { id: "metamask" as WalletId, name: "MetaMask", url: `https://metamask.app.link/dapp/${host}` },
-                    { id: "trust"    as WalletId, name: "Trust",    url: `https://link.trustwallet.com/open_url?coin_id=60&url=${appUrl}` },
-                    { id: "coinbase" as WalletId, name: "Coinbase", url: `https://go.cb-wallet.com/dapp?url=${appUrl}` },
-                    { id: "rainbow"  as WalletId, name: "Rainbow",  url: `https://rnbwapp.com/wc?uri=${appUrl}` },
-                  ] as const).map((w) => (
-                    <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-white/8 hover:bg-white/5 transition-all text-center">
-                      <WalletIcon id={w.id} name={w.name} />
-                      <span className="text-[9px] font-mono leading-tight" style={{ color: 'rgba(255,255,255,0.35)' }}>{w.name}</span>
-                    </a>
-                  ));
-                })()}
-              </div>
-            </div>
-
-            {/* Security footer */}
-            <p className="text-center text-[10px] font-mono px-2 pb-1" style={{ color: 'rgba(255,255,255,0.22)' }}>
-              You will only sign a message — no transaction is sent
-              <br />Always verify the domain before signing
-            </p>
-
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

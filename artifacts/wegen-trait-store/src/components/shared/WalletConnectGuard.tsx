@@ -1,8 +1,7 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/button";
 import { Wallet, PenLine, Loader2, CheckCircle2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 const BANGERS = { fontFamily: "'Bebas Neue', 'Rajdhani', sans-serif", letterSpacing: '0.1em' };
 
@@ -12,29 +11,11 @@ interface WalletConnectGuardProps {
 }
 
 export function WalletConnectGuard({ children, message = "Connect your wallet to view this page" }: WalletConnectGuardProps) {
-  const { isConnected, connect, isConnecting, connectStep } = useWallet();
-  const { toast } = useToast();
-  const [connectError, setConnectError] = useState<string | null>(null);
+  const { isConnected, isConnecting, connectStep, openWalletPicker } = useWallet();
 
   if (isConnected) {
     return <>{children}</>;
   }
-
-  const handleConnect = async () => {
-    setConnectError(null);
-    try {
-      await connect();
-    } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4001) {
-        setConnectError("You declined the sign-in request. Click below to try again.");
-      } else {
-        const msg = err instanceof Error ? err.message : "Connection failed";
-        setConnectError(msg);
-        toast({ title: "Connection failed", description: msg, variant: "destructive" });
-      }
-    }
-  };
 
   const buttonLabel = connectStep === "signing"
     ? "Sign in wallet…"
@@ -78,7 +59,6 @@ export function WalletConnectGuard({ children, message = "Connect your wallet to
         // {message} //
       </p>
 
-      {/* Two-step flow explainer */}
       <div className="flex items-center gap-6 mb-6 text-xs text-muted-foreground">
         <div className="flex flex-col items-center gap-1.5">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${connectStep === "requesting" ? "border-primary bg-primary/20 text-primary" : "border-border/50 bg-secondary/30"}`}>
@@ -102,15 +82,9 @@ export function WalletConnectGuard({ children, message = "Connect your wallet to
         </div>
       </div>
 
-      {connectError && (
-        <p className="text-destructive text-xs mb-4 max-w-sm font-mono bg-destructive/10 border border-destructive/30 rounded p-2">
-          {connectError}
-        </p>
-      )}
-
       <Button
         size="lg"
-        onClick={handleConnect}
+        onClick={() => openWalletPicker()}
         disabled={isConnecting}
         className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-widest transition-all neon-pulse"
         style={{ ...BANGERS, fontSize: '1.1rem', paddingLeft: '2rem', paddingRight: '2rem' }}
@@ -121,6 +95,7 @@ export function WalletConnectGuard({ children, message = "Connect your wallet to
 
       <p className="text-[10px] text-muted-foreground/60 mt-4 font-mono max-w-xs">
         Signing proves wallet ownership. No transaction is submitted and no gas is charged.
+        On mobile, use WalletConnect from the wallet picker.
       </p>
     </div>
   );

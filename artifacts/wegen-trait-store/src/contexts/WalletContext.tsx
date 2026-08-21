@@ -3,173 +3,29 @@ import {
   useContext,
   useEffect,
   useState,
-  useRef,
   ReactNode,
   useCallback,
+  useRef,
 } from "react";
-import { BrowserProvider, Eip1193Provider, hexlify, toUtf8Bytes } from "ethers";
-import bs58 from "bs58";
+import type { Eip1193Provider } from "ethers";
+import { useAppKit, useAppKitProvider } from "@reown/appkit/react";
+import { detectWallets, getInstalledWallet, requestEip6963Providers } from "@/wallet/evm-wallets";
+import { signInWithEvmProvider } from "@/wallet/siwe";
+import { isWalletConnectConfigured } from "@/wallet/appkit-config";
+import type { ConnectStep, WalletId } from "@/wallet/types";
+import { WalletPickerDialog } from "@/components/wallet/WalletPickerDialog";
 
-// ─── Wallet detection ───────────────────────────────────────────────────────
+export type { WalletId, WalletChain, DetectedWallet, ConnectStep } from "@/wallet/types";
+export {
+  detectWallets,
+  getEvmWalletOptions,
+  WALLET_COLORS,
+  WALLET_ICONS,
+} from "@/wallet/evm-wallets";
 
-export type WalletId =
-  | "metamask"
-  | "phantom"
-  | "backpack"
-  | "coinbase"
-  | "okx"
-  | "trust"
-  | "rabby"
-  | "rainbow"
-  | "brave"
-  | "injected";
-
-/** Which chain families this wallet's injected provider can sign for */
-export type WalletChain = "evm" | "evm+sol";
-
-export interface DetectedWallet {
-  id: WalletId;
-  name: string;
-  provider: Eip1193Provider;
-  chain: WalletChain;
-}
-
-type EvmProvider = Eip1193Provider & {
-  isMetaMask?: boolean;
-  isPhantom?: boolean;
-  isCoinbaseWallet?: boolean;
-  isRabby?: boolean;
-  isBraveWallet?: boolean;
-  isBackpack?: boolean;
-  isTrust?: boolean;
-  isRainbow?: boolean;
-};
-
-type AnyWindow = Window & {
-  ethereum?: EvmProvider;
-  phantom?: { ethereum?: Eip1193Provider };
-  backpack?: { ethereum?: Eip1193Provider; isBackpack?: boolean };
-  coinbaseWalletExtension?: Eip1193Provider;
-  okxwallet?: Eip1193Provider;
-  trustwallet?: { ethereum?: Eip1193Provider };
-};
-
-export function detectWallets(): DetectedWallet[] {
-  const w = window as AnyWindow;
-  const results: DetectedWallet[] = [];
-  const seen = new Set<unknown>();
-
-  const tryAdd = (
-    id: WalletId,
-    name: string,
-    provider: Eip1193Provider | undefined,
-    chain: WalletChain = "evm",
-  ) => {
-    if (!provider?.request || seen.has(provider)) return;
-    seen.add(provider);
-    results.push({ id, name, provider, chain });
-  };
-
-  // 1. Phantom – always exposes its own namespace
-  tryAdd("phantom", "Phantom", w.phantom?.ethereum, "evm+sol");
-
-  // 2. Backpack – dedicated namespace takes priority over window.ethereum flag
-  tryAdd("backpack", "Backpack", w.backpack?.ethereum, "evm+sol");
-
-  // 3. Coinbase Wallet – has its own extension object separate from window.ethereum
-  tryAdd("coinbase", "Coinbase Wallet", w.coinbaseWalletExtension, "evm");
-
-  // 4. OKX Wallet – dedicated window.okxwallet namespace
-  tryAdd("okx", "OKX Wallet", w.okxwallet, "evm+sol");
-
-  // 5. Trust Wallet – dedicated window.trustwallet namespace
-  tryAdd("trust", "Trust Wallet", w.trustwallet?.ethereum, "evm");
-
-  // 6. window.ethereum – check specific flags, deduplicate
-  const eth = w.ethereum;
-  if (eth?.request && !seen.has(eth)) {
-    if (eth.isBackpack) {
-      tryAdd("backpack", "Backpack", eth, "evm+sol");
-    } else if (eth.isCoinbaseWallet) {
-      tryAdd("coinbase", "Coinbase Wallet", eth, "evm");
-    } else if (eth.isRabby) {
-      tryAdd("rabby", "Rabby", eth, "evm");
-    } else if (eth.isRainbow) {
-      tryAdd("rainbow", "Rainbow", eth, "evm");
-    } else if (eth.isBraveWallet) {
-      tryAdd("brave", "Brave Wallet", eth, "evm");
-    } else if (eth.isMetaMask) {
-      tryAdd("metamask", "MetaMask", eth, "evm");
-    } else {
-      tryAdd("injected", "Browser Wallet", eth, "evm");
-    }
-  }
-
-  return results;
-}
-
-// ─── Native Solana wallet detection ────────────────────────────────────────
-// Separate from the EVM `detectWallets()` above — these are wallets' native
-// Solana-namespace providers (ed25519 signing), not their EVM-compat layer.
-
-export type SolanaWalletId = "phantom-sol" | "solflare" | "backpack-sol" | "solana-injected";
-
-export interface SolanaProvider {
-  publicKey?: { toString(): string; toBytes?: () => Uint8Array } | null;
-  isPhantom?: boolean;
-  isSolflare?: boolean;
-  isBackpack?: boolean;
-  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
-  disconnect?: () => Promise<void>;
-  signMessage: (message: Uint8Array, display?: string) => Promise<{ signature: Uint8Array } | Uint8Array>;
-}
-
-export interface DetectedSolanaWallet {
-  id: SolanaWalletId;
-  name: string;
-  provider: SolanaProvider;
-}
-
-type SolanaWindow = Window & {
-  phantom?: { solana?: SolanaProvider };
-  solflare?: SolanaProvider;
-  backpack?: { solana?: SolanaProvider };
-  solana?: SolanaProvider;
-};
-
-export function detectSolanaWallets(): DetectedSolanaWallet[] {
-  const w = window as SolanaWindow;
-  const results: DetectedSolanaWallet[] = [];
-  const seen = new Set<unknown>();
-
-  const tryAdd = (id: SolanaWalletId, name: string, provider: SolanaProvider | undefined) => {
-    if (!provider?.connect || seen.has(provider)) return;
-    seen.add(provider);
-    results.push({ id, name, provider });
-  };
-
-  tryAdd("phantom-sol", "Phantom", w.phantom?.solana);
-  tryAdd("solflare", "Solflare", w.solflare);
-  tryAdd("backpack-sol", "Backpack", w.backpack?.solana);
-
-  // Generic window.solana fallback (older wallets / non-namespaced injections)
-  const sol = w.solana;
-  if (sol?.connect && !seen.has(sol)) {
-    if (sol.isPhantom) tryAdd("phantom-sol", "Phantom", sol);
-    else if (sol.isBackpack) tryAdd("backpack-sol", "Backpack", sol);
-    else tryAdd("solana-injected", "Solana Wallet", sol);
-  }
-
-  return results;
-}
-
-// ─── Context types ───────────────────────────────────────────────────────────
-
-export type ConnectStep = "requesting" | "signing" | null;
-export type WalletChainFamily = "evm" | "solana";
+export type WalletChainFamily = "evm";
 
 interface WalletContextState {
-  // ── EVM (existing — unchanged) ──────────────────────────────────────
   walletAddress: string | null;
   isConnected: boolean;
   isVerified: boolean;
@@ -182,10 +38,14 @@ interface WalletContextState {
    *  via the dev-only DEV_AUTO_ADMIN bypass, rather than a real wallet
    *  connection. Never true in production. */
   isDevBypass: boolean;
-  connect: (provider?: Eip1193Provider) => Promise<void>;
-  connectSolana: (wallet: DetectedSolanaWallet) => Promise<void>;
+  connect: (provider?: Eip1193Provider, walletId?: WalletId) => Promise<void>;
+  connectWallet: (walletId: WalletId) => Promise<void>;
+  connectWalletConnect: () => Promise<void>;
+  isWalletConnectAvailable: boolean;
   disconnect: () => void;
-  // ── Payment helpers (EVM only) ──────────────────────────────────────
+  walletPickerOpen: boolean;
+  setWalletPickerOpen: (open: boolean) => void;
+  openWalletPicker: () => void;
   /** Send ETH from the connected wallet to `to`. Returns the tx hash. */
   sendPayment: (to: string, valueWeiHex: string) => Promise<string>;
   /** Switch the wallet to `targetChainId`, adding the chain if needed. */
@@ -200,24 +60,48 @@ interface WalletContextState {
 
 const WalletContext = createContext<WalletContextState | undefined>(undefined);
 
-// ─── Provider ────────────────────────────────────────────────────────────────
-
-// Well-known chains that can be added to the wallet if not already present.
-const KNOWN_CHAINS: Record<number, {
-  chainName: string;
-  nativeCurrency: { name: string; symbol: string; decimals: number };
-  rpcUrls: string[];
-  blockExplorerUrls: string[];
-}> = {
-  1:   { chainName: "Ethereum Mainnet", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://eth.llamarpc.com"], blockExplorerUrls: ["https://etherscan.io"] },
-  8453:{ chainName: "Base",            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://mainnet.base.org"],  blockExplorerUrls: ["https://basescan.org"] },
-  84532:{ chainName: "Base Sepolia",   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://sepolia.base.org"],  blockExplorerUrls: ["https://sepolia.basescan.org"] },
-  137: { chainName: "Polygon",         nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 }, rpcUrls: ["https://polygon-rpc.com"], blockExplorerUrls: ["https://polygonscan.com"] },
-  11155111: { chainName: "Sepolia",    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://rpc.sepolia.org"],   blockExplorerUrls: ["https://sepolia.etherscan.io"] },
+const KNOWN_CHAINS: Record<
+  number,
+  {
+    chainName: string;
+    nativeCurrency: { name: string; symbol: string; decimals: number };
+    rpcUrls: string[];
+    blockExplorerUrls: string[];
+  }
+> = {
+  1: {
+    chainName: "Ethereum Mainnet",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://eth.llamarpc.com"],
+    blockExplorerUrls: ["https://etherscan.io"],
+  },
+  8453: {
+    chainName: "Base",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://mainnet.base.org"],
+    blockExplorerUrls: ["https://basescan.org"],
+  },
+  84532: {
+    chainName: "Base Sepolia",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://sepolia.base.org"],
+    blockExplorerUrls: ["https://sepolia.basescan.org"],
+  },
+  137: {
+    chainName: "Polygon",
+    nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+    rpcUrls: ["https://polygon-rpc.com"],
+    blockExplorerUrls: ["https://polygonscan.com"],
+  },
+  11155111: {
+    chainName: "Sepolia",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://rpc.sepolia.org"],
+    blockExplorerUrls: ["https://sepolia.etherscan.io"],
+  },
 };
 
-export function WalletProvider({ children }: { children: ReactNode }) {
-  // ── EVM state (unchanged) ─────────────────────────────────────────────────
+function WalletProviderInner({ children }: { children: ReactNode }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -226,17 +110,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectStep, setConnectStep] = useState<ConnectStep>(null);
   const [isDevBypass, setIsDevBypass] = useState(false);
-  // Stores the active EIP-1193 provider so payment helpers can use it after connect.
-  const providerRef = useRef<Eip1193Provider | null>(null);
+  const [walletPickerOpen, setWalletPickerOpen] = useState(false);
 
-  // Restore an existing server session on mount
+  const providerRef = useRef<Eip1193Provider | null>(null);
+  const wcProviderRef = useRef<Eip1193Provider | null>(null);
+  const { open: openAppKit } = useAppKit();
+  const { walletProvider: wcProvider } = useAppKitProvider("eip155");
+
+  useEffect(() => {
+    wcProviderRef.current = (wcProvider as Eip1193Provider | undefined) ?? null;
+  }, [wcProvider]);
+
+  const openWalletPicker = useCallback(() => {
+    setWalletPickerOpen(true);
+  }, []);
+
   useEffect(() => {
     fetch("/api/auth/session")
       .then((r) =>
         r.ok
           ? (r.json() as Promise<{
               walletAddress: string;
-              walletChain?: WalletChainFamily;
+              walletChain?: string;
               isAdmin?: boolean;
               isDevBypass?: boolean;
             }>)
@@ -244,9 +139,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       )
       .then((data) => {
         if (data?.walletAddress) {
+          // EVM-only: ignore legacy Solana sessions so the UI never shows a non-EVM identity.
+          if (data.walletChain === "solana") {
+            fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
+            return;
+          }
           setWalletAddress(data.walletAddress);
           setIsVerified(true);
-          setWalletChain(data.walletChain ?? "evm");
+          setWalletChain("evm");
           setIsAdmin(!!data.isAdmin);
           setIsDevBypass(!!data.isDevBypass);
         }
@@ -268,216 +168,109 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setChainId(chain);
   }, []);
 
-  // Listen on whatever wallet is currently active (best-effort)
   useEffect(() => {
-    const wallets = detectWallets();
-    if (!wallets.length) return;
-    const eth = wallets[0].provider;
-    type Listenable = { on?: (e: string, cb: (v: unknown) => void) => void; removeListener?: (e: string, cb: (v: unknown) => void) => void };
-    const l = eth as unknown as Listenable;
+    const provider = providerRef.current;
+    if (!provider) return;
+    type Listenable = {
+      on?: (e: string, cb: (v: unknown) => void) => void;
+      removeListener?: (e: string, cb: (v: unknown) => void) => void;
+    };
+    const l = provider as unknown as Listenable;
     l.on?.("accountsChanged", handleAccountsChanged as (v: unknown) => void);
     l.on?.("chainChanged", handleChainChanged as (v: unknown) => void);
     return () => {
       l.removeListener?.("accountsChanged", handleAccountsChanged as (v: unknown) => void);
       l.removeListener?.("chainChanged", handleChainChanged as (v: unknown) => void);
     };
-  }, [handleAccountsChanged, handleChainChanged]);
+  }, [walletAddress, handleAccountsChanged, handleChainChanged]);
 
-  const connect = async (eth?: Eip1193Provider) => {
-    const resolvedEth: Eip1193Provider | null = eth ?? (() => {
-      const wallets = detectWallets();
-      if (wallets.length === 0) return null;
-      return wallets.find(w => w.id === "metamask")?.provider
-          ?? wallets.find(w => w.id === "injected")?.provider
-          ?? wallets[0].provider;
-    })();
+  const refreshAdmin = () => {
+    fetch("/api/auth/session")
+      .then((r) => (r.ok ? (r.json() as Promise<{ isAdmin?: boolean }>) : null))
+      .then((data) => setIsAdmin(!!data?.isAdmin))
+      .catch(() => setIsAdmin(false));
+  };
 
-    if (!resolvedEth) {
-      throw Object.assign(
-        new Error(
-          "No Ethereum wallet detected. Install MetaMask, Backpack, Phantom, or another EVM wallet, then refresh.\n" +
-          "Note: wallet extensions don't work inside iframes — open the app in its own tab."
-        ),
-        { code: -32603 }
-      );
+  const completeSignIn = async (provider: Eip1193Provider, walletId?: WalletId) => {
+    const result = await signInWithEvmProvider(provider, setConnectStep, walletId);
+    providerRef.current = provider;
+    setWalletAddress(result.address);
+    setChainId(result.chainId);
+    setIsVerified(true);
+    setWalletChain("evm");
+    setIsDevBypass(false);
+    refreshAdmin();
+  };
+
+  const connect = async (eth?: Eip1193Provider, walletId?: WalletId) => {
+    // No provider passed → open the picker so the user chooses (mobile needs WalletConnect).
+    if (!eth) {
+      openWalletPicker();
+      return;
     }
 
-    // Store provider for payment helpers (sendPayment, switchToChain, signTypedData)
-    providerRef.current = resolvedEth;
     setIsConnecting(true);
     setConnectStep("requesting");
     try {
-      type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
-      const raw = resolvedEth as unknown as RawProvider;
-
-      // 1. Request account access
-      const accounts = await raw.request({ method: "eth_requestAccounts", params: [] }) as string[];
-      if (!accounts.length) throw new Error("No accounts returned from wallet");
-
-      // 2. Get chain ID
-      const chainHex = await raw.request({ method: "eth_chainId" }) as string;
-      const networkChainId = parseInt(chainHex, 16).toString();
-      setChainId(networkChainId);
-
-      const isAddressMismatchError = (err: unknown): boolean => {
-        const code = (err as { code?: number }).code;
-        const msg = ((err as { message?: string }).message ?? "").toLowerCase();
-        return (code === -32000 || code === 32000 || code === 4200) &&
-          (msg.includes("does not match") || msg.includes("address"));
-      };
-
-      // Some wallets (notably MetaMask) can report a stale `eth_requestAccounts`
-      // result if the active account was switched right around connect time,
-      // which then causes personal_sign to reject with an address-mismatch
-      // error. Re-derive the address fresh right before signing, and retry
-      // once end-to-end (new nonce + new signature) if it still mismatches.
-      let signature = "";
-      let address = "";
-      let message = "";
-      let lastError: unknown;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        // Re-fetch the currently active account rather than trusting the
-        // possibly-stale result from step 1.
-        const freshAccounts = await raw.request({ method: "eth_accounts" }) as string[];
-        const rawAddress = freshAccounts[0] ?? accounts[0];
-        address = rawAddress.toLowerCase(); // normalized lowercase for all server calls
-
-        // 3. Fetch one-time nonce challenge for the (freshly-resolved) address
-        const nonceRes = await fetch(
-          `/api/auth/nonce?address=${encodeURIComponent(address)}&chainId=${encodeURIComponent(networkChainId)}`,
-        );
-        if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
-        const nonceData = (await nonceRes.json()) as { nonce: string; message: string };
-        message = nonceData.message;
-
-        // 4. Sign — try ethers signMessage first (MetaMask), fall back to raw personal_sign
-        //    (needed for Phantom, Backpack, and other wallets that reject the ethers wrapper)
-        setConnectStep("signing");
-        try {
-          const browserProvider = new BrowserProvider(resolvedEth);
-          const signer = await browserProvider.getSigner();
-          signature = await signer.signMessage(message);
-          lastError = undefined;
-          break;
-        } catch (signErr) {
-          // Some wallets (or ethers' own error-normalization layer) return
-          // malformed/unrecognized error shapes that ethers can't parse into
-          // a standard code — surfacing as ethers' generic "could not
-          // coalesce error" instead of the wallet's real error. Rather than
-          // gate the fallback on specific numeric codes (which misses these
-          // cases), always retry with the raw personal_sign RPC call, which
-          // is the more universally-compatible signing path.
-          try {
-            const hexMsg = hexlify(toUtf8Bytes(message));
-            // Use rawAddress (original wallet casing) — Phantom validates this
-            // strictly and rejects lowercase addresses with code -32000.
-            signature = await raw.request({
-              method: "personal_sign",
-              params: [hexMsg, rawAddress],
-            }) as string;
-            lastError = undefined;
-            break;
-          } catch (fallbackErr) {
-            lastError = fallbackErr;
-            if (isAddressMismatchError(fallbackErr) && attempt === 0) {
-              continue; // retry once with a freshly-resolved account + new nonce
-            }
-            if (isAddressMismatchError(signErr) && attempt === 0) {
-              continue; // retry once with a freshly-resolved account + new nonce
-            }
-            throw fallbackErr;
-          }
-        }
-      }
-      if (lastError) {
-        throw Object.assign(
-          new Error(
-            "Your wallet reported a different account than the one being verified. " +
-            "Please make sure the correct account is selected in your wallet, then try connecting again."
-          ),
-          { code: -32000 }
-        );
-      }
-
-      // 5. Server verifies signature and creates a session
-      const verifyRes = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, message, signature, chain: "evm" }),
-      });
-      if (!verifyRes.ok) {
-        const err = await verifyRes.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Signature verification failed");
-      }
-
-      setWalletAddress(address);
-      setIsVerified(true);
-      setWalletChain("evm");
-
-      // Fetch admin status now that a session exists
-      fetch("/api/auth/session")
-        .then((r) => (r.ok ? (r.json() as Promise<{ isAdmin?: boolean }>) : null))
-        .then((data) => setIsAdmin(!!data?.isAdmin))
-        .catch(() => setIsAdmin(false));
-    } catch (error) {
-      throw error;
+      await completeSignIn(eth, walletId);
     } finally {
       setIsConnecting(false);
       setConnectStep(null);
     }
   };
 
-  // ── Native Solana connect flow (ed25519 signMessage, separate from EVM) ──
-  const connectSolana = async (wallet: DetectedSolanaWallet) => {
+  const connectWalletConnect = async () => {
+    if (!isWalletConnectConfigured) {
+      throw new Error(
+        "WalletConnect is not configured. Add VITE_WALLETCONNECT_PROJECT_ID to enable mobile wallets.",
+      );
+    }
+
     setIsConnecting(true);
     setConnectStep("requesting");
     try {
-      const { provider } = wallet;
-      const { publicKey } = await provider.connect();
-      const address = publicKey.toString();
+      await openAppKit({ view: "Connect" });
 
-      // 1. Fetch one-time nonce challenge for this Solana address
-      const nonceRes = await fetch(
-        `/api/auth/nonce?address=${encodeURIComponent(address)}&chain=solana`,
-      );
-      if (!nonceRes.ok) throw new Error("Failed to fetch sign-in challenge");
-      const { message } = (await nonceRes.json()) as { nonce: string; message: string };
+      const provider = await new Promise<Eip1193Provider>((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          clearInterval(interval);
+          reject(new Error("Wallet connection timed out. Please try again."));
+        }, 120_000);
 
-      // 2. Sign the challenge message with the wallet's native ed25519 key
-      setConnectStep("signing");
-      const messageBytes = new TextEncoder().encode(message);
-      const signResult = await provider.signMessage(messageBytes, "utf8");
-      const signatureBytes =
-        signResult instanceof Uint8Array ? signResult : signResult.signature;
-      const signature = bs58.encode(signatureBytes);
-
-      // 3. Server verifies the ed25519 signature and creates a session
-      const verifyRes = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, message, signature, chain: "solana" }),
+        const interval = window.setInterval(() => {
+          const p = wcProviderRef.current;
+          if (p?.request) {
+            clearInterval(interval);
+            clearTimeout(timeout);
+            resolve(p);
+          }
+        }, 300);
       });
-      if (!verifyRes.ok) {
-        const err = await verifyRes.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Signature verification failed");
-      }
 
-      setWalletAddress(address);
-      setIsVerified(true);
-      setWalletChain("solana");
-      setChainId(null); // Solana has no EVM chain ID — clear any stale EVM chain state
-
-      // Fetch admin status now that a session exists
-      fetch("/api/auth/session")
-        .then((r) => (r.ok ? (r.json() as Promise<{ isAdmin?: boolean }>) : null))
-        .then((data) => setIsAdmin(!!data?.isAdmin))
-        .catch(() => setIsAdmin(false));
-    } catch (error) {
-      throw error;
+      // Brief pause so WalletConnect session is ready before personal_sign
+      await new Promise((r) => setTimeout(r, 400));
+      await completeSignIn(provider);
     } finally {
       setIsConnecting(false);
       setConnectStep(null);
     }
+  };
+
+  const connectWallet = async (walletId: WalletId) => {
+    await requestEip6963Providers();
+    const installed = getInstalledWallet(walletId);
+    if (installed?.provider) {
+      await connect(installed.provider, walletId);
+      return;
+    }
+    if (isWalletConnectConfigured) {
+      await connectWalletConnect();
+      return;
+    }
+    throw Object.assign(
+      new Error(`${walletId} is not installed. Install the extension or use WalletConnect.`),
+      { code: -32603 },
+    );
   };
 
   const disconnect = () => {
@@ -491,35 +284,29 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     fetch("/api/auth/disconnect", { method: "POST" }).catch(() => {});
   };
 
-  // ── Payment helpers ─────────────────────────────────────────────────────────
+  const sendPayment = useCallback(
+    async (to: string, valueWeiHex: string): Promise<string> => {
+      const provider = providerRef.current;
+      if (!provider || !walletAddress) throw new Error("Wallet not connected");
+      type RawProvider = {
+        request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      };
+      const raw = provider as unknown as RawProvider;
+      const txHash = (await raw.request({
+        method: "eth_sendTransaction",
+        params: [{ from: walletAddress, to, value: valueWeiHex, gas: "0x5208" }],
+      })) as string;
+      return txHash;
+    },
+    [walletAddress],
+  );
 
-  /**
-   * Send ETH from the connected wallet to `to`.
-   * `valueWeiHex` must be a 0x-prefixed hex string (e.g. "0x38d7ea4c68000").
-   * Returns the transaction hash.
-   * Throws if the user rejects (code 4001) or the wallet is disconnected.
-   */
-  const sendPayment = useCallback(async (to: string, valueWeiHex: string): Promise<string> => {
-    const provider = providerRef.current;
-    if (!provider || !walletAddress) throw new Error("Wallet not connected");
-    type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
-    const raw = provider as unknown as RawProvider;
-    const txHash = await raw.request({
-      method: "eth_sendTransaction",
-      params: [{ from: walletAddress, to, value: valueWeiHex, gas: "0x5208" /* 21 000 */ }],
-    }) as string;
-    return txHash;
-  }, [walletAddress]);
-
-  /**
-   * Switch the connected wallet to `targetChainId`.
-   * Adds the chain to the wallet if it isn't already known (for well-known chains).
-   * Throws with code 4001 if the user rejects.
-   */
   const switchToChain = useCallback(async (targetChainId: number): Promise<void> => {
     const provider = providerRef.current;
     if (!provider) throw new Error("Wallet not connected");
-    type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
+    type RawProvider = {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
     const raw = provider as unknown as RawProvider;
     const chainHex = "0x" + targetChainId.toString(16);
     try {
@@ -528,7 +315,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const code = (err as { code?: number }).code;
       if (code === 4902 || code === -32603) {
-        // Chain not added yet — try to add it
         const cfg = KNOWN_CHAINS[targetChainId];
         if (!cfg) throw new Error(`Chain ${targetChainId} is not known. Add it to your wallet manually.`);
         await raw.request({
@@ -542,41 +328,41 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /**
-   * Sign EIP-712 typed data using `eth_signTypedData_v4`.
-   * Returns the 0x-prefixed signature string.
-   * Throws with code 4001 if the user rejects.
-   */
-  const signTypedData = useCallback(async (
-    domain: Record<string, unknown>,
-    types: Record<string, { name: string; type: string }[]>,
-    value: Record<string, unknown>,
-  ): Promise<string> => {
-    const provider = providerRef.current;
-    if (!provider || !walletAddress) throw new Error("Wallet not connected");
-    type RawProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
-    const raw = provider as unknown as RawProvider;
+  const signTypedData = useCallback(
+    async (
+      domain: Record<string, unknown>,
+      types: Record<string, { name: string; type: string }[]>,
+      value: Record<string, unknown>,
+    ): Promise<string> => {
+      const provider = providerRef.current;
+      if (!provider || !walletAddress) throw new Error("Wallet not connected");
+      type RawProvider = {
+        request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      };
+      const raw = provider as unknown as RawProvider;
 
-    // Build EIP712Domain fields from the domain object
-    const domainTypes: { name: string; type: string }[] = [];
-    if ("name"              in domain) domainTypes.push({ name: "name",              type: "string"  });
-    if ("version"           in domain) domainTypes.push({ name: "version",           type: "string"  });
-    if ("chainId"           in domain) domainTypes.push({ name: "chainId",           type: "uint256" });
-    if ("verifyingContract" in domain) domainTypes.push({ name: "verifyingContract", type: "address" });
+      const domainTypes: { name: string; type: string }[] = [];
+      if ("name" in domain) domainTypes.push({ name: "name", type: "string" });
+      if ("version" in domain) domainTypes.push({ name: "version", type: "string" });
+      if ("chainId" in domain) domainTypes.push({ name: "chainId", type: "uint256" });
+      if ("verifyingContract" in domain)
+        domainTypes.push({ name: "verifyingContract", type: "address" });
 
-    const typedDataJson = JSON.stringify({
-      domain,
-      types: { EIP712Domain: domainTypes, ...types },
-      primaryType: Object.keys(types)[0],
-      message: value,
-    });
+      const typedDataJson = JSON.stringify({
+        domain,
+        types: { EIP712Domain: domainTypes, ...types },
+        primaryType: Object.keys(types)[0],
+        message: value,
+      });
 
-    const sig = await raw.request({
-      method: "eth_signTypedData_v4",
-      params: [walletAddress, typedDataJson],
-    }) as string;
-    return sig;
-  }, [walletAddress]);
+      const sig = (await raw.request({
+        method: "eth_signTypedData_v4",
+        params: [walletAddress, typedDataJson],
+      })) as string;
+      return sig;
+    },
+    [walletAddress],
+  );
 
   return (
     <WalletContext.Provider
@@ -591,8 +377,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         walletChain,
         isDevBypass,
         connect,
-        connectSolana,
+        connectWallet,
+        connectWalletConnect,
+        isWalletConnectAvailable: isWalletConnectConfigured,
         disconnect,
+        walletPickerOpen,
+        setWalletPickerOpen,
+        openWalletPicker,
         sendPayment,
         switchToChain,
         signTypedData,
@@ -600,16 +391,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     >
       {isDevBypass && <DevBypassBanner walletAddress={walletAddress} />}
       {children}
+      <WalletPickerDialog />
     </WalletContext.Provider>
   );
 }
 
-/**
- * Dev-only visual warning shown whenever DEV_AUTO_ADMIN is active on the
- * server, so it's never mistaken for a real connected wallet during local
- * testing. The server already guarantees this flag can never be true in
- * production (see getDevBypassWallet).
- */
+export function WalletProvider({ children }: { children: ReactNode }) {
+  return <WalletProviderInner>{children}</WalletProviderInner>;
+}
+
 function DevBypassBanner({ walletAddress }: { walletAddress: string | null }) {
   useEffect(() => {
     // eslint-disable-next-line no-console
@@ -620,8 +410,9 @@ function DevBypassBanner({ walletAddress }: { walletAddress: string | null }) {
 
   return (
     <div className="sticky top-0 z-50 w-full bg-amber-500 px-4 py-2 text-center text-sm font-medium text-black">
-      ⚠️ Dev auto-admin bypass is ON — you're auto-signed-in as {walletAddress} without connecting a real wallet.
-      Disable <code className="font-mono">DEV_AUTO_ADMIN</code> to test real wallet sign-in.
+      ⚠️ Dev auto-admin bypass is ON — you're auto-signed-in as {walletAddress} without connecting a
+      real wallet. Disable <code className="font-mono">DEV_AUTO_ADMIN</code> to test real wallet
+      sign-in.
     </div>
   );
 }

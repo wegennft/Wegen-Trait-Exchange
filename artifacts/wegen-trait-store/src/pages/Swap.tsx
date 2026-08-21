@@ -1277,7 +1277,7 @@ export function Swap() {
   const [tab, setTab] = useState<"browse" | "mine">("browse");
   const [createOpen, setCreateOpen] = useState(false);
   const [acceptTarget, setAcceptTarget] = useState<SwapListing | null>(null);
-  const { walletAddress, isConnected, connect } = useWallet();
+  const { walletAddress, isConnected, connect, openWalletPicker } = useWallet();
   const { collection } = useCollection();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1403,7 +1403,7 @@ export function Swap() {
             Post a Swap
           </Button>
         ) : (
-          <Button onClick={() => void connect()} className="bg-primary text-white gap-2 flex-shrink-0">
+          <Button onClick={() => openWalletPicker()} className="bg-primary text-white gap-2 flex-shrink-0">
             <Wallet className="w-4 h-4" />
             Connect Wallet
           </Button>
@@ -1498,7 +1498,7 @@ export function Swap() {
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground/50">
               <Wallet className="w-12 h-12" />
               <p className="text-sm">Connect your wallet to see your listings.</p>
-              <Button onClick={() => void connect()} className="bg-primary text-white">Connect Wallet</Button>
+              <Button onClick={() => openWalletPicker()} className="bg-primary text-white">Connect Wallet</Button>
             </div>
           ) : loadingMine ? (
             <div className="flex items-center justify-center py-20">

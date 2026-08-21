@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyMessage } from "ethers";
+import { getAddress, verifyMessage } from "ethers";
 import crypto from "crypto";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
@@ -21,7 +21,7 @@ async function pruneExpiredNonces(): Promise<void> {
 }
 
 function isEvmAddress(address: string): boolean {
-  return /^0x[0-9a-f]{40}$/.test(address);
+  return /^0x[0-9a-f]{40}$/i.test(address);
 }
 
 // Base58, 32-44 chars — standard Solana public key encoding (32-byte ed25519 key).
@@ -50,7 +50,12 @@ function buildSiweMessage(params: {
   ].join("\n");
 }
 
-function buildSolanaMessage(params: { domain: string; address: string; nonce: string; issuedAt: string }): string {
+function buildSolanaMessage(params: {
+  domain: string;
+  address: string;
+  nonce: string;
+  issuedAt: string;
+}): string {
   return [
     `${params.domain} wants you to sign in with your Solana account:`,
     params.address,
@@ -72,19 +77,31 @@ router.get("/auth/nonce", async (req, res): Promise<void> => {
   const rawAddress = req.query.address as string;
 
   let address: string | undefined;
+  let messageAddress: string | undefined;
+
   if (chain === "solana") {
     // Solana addresses are base58 and case-sensitive — do not lowercase.
     address = rawAddress;
+    messageAddress = rawAddress;
     if (!address || !isSolanaAddress(address)) {
       res.status(400).json({ error: "Invalid Solana address" });
       return;
     }
   } else {
-    address = rawAddress?.toLowerCase();
-    if (!address || !isEvmAddress(address)) {
+    if (!rawAddress || !isEvmAddress(rawAddress)) {
       res.status(400).json({ error: "Invalid address" });
       return;
     }
+    let checksumAddress: string;
+    try {
+      // EIP-4361 / MetaMask expect checksummed address in the SIWE message.
+      checksumAddress = getAddress(rawAddress);
+    } catch {
+      res.status(400).json({ error: "Invalid address" });
+      return;
+    }
+    address = checksumAddress.toLowerCase();
+    messageAddress = checksumAddress;
   }
 
   const nonce = crypto.randomBytes(16).toString("hex");
@@ -102,8 +119,14 @@ router.get("/auth/nonce", async (req, res): Promise<void> => {
 
   const message =
     chain === "solana"
-      ? buildSolanaMessage({ domain, address, nonce, issuedAt })
-      : buildSiweMessage({ domain, address, nonce, issuedAt, chainId });
+      ? buildSolanaMessage({ domain, address: messageAddress!, nonce, issuedAt })
+      : buildSiweMessage({
+          domain,
+          address: messageAddress!,
+          nonce,
+          issuedAt,
+          chainId,
+        });
   res.json({ nonce, message });
 });
 
@@ -116,20 +139,33 @@ router.post("/auth/verify", async (req, res): Promise<void> => {
     chain?: string;
   };
   const chain: ChainFamily = rawChain === "solana" ? "solana" : "evm";
-  const address = chain === "solana" ? rawAddress : rawAddress?.toLowerCase();
 
-  if (!address || !message || !signature) {
+  if (!rawAddress || !message || !signature) {
     res.status(400).json({ error: "address, message, and signature are required" });
     return;
   }
 
-  if (chain === "solana" && !isSolanaAddress(address)) {
-    res.status(400).json({ error: "Invalid Solana address" });
-    return;
-  }
-  if (chain === "evm" && !isEvmAddress(address)) {
-    res.status(400).json({ error: "Invalid address" });
-    return;
+  let address: string;
+  let checksumAddress: string | undefined;
+
+  if (chain === "solana") {
+    address = rawAddress;
+    if (!isSolanaAddress(address)) {
+      res.status(400).json({ error: "Invalid Solana address" });
+      return;
+    }
+  } else {
+    if (!isEvmAddress(rawAddress)) {
+      res.status(400).json({ error: "Invalid address" });
+      return;
+    }
+    try {
+      checksumAddress = getAddress(rawAddress);
+    } catch {
+      res.status(400).json({ error: "Invalid address" });
+      return;
+    }
+    address = checksumAddress.toLowerCase();
   }
 
   const [stored] = await db
@@ -141,8 +177,12 @@ router.post("/auth/verify", async (req, res): Promise<void> => {
     return;
   }
 
-  // Nonces must appear in the signed message
-  if (!message.includes(stored.nonce) || !message.includes(address)) {
+  // Nonces must appear in the signed message. Accept checksum or lowercase for EVM.
+  const addressInMessage =
+    chain === "solana"
+      ? message.includes(address)
+      : message.includes(checksumAddress!) || message.includes(address);
+  if (!message.includes(stored.nonce) || !addressInMessage) {
     res.status(401).json({ error: "Message does not match issued nonce" });
     return;
   }

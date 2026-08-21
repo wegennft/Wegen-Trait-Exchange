@@ -45,7 +45,7 @@ function groupTraitsByCategory<T extends { category: string }>(traits: T[]): { c
 }
 
 export function BundlesPoints() {
-  const { walletAddress, isConnected, connect } = useWallet();
+  const { walletAddress, isConnected, openWalletPicker } = useWallet();
   const { theme } = useCollection();
   const { accent, accentHsl, glow, gradient } = theme;
   const { ethUsd } = useEthPrice();
@@ -133,7 +133,7 @@ export function BundlesPoints() {
             </div>
           </div>
           {!isConnected && (
-            <Button size="sm" variant="outline" onClick={() => connect()} className="ml-2 gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => openWalletPicker()} className="ml-2 gap-1.5">
               <Wallet className="w-3.5 h-3.5" /> Connect
             </Button>
           )}
@@ -193,7 +193,7 @@ export function BundlesPoints() {
                     size="lg"
                     disabled={ethUsd === null}
                     onClick={() => {
-                      if (!isConnected) { connect(); return; }
+                      if (!isConnected) { openWalletPicker(); return; }
                       setPendingPack(pack);
                     }}
                   >
@@ -311,7 +311,7 @@ export function BundlesPoints() {
                           size="lg"
                           disabled={soldOut}
                           onClick={() => {
-                            if (!isConnected) { connect(); return; }
+                            if (!isConnected) { openWalletPicker(); return; }
                             addItem({ kind: "bundle", item: bundle });
                           }}
                         >

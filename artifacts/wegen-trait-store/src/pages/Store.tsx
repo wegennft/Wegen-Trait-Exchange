@@ -749,7 +749,7 @@ export function Store() {
   const [activePack, setActivePack] = useState<string | undefined>();
   const [previewNftIsLegend, setPreviewNftIsLegend] = useState(false);
 
-  const { walletAddress, isConnected, connect } = useWallet();
+  const { walletAddress, isConnected, connect, openWalletPicker } = useWallet();
   const { collection, theme } = useCollection();
   const { accent, accentHsl, glow, glow2, gradient, gradient2 } = theme;
   const { toast } = useToast();
@@ -883,7 +883,7 @@ export function Store() {
   const isBundleInCart = (id: number) => hasItem(bundleKey(id));
 
   const toggleCart = (trait: Trait) => {
-    if (!isConnected) { connect(); return; }
+    if (!isConnected) { openWalletPicker(); return; }
     const key = traitKey(trait.id);
     if (hasItem(key)) removeItem(key);
     else addItem({ kind: "trait", item: trait });
@@ -952,7 +952,7 @@ export function Store() {
           {/* Action */}
           {!isConnected ? (
             <button
-              onClick={() => void connect()}
+              onClick={() => openWalletPicker()}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold hover:bg-amber-500/25 transition-all text-sm uppercase tracking-widest"
               style={{ fontFamily: "'Bangers', cursive", letterSpacing: "0.1em" }}
             >
@@ -1066,7 +1066,7 @@ export function Store() {
 
           {/* Cart button ── */}
           <button
-            onClick={() => { if (!isConnected) { connect(); return; } openCart(); }}
+            onClick={() => { if (!isConnected) { openWalletPicker(); return; } openCart(); }}
           className="relative flex items-center gap-3 px-5 py-3 rounded-xl border transition-all group"
           style={{
             background: cartCount > 0
@@ -1459,7 +1459,7 @@ export function Store() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => { if (!isConnected) { connect(); return; } addItem({ kind: "bundle", item: bundle }); }}
+                            onClick={() => { if (!isConnected) { openWalletPicker(); return; } addItem({ kind: "bundle", item: bundle }); }}
                             className="w-full h-11 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:text-white hover:bg-primary/80 transition-all group/btn rounded-lg"
                             style={BANGERS}
                           >
